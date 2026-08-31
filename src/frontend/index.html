@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FairPlay - Simüle Futbol Bahis & NAV Portföy Platformu</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans antialiased">
+
+    <!-- Navigation Header -->
+    <header class="border-b border-slate-800 bg-slate-950 px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center space-x-3">
+            <div class="bg-emerald-500 text-slate-950 p-2 rounded-lg font-bold text-xl">FP</div>
+            <div>
+                <h1 class="text-xl font-bold text-emerald-400">FairPlay Simulator</h1>
+                <p class="text-xs text-slate-400">Gerçek Oranlar & Sanal Bakiye • Gerçek Para Kullanılmaz</p>
+            </div>
+        </div>
+
+        <!-- Portfolio Summary Cards -->
+        <div class="flex items-center space-x-6 text-sm">
+            <div class="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700">
+                <span class="text-xs text-slate-400 block">Sanal Bakiye</span>
+                <span id="cash-balance-display" class="text-emerald-400 font-semibold text-base">1,000.00 TL</span>
+            </div>
+            <div class="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700">
+                <span class="text-xs text-slate-400 block">Fon Birim NAV</span>
+                <span id="nav-display" class="text-cyan-400 font-semibold text-base">100.00</span>
+            </div>
+            <div class="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700">
+                <span class="text-xs text-slate-400 block">Simülasyon Enerjisi</span>
+                <span id="energy-display" class="text-amber-400 font-semibold text-base">100 / 100 ⚡</span>
+            </div>
+            <button id="refill-btn" onclick="requestRefill()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-2 rounded-lg transition text-xs">
+                + Bakiye Yenile
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left Column: Match Center & Odds Markets -->
+        <section class="lg:col-span-2 space-y-6">
+            <div class="bg-slate-800/80 backdrop-blur rounded-xl border border-slate-700 p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-slate-100">⚽ Yaklaşan Maçlar & Bahis Oranları</h2>
+                    <span class="text-xs text-emerald-400 bg-emerald-950/80 px-3 py-1 rounded-full border border-emerald-800">
+                        Canlı Oran Akışı
+                    </span>
+                </div>
+
+                <!-- Match List Container -->
+                <div id="match-list" class="space-y-4">
+                    <!-- Matches injected dynamically via JS -->
+                </div>
+            </div>
+
+            <!-- Equity Curve / NAV Chart Section -->
+            <div class="bg-slate-800/80 backdrop-blur rounded-xl border border-slate-700 p-6">
+                <h2 class="text-lg font-bold text-slate-100 mb-2">📈 Portföy Performans Grafiği (Unit NAV)</h2>
+                <p class="text-xs text-slate-400 mb-4">
+                    Bakiye yüklemelerinden (refill) etkilenmeyen, saf seçim becerinizi ölçen fon getiri grafiği.
+                </p>
+                <div class="h-64">
+                    <canvas id="navChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Bet Slip & Risk Metrics -->
+        <section class="space-y-6">
+            <!-- Bet Slip Container -->
+            <div class="bg-slate-800/80 backdrop-blur rounded-xl border border-slate-700 p-6">
+                <h2 class="text-lg font-bold text-slate-100 mb-4">📋 Simüle Kupon</h2>
+                
+                <div id="selected-selection" class="hidden bg-slate-900 border border-slate-700 rounded-lg p-4 mb-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span id="match-title" class="text-xs font-semibold text-slate-400">Arsenal vs Chelsea</span>
+                            <div id="selection-name" class="font-bold text-emerald-400 text-sm">Ev Sahibi (1.95)</div>
+                        </div>
+                        <span id="market-type-badge" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">1X2</span>
+                    </div>
+
+                    <!-- Vig & EV Warning Banner -->
+                    <div id="ev-warning" class="mt-3 text-xs bg-amber-950/80 text-amber-300 border border-amber-800 p-2 rounded">
+                        ⚠️ **Kar Marjı Bilgisi**: Bu bahiste büro kar marjı (Vig) %4.22'dir. Adil Oran: 1.98.
+                    </div>
+                </div>
+
+                <!-- Stake Input & Wager Action -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Yatırılacak Sanal Bakiye (TL)</label>
+                        <input id="stake-input" type="number" value="100" min="10" step="10" 
+                               class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-100 focus:outline-none focus:border-emerald-500">
+                    </div>
+
+                    <button onclick="placeWager()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition">
+                        Bahsi Onayla (10 ⚡ Enerji)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Responsible Gaming & Cooldown Status -->
+            <div class="bg-slate-800/80 backdrop-blur rounded-xl border border-slate-700 p-6">
+                <h2 class="text-lg font-bold text-slate-100 mb-3">🛡️ Sorumlu Oyun ve Risk Durumu</h2>
+                <div class="space-y-3 text-xs text-slate-300">
+                    <div class="flex justify-between items-center bg-slate-900 p-3 rounded-lg border border-slate-700">
+                        <span>Ceza Kademesi (İflas Tier):</span>
+                        <span id="bankruptcy-tier" class="font-bold text-slate-100">0 (Aktif)</span>
+                    </div>
+                    <div class="flex justify-between items-center bg-slate-900 p-3 rounded-lg border border-slate-700">
+                        <span>Sorumlu Oyun Risk Skoru:</span>
+                        <span class="font-bold text-emerald-400">12 / 100 (Düşük Risk)</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Embedded Application JavaScript -->
+    <script>
+        let currentFixtures = [];
+        let selectedWager = null;
+        let navChartInstance = null;
+
+        // Mock State
+        let portfolioState = {
+            cash: 1000.0,
+            nav: 100.0,
+            energy: 100,
+            tier: 0,
+            history: [100.0, 100.0]
+        };
+
+        const sampleFixtures = [
+            {
+                id: "1",
+                home: "Arsenal",
+                away: "Chelsea",
+                league: "Premier League",
+                odds: { HOME: 1.95, DRAW: 3.50, AWAY: 4.10 },
+                vig: "4.22%"
+            },
+            {
+                id: "2",
+                home: "Real Madrid",
+                away: "Barcelona",
+                league: "La Liga",
+                odds: { HOME: 2.10, DRAW: 3.40, AWAY: 3.60 },
+                vig: "4.15%"
+            },
+            {
+                id: "3",
+                home: "Galatasaray",
+                away: "Fenerbahçe",
+                league: "Süper Lig",
+                odds: { HOME: 2.25, DRAW: 3.30, AWAY: 3.10 },
+                vig: "5.10%"
+            }
+        ];
+
+        function init() {
+            renderMatches();
+            initChart();
+        }
+
+        function renderMatches() {
+            const container = document.getElementById("match-list");
+            container.innerHTML = sampleFixtures.map(f => `
+                <div class="bg-slate-900 border border-slate-700/80 rounded-lg p-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs font-semibold text-emerald-400">${f.league}</span>
+                        <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">
+                            Büro Marjı (Vig): ${f.vig}
+                        </span>
+                    </div>
+                    <div class="text-sm font-bold text-slate-100 mb-3">${f.home} vs ${f.away}</div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="selectOdds('${f.id}', 'Ev Sahibi (${f.home})', ${f.odds.HOME}, '${f.home} vs ${f.away}')" 
+                                class="bg-slate-800 hover:bg-emerald-900/50 hover:border-emerald-500 border border-slate-700 p-2 rounded text-center transition">
+                            <span class="text-[10px] text-slate-400 block">1 (Ev)</span>
+                            <span class="text-sm font-bold text-emerald-400">${f.odds.HOME}</span>
+                        </button>
+                        <button onclick="selectOdds('${f.id}', 'Beraberlik', ${f.odds.DRAW}, '${f.home} vs ${f.away}')" 
+                                class="bg-slate-800 hover:bg-emerald-900/50 hover:border-emerald-500 border border-slate-700 p-2 rounded text-center transition">
+                            <span class="text-[10px] text-slate-400 block">X (Beraberlik)</span>
+                            <span class="text-sm font-bold text-emerald-400">${f.odds.DRAW}</span>
+                        </button>
+                        <button onclick="selectOdds('${f.id}', 'Deplasman (${f.away})', ${f.odds.AWAY}, '${f.home} vs ${f.away}')" 
+                                class="bg-slate-800 hover:bg-emerald-900/50 hover:border-emerald-500 border border-slate-700 p-2 rounded text-center transition">
+                            <span class="text-[10px] text-slate-400 block">2 (Dep)</span>
+                            <span class="text-sm font-bold text-emerald-400">${f.odds.AWAY}</span>
+                        </button>
+                    </div>
+                </div>
+            `).join("");
+        }
+
+        function selectOdds(matchId, selectionName, odds, matchTitle) {
+            selectedWager = { matchId, selectionName, odds, matchTitle };
+            document.getElementById("selected-selection").classList.remove("hidden");
+            document.getElementById("match-title").innerText = matchTitle;
+            document.getElementById("selection-name").innerText = `${selectionName} (${odds})`;
+        }
+
+        function placeWager() {
+            if (!selectedWager) {
+                alert("Lütfen önce bir maç ve oran seçiniz.");
+                return;
+            }
+            const stake = parseFloat(document.getElementById("stake-input").value);
+            if (stake > portfolioState.cash) {
+                alert("Yetersiz bakiyeniz bulunmamaktadır.");
+                return;
+            }
+
+            // Simulate Wager Result
+            portfolioState.cash -= stake;
+            portfolioState.energy -= 10;
+            
+            // Random win/loss simulation
+            const isWin = Math.random() > 0.45;
+            if (isWin) {
+                const payout = stake * selectedWager.odds;
+                portfolioState.cash += payout;
+                portfolioState.nav = round(portfolioState.nav * (1 + (payout - stake) / 1000), 2);
+                alert(`🎉 Bahis Kazandı! Ödeme: ${payout.toFixed(2)} TL`);
+            } else {
+                portfolioState.nav = round(portfolioState.nav * (1 - stake / 1000), 2);
+                alert(`❌ Bahis Kaybetti. Kayıp: ${stake.toFixed(2)} TL`);
+            }
+
+            portfolioState.history.push(portfolioState.nav);
+            updateUI();
+        }
+
+        function requestRefill() {
+            portfolioState.cash += 1000.0;
+            // NAV is preserved during refill!
+            alert("1,000 TL Sanal Bakiye Hesabınıza Tanımlandı. (NAV Değişmedi!)");
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById("cash-balance-display").innerText = `${portfolioState.cash.toFixed(2)} TL`;
+            document.getElementById("nav-display").innerText = portfolioState.nav.toFixed(2);
+            document.getElementById("energy-display").innerText = `${portfolioState.energy} / 100 ⚡`;
+            
+            if (navChartInstance) {
+                navChartInstance.data.labels = portfolioState.history.map((_, i) => `İşlem ${i}`);
+                navChartInstance.data.datasets[0].data = portfolioState.history;
+                navChartInstance.update();
+            }
+        }
+
+        function initChart() {
+            const ctx = document.getElementById("navChart").getContext("2d");
+            navChartInstance = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: ["Başlangıç", "İşlem 1"],
+                    datasets: [{
+                        label: "Unit NAV (Fon Birim Değeri)",
+                        data: portfolioState.history,
+                        borderColor: "#38bdf8",
+                        backgroundColor: "rgba(56, 189, 248, 0.1)",
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { grid: { color: "#334155" }, ticks: { color: "#94a3b8" } },
+                        x: { grid: { color: "#334155" }, ticks: { color: "#94a3b8" } }
+                    },
+                    plugins: { legend: { labels: { color: "#f8fafc" } } }
+                }
+            });
+        }
+
+        function round(val, dec) { return Math.round(val * Math.pow(10, dec)) / Math.pow(10, dec); }
+
+        document.addEventListener("DOMContentLoaded", init);
+    </script>
+</body>
+</html>

@@ -400,7 +400,6 @@
 
         // --- Init Lifecycle ---
         async function init() {
-            console.log("[FP] init started");
             try {
                 initChart();
             } catch (err) {
@@ -435,7 +434,6 @@
                         updateChartData(data);
                     } else {
                         // Token is stale or invalid — clear and start fresh
-                        console.warn("[FP] Stored token rejected, starting fresh guest session");
                         localStorage.removeItem("fp_auth_token");
                         localStorage.removeItem("fp_user");
                         authToken = null;
@@ -453,7 +451,6 @@
                 authToken = null;
                 currentUser = null;
             }
-            console.log("[FP] init completed");
         }
 
         async function autoGuestLogin() {
@@ -518,20 +515,14 @@
         // --- Data Fetching ---
         async function fetchFixtures() {
             const container = document.getElementById("match-list");
-            console.log("[FP DEBUG] fetchFixtures called, container:", container);
             try {
-                console.log("[FP DEBUG] fetching", `${API_BASE}/api/fixtures`);
                 const res = await fetch(`${API_BASE}/api/fixtures`);
-                console.log("[FP DEBUG] fetch response status:", res.status);
                 if (!res.ok) throw new Error("Fikstürler çekilemedi (HTTP " + res.status + ")");
                 const data = await res.json();
-                console.log("[FP DEBUG] fixtures count:", (data.fixtures || []).length);
                 currentFixtures = data.fixtures || [];
-                console.log("[FP DEBUG] calling renderMatches...");
                 renderMatches();
-                console.log("[FP DEBUG] renderMatches completed OK");
             } catch (err) {
-                console.error("[FP DEBUG] fetchFixtures ERROR:", err);
+                console.error("fetchFixtures error:", err);
                 container.innerHTML = `
                     <div class="bg-slate-950 border border-amber-800/80 rounded-xl p-5 text-center space-y-2">
                         <div class="text-amber-400 font-bold text-sm">⚠️ Backend Sunucusuna Bağlanılamadı</div>
@@ -582,22 +573,20 @@
         // --- Render Functions ---
         function renderMatches() {
             const container = document.getElementById("match-list");
-            console.log("[FP DEBUG] renderMatches, fixtures:", currentFixtures.length);
             if (!currentFixtures.length) {
                 container.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs">Aktif maç bulunamadı.</div>`;
                 return;
             }
 
             try {
-            container.innerHTML = currentFixtures.map((f, idx) => {
-                console.log(`[FP DEBUG] rendering fixture ${idx}:`, f.home_team, "vs", f.away_team);
-                const m1x2 = f.markets?.["1X2"] || { outcomes: { HOME: 2.0, DRAW: 3.2, AWAY: 3.5 }, overround: 0.045, fair_odds: { HOME: 2.09, DRAW: 3.35, AWAY: 3.66 } };
-                const mou = f.markets?.["OVER_UNDER_2.5"] || { outcomes: { "OVER_2.5": 1.85, "UNDER_2.5": 2.02 }, overround: 0.048, fair_odds: { "OVER_2.5": 1.94, "UNDER_2.5": 2.12 } };
-                const mbtts = f.markets?.["BTTS"] || { outcomes: { "BTTS_YES": 1.78, "BTTS_NO": 2.12 }, overround: 0.052, fair_odds: { "BTTS_YES": 1.87, "BTTS_NO": 2.23 } };
+                container.innerHTML = currentFixtures.map(f => {
+                    const m1x2 = f.markets?.["1X2"] || { outcomes: { HOME: 2.0, DRAW: 3.2, AWAY: 3.5 }, overround: 0.045, fair_odds: { HOME: 2.09, DRAW: 3.35, AWAY: 3.66 } };
+                    const mou = f.markets?.["OVER_UNDER_2.5"] || { outcomes: { "OVER_2.5": 1.85, "UNDER_2.5": 2.02 }, overround: 0.048, fair_odds: { "OVER_2.5": 1.94, "UNDER_2.5": 2.12 } };
+                    const mbtts = f.markets?.["BTTS"] || { outcomes: { "BTTS_YES": 1.78, "BTTS_NO": 2.12 }, overround: 0.052, fair_odds: { "BTTS_YES": 1.87, "BTTS_NO": 2.23 } };
 
-                const vigPct = (m1x2.overround * 100).toFixed(2);
-                const ouVig = (mou.overround * 100).toFixed(2);
-                const bttsVig = (mbtts.overround * 100).toFixed(2);
+                    const vigPct = (m1x2.overround * 100).toFixed(2);
+                    const ouVig = (mou.overround * 100).toFixed(2);
+                    const bttsVig = (mbtts.overround * 100).toFixed(2);
 
                 return `
                     <div class="bg-slate-950 border border-slate-800 hover:border-slate-700/80 transition rounded-xl p-4 space-y-3">
@@ -671,11 +660,9 @@
                             </button>
                         </div>
                     </div>
-                `;
-            }).join("");
-            console.log("[FP DEBUG] renderMatches innerHTML set OK");
+                }).join("");
             } catch (renderErr) {
-                console.error("[FP DEBUG] renderMatches CRASHED:", renderErr);
+                console.error("renderMatches error:", renderErr);
                 container.innerHTML = `<div class="text-center py-6 text-red-400 text-xs">Render hatası: ${renderErr.message}</div>`;
             }
         }

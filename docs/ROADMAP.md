@@ -62,7 +62,7 @@ $$f^* = \max\left(0, \; \frac{p \cdot o - 1}{o - 1}\right)$$
 
 ### [FAZ 2: Oyun Döngüsü ve Simülasyon Motoru]
 - [x] **Görev 2.1:** Bahis Sonuçlandırma motoru (`settle_wager`) ve API endpoint'i yaz (`/api/wager/settle`). (QA PASS)
-- [ ] **Görev 2.2:** Hızlı test ve Zaman Makinesi modu için Monte Carlo / Poisson tabanlı Sanal Maç Motoru (Virtual Match Engine) geliştir.
+- [x] **Görev 2.2:** Hızlı test ve Zaman Makinesi modu için Monte Carlo / Poisson tabanlı Sanal Maç Motoru (Virtual Match Engine) geliştir. (Data/Math PASS: 23/23 testler doğrulandı)
 - [ ] **Görev 2.3:** Benchmark endekslerini (Random Walk, Favorite Heavy) formül uydurmak yerine gerçek bot simülasyonları olarak işlet.
 
 ### [FAZ 3: Frontend ve Görselleştirme Entegrasyonu]

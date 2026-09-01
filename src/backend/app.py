@@ -10,6 +10,7 @@ from src.backend.models.database import (
 )
 from src.backend.auth import hash_password, verify_password, create_access_token, decode_access_token
 from src.backend.cooldown_engine import CooldownEngine
+from src.backend.match_engine import VirtualMatchEngine
 from src.data_ingestion.mock_data_generator import MockDataGenerator
 
 init_db()
@@ -343,4 +344,145 @@ def request_refill(user_id: str = Depends(get_current_user_id), db: Session = De
         "cash_balance": round(bal.cash_balance, 2),
         "nav": round(current_nav, 4),
         "units": round(bal.total_units, 4)
+    }
+
+class MatchSimulateRequest(BaseModel):
+    match_id: str
+    seed: Optional[int] = None
+
+class MonteCarloRequest(BaseModel):
+    odds_1x2: Dict[str, float]
+    iterations: Optional[int] = 10000
+
+@app.post("/api/matches/simulate")
+def simulate_match_and_settle(req: MatchSimulateRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    # Find fixture
+    fixture = None
+    for f in cached_fixtures:
+        if f.get("match_id") == req.match_id:
+            fixture = f
+            break
+
+    home_team = fixture.get("home_team", "Home Team") if fixture else "Home Team"
+    away_team = fixture.get("away_team", "Away Team") if fixture else "Away Team"
+    market_1x2 = fixture.get("markets", {}).get("1X2", {}).get("outcomes", {"HOME": 2.0, "DRAW": 3.4, "AWAY": 3.8}) if fixture else {"HOME": 2.0, "DRAW": 3.4, "AWAY": 3.8}
+
+    # Simulate match
+    match_result = VirtualMatchEngine.simulate_match(
+        match_id=req.match_id,
+        home_team=home_team,
+        away_team=away_team,
+        odds_1x2=market_1x2,
+        seed=req.seed
+    )
+
+    # Auto-settle any pending wagers for this user on this match
+    pending_wagers = db.query(WagerModel).filter(
+        WagerModel.user_id == user.id,
+        WagerModel.match_id == req.match_id,
+        WagerModel.status == "PENDING"
+    ).all()
+
+    bal = user.balance
+    cd = user.cooldown
+    now = datetime.now(timezone.utc)
+    settled_wagers_summary = []
+
+    for w in pending_wagers:
+        won = False
+        if w.market_type == "1X2":
+            won = (w.selection == match_result.outcome_1x2)
+        elif w.market_type == "OVER_UNDER_2.5":
+            won = (w.selection == match_result.outcome_ou_25)
+        elif w.market_type == "BTTS":
+            won = (w.selection == match_result.outcome_btts)
+
+        payout = w.potential_payout if won else 0.0
+        w.status = "WON" if won else "LOST"
+        w.payout = payout
+        w.settled_at = now
+
+        bal.locked_stakes = max(0.0, bal.locked_stakes - w.stake)
+        bal.cash_balance += payout
+
+        total_value = bal.cash_balance + bal.locked_stakes
+        current_nav = round(total_value / bal.total_units, 4) if bal.total_units > 0 else 0.0
+
+        nav_record = NAVHistoryModel(
+            user_id=user.id,
+            series_id=bal.series_id,
+            nav=current_nav,
+            cash_balance=bal.cash_balance,
+            locked_stakes=bal.locked_stakes,
+            total_units=bal.total_units,
+            tx_type="BET_PAYOUT",
+            amount=payout - w.stake
+        )
+        db.add(nav_record)
+
+        settled_wagers_summary.append({
+            "wager_id": w.id,
+            "selection": w.selection,
+            "status": w.status,
+            "payout": payout,
+            "net_gain": round(payout - w.stake, 2)
+        })
+
+    # Check bankruptcy
+    bankruptcy_triggered = False
+    if bal.cash_balance <= 0 and bal.locked_stakes <= 0:
+        bankruptcy_triggered = True
+        cd.current_tier += 1
+        cd.solvent_days_streak = 0
+        cd.status = "COOLDOWN_LOCKED"
+        lockout_hours = CooldownEngine.calculate_cooldown_hours(cd.current_tier)
+        cd.cooldown_expires_at = now + timedelta(hours=lockout_hours)
+
+    db.commit()
+
+    total_value = bal.cash_balance + bal.locked_stakes
+    final_nav = round(total_value / bal.total_units, 4) if bal.total_units > 0 else 0.0
+
+    return {
+        "match_id": req.match_id,
+        "home_team": match_result.home_team,
+        "away_team": match_result.away_team,
+        "score": f"{match_result.home_score} - {match_result.away_score}",
+        "home_score": match_result.home_score,
+        "away_score": match_result.away_score,
+        "outcomes": {
+            "1X2": match_result.outcome_1x2,
+            "OVER_UNDER_2.5": match_result.outcome_ou_25,
+            "BTTS": match_result.outcome_btts
+        },
+        "events": [
+            {"minute": e.minute, "team": e.team, "type": e.event_type, "description": e.description}
+            for e in match_result.events
+        ],
+        "settled_wagers": settled_wagers_summary,
+        "portfolio": {
+            "cash_balance": round(bal.cash_balance, 2),
+            "locked_stakes": round(bal.locked_stakes, 2),
+            "nav": final_nav,
+            "bankruptcy_triggered": bankruptcy_triggered,
+            "cooldown_status": cd.status
+        }
+    }
+
+@app.post("/api/matches/monte_carlo")
+def run_monte_carlo_analysis(req: MonteCarloRequest):
+    lh, la = VirtualMatchEngine.derive_lambdas(req.odds_1x2)
+    mc_result = VirtualMatchEngine.run_monte_carlo(
+        lambda_home=lh,
+        lambda_away=la,
+        iterations=req.iterations or 10000
+    )
+    return {
+        "lambda_home": lh,
+        "lambda_away": la,
+        "monte_carlo": mc_result.__dict__
     }

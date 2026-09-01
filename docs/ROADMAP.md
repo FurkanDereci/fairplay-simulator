@@ -55,7 +55,7 @@ $$f^* = \max\left(0, \; \frac{p \cdot o - 1}{o - 1}\right)$$
 ## 5. Fazlandırılmış Geliştirme Yol Haritası (Master Backlog)
 
 ### [FAZ 1: Çekirdek Altyapı ve Veri Tabanı Onarımı]
-- [ ] **Görev 1.1:** `src/backend/nav_engine.py` içindeki `calculate_twr()` metodundaki `self` hatasını düzelt ve testleri güncelle.
+- [x] **Görev 1.1:** `src/backend/nav_engine.py` içindeki `calculate_twr()` metodundaki `self` hatasını düzelt ve testleri güncelle. (QA PASS: 15/15 testler doğrulandı)
 - [ ] **Görev 1.2:** SQLAlchemy veritabanı modellerini (`src/backend/models/database.py`) aktifleştir; hardcoded Linux yolunu kaldırıp SQLite/Postgres uyumlu hale getir.
 - [ ] **Görev 1.3:** `src/backend/app.py` içindeki RAM tabanlı sözlükleri (`user_portfolios`, `user_cooldowns`) kaldır; bakiye, bahis ve NAV geçmişini DB transaction'larına bağla.
 - [ ] **Görev 1.4:** `auth_jwt.py` kopyasını sil; `auth.py` içinde `bcrypt` şifreleme ve güvenli JWT standardına geç.

@@ -15,10 +15,11 @@ class NAVPortfolioEngine:
     """GIPS-compliant Unit NAV Fund Accounting Engine for Virtual Betting Portfolios."""
     
     def __init__(self, initial_balance: float = 1000.0, base_nav: float = 100.0):
+        self.base_nav: float = base_nav
         self.cash_balance: float = initial_balance
         self.locked_stakes: float = 0.0
         self.nav: float = base_nav
-        self.total_units: float = initial_balance / base_nav
+        self.total_units: float = initial_balance / base_nav if base_nav > 0 else 0.0
         self.series_id: int = 1
         self.transactions: List[TransactionRecord] = []
         self.nav_history: List[Dict[str, Any]] = []
@@ -55,15 +56,17 @@ class NAVPortfolioEngine:
             units_after=round(self.total_units, 4)
         ))
 
-    def deposit_refill(self, amount: float):
+    def deposit_refill(self, amount: float) -> bool:
         """Processes virtual balance refill without altering current NAV performance."""
-        if self.total_portfolio_value <= 0:
+        if amount <= 0:
+            return False
+        if self.total_portfolio_value <= 0 or self.total_units <= 0:
             # Re-unitization after complete bankruptcy
             self.series_id += 1
             self.cash_balance = amount
             self.locked_stakes = 0.0
-            self.nav = 100.0
-            self.total_units = amount / 100.0
+            self.nav = self.base_nav
+            self.total_units = amount / self.base_nav
         else:
             # Issue new units at current NAV
             new_units = amount / self.nav
@@ -71,6 +74,7 @@ class NAVPortfolioEngine:
             self.cash_balance += amount
             
         self._record_transaction("REFILL_DEPOSIT", amount)
+        return True
 
     def place_wager(self, stake: float) -> bool:
         if stake > self.cash_balance or stake <= 0:
@@ -80,11 +84,16 @@ class NAVPortfolioEngine:
         self._record_transaction("BET_STAKE", -stake)
         return True
 
-    def settle_wager(self, stake: float, payout: float):
+    def settle_wager(self, stake: float, payout: float) -> bool:
+        if stake <= 0 or payout < 0 or stake > self.locked_stakes:
+            return False
         self.locked_stakes -= stake
         self.cash_balance += payout
         self._record_transaction("BET_PAYOUT", payout - stake)
+        return True
 
-    def calculate_twr() -> float:
-        """Time-Weighted Return % relative to baseline NAV 100.0."""
-        return round(((self.nav / 100.0) - 1.0) * 100.0, 2)
+    def calculate_twr(self) -> float:
+        """Time-Weighted Return % relative to baseline NAV."""
+        if self.base_nav <= 0:
+            return 0.0
+        return round(((self.nav / self.base_nav) - 1.0) * 100.0, 2)

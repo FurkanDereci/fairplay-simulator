@@ -28,6 +28,53 @@ class TestBackendCore(unittest.TestCase):
         self.assertEqual(portfolio.total_units, 20.0) # Units increase from 10 to 20
         self.assertEqual(portfolio.cash_balance, 3000.0)
 
+    def test_calculate_twr(self):
+        portfolio = NAVPortfolioEngine(initial_balance=1000.0, base_nav=100.0)
+        self.assertEqual(portfolio.calculate_twr(), 0.0)
+        
+        # Win wager -> NAV increases to 120.0 (+20%)
+        portfolio.place_wager(200.0)
+        portfolio.settle_wager(200.0, payout=400.0)
+        self.assertEqual(portfolio.nav, 120.0)
+        self.assertEqual(portfolio.calculate_twr(), 20.0)
+        
+        # Lose wager -> NAV drops
+        portfolio.place_wager(400.0)
+        portfolio.settle_wager(400.0, payout=0.0)
+        self.assertEqual(portfolio.nav, 80.0)
+        self.assertEqual(portfolio.calculate_twr(), -20.0)
+
+    def test_nav_engine_boundary_and_bankruptcy(self):
+        portfolio = NAVPortfolioEngine(initial_balance=1000.0, base_nav=100.0)
+        
+        # Invalid wagers
+        self.assertFalse(portfolio.place_wager(-50.0))
+        self.assertFalse(portfolio.place_wager(0.0))
+        self.assertFalse(portfolio.place_wager(1500.0))
+        
+        # Invalid refill
+        self.assertFalse(portfolio.deposit_refill(-100.0))
+        self.assertFalse(portfolio.deposit_refill(0.0))
+        
+        # Invalid settlement
+        self.assertFalse(portfolio.settle_wager(stake=100.0, payout=200.0)) # locked is 0
+        
+        # Full bankruptcy
+        portfolio.place_wager(1000.0)
+        portfolio.settle_wager(1000.0, payout=0.0)
+        self.assertEqual(portfolio.cash_balance, 0.0)
+        self.assertEqual(portfolio.total_portfolio_value, 0.0)
+        self.assertEqual(portfolio.nav, 0.0)
+        self.assertEqual(portfolio.calculate_twr(), -100.0)
+        
+        # Re-unitization via refill
+        success = portfolio.deposit_refill(1000.0)
+        self.assertTrue(success)
+        self.assertEqual(portfolio.series_id, 2)
+        self.assertEqual(portfolio.nav, 100.0)
+        self.assertEqual(portfolio.total_units, 10.0)
+        self.assertEqual(portfolio.calculate_twr(), 0.0)
+
     def test_cooldown_engine_exponential_backoff(self):
         engine = CooldownEngine()
         now = datetime.now(timezone.utc)

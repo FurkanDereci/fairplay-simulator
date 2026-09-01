@@ -1,291 +1,938 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FairPlay - Simüle Futbol Bahis & NAV Portföy Platformu</title>
+    <title>FairPlay - Simüle Futbol & NAV Portföy Platformu</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#ecfdf5',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            900: '#064e3b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .glow-cyan { filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.4)); }
+        .glow-emerald { filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.4)); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen font-sans antialiased">
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-emerald-500 selection:text-slate-950 flex flex-col">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+            <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200 text-xl font-bold">✕</button>
+            <div class="flex items-center space-x-3 mb-6">
+                <div class="bg-emerald-500 text-slate-950 font-black px-3 py-1.5 rounded-lg text-lg">FP</div>
+                <div>
+                    <h3 class="text-lg font-bold text-slate-100" id="auth-modal-title">Giriş Yap</h3>
+                    <p class="text-xs text-slate-400">FairPlay Sanal Portföy Hesabınız</p>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex border-b border-slate-800 mb-5">
+                <button id="tab-login" onclick="switchAuthTab('login')" class="flex-1 py-2 text-center text-sm font-semibold border-b-2 border-emerald-500 text-emerald-400">Giriş Yap</button>
+                <button id="tab-register" onclick="switchAuthTab('register')" class="flex-1 py-2 text-center text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200">Kayıt Ol</button>
+            </div>
+
+            <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+                <div id="email-field" class="hidden">
+                    <label class="block text-xs font-medium text-slate-400 mb-1">E-Posta Adresi</label>
+                    <input type="email" id="auth-email" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Kullanıcı Adı</label>
+                    <input type="text" id="auth-username" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Şifre</label>
+                    <input type="password" id="auth-password" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <button type="submit" id="auth-submit-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg transition text-sm shadow-lg shadow-emerald-950 flex items-center justify-center space-x-2">
+                    <span id="auth-btn-text">Giriş Yap</span>
+                </button>
+            </form>
+        </div>
+    </div>
 
     <!-- Navigation Header -->
-    <header class="border-b border-slate-800 bg-slate-950 px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+    <header class="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur sticky top-0 z-40 px-6 py-3.5 flex flex-col md:flex-row justify-between items-center gap-4">
         <div class="flex items-center space-x-3">
-            <div class="bg-emerald-500 text-slate-950 p-2 rounded-lg font-bold text-xl">FP</div>
+            <div class="bg-gradient-to-br from-emerald-400 to-teal-600 text-slate-950 px-2.5 py-1.5 rounded-xl font-black text-xl shadow-lg shadow-emerald-950/50">FP</div>
             <div>
-                <h1 class="text-xl font-bold text-emerald-400">FairPlay Simulator</h1>
-                <p class="text-xs text-slate-400">Gerçek Oranlar & Sanal Bakiye • Gerçek Para Kullanılmaz</p>
+                <div class="flex items-center space-x-2">
+                    <h1 class="text-lg font-black tracking-tight text-slate-100">FairPlay <span class="text-emerald-400 font-light">Simulator</span></h1>
+                    <span class="text-[10px] bg-emerald-950/80 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded-full font-medium">v2.1 Real-Time</span>
+                </div>
+                <p class="text-xs text-slate-400">GIPS Unit NAV Fon Muhasebesi • Gerçek Para Kullanılmaz</p>
             </div>
         </div>
 
-        <!-- Portfolio Summary Cards -->
-        <div class="flex items-center space-x-6 text-sm">
-            <div class="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700">
-                <span class="text-xs text-slate-400 block">Sanal Bakiye</span>
-                <span id="cash-balance-display" class="text-emerald-400 font-semibold text-base">1,000.00 TL</span>
+        <!-- Portfolio Live Stats Bar -->
+        <div class="flex flex-wrap items-center gap-3 text-xs">
+            <div class="bg-slate-950/80 px-3.5 py-1.5 rounded-xl border border-slate-800">
+                <span class="text-[10px] text-slate-400 block font-medium">Sanal Kasa</span>
+                <span id="cash-balance-display" class="text-emerald-400 font-bold text-sm">-- TL</span>
             </div>
-            <div class="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700">
-                <span class="text-xs text-slate-400 block">Fon Birim NAV</span>
-                <span id="nav-display" class="text-cyan-400 font-semibold text-base">100.00</span>
+            <div class="bg-slate-950/80 px-3.5 py-1.5 rounded-xl border border-slate-800">
+                <span class="text-[10px] text-slate-400 block font-medium">Birim NAV</span>
+                <span id="nav-display" class="text-cyan-400 font-bold text-sm glow-cyan">--</span>
             </div>
-            <div class="bg-slate-800 px-4 py-2 rounded-lg border border-slate-700">
-                <span class="text-xs text-slate-400 block">Simülasyon Enerjisi</span>
-                <span id="energy-display" class="text-amber-400 font-semibold text-base">100 / 100 ⚡</span>
+            <div class="bg-slate-950/80 px-3.5 py-1.5 rounded-xl border border-slate-800">
+                <span class="text-[10px] text-slate-400 block font-medium">Getiri (TWR)</span>
+                <span id="twr-display" class="font-bold text-sm">--%</span>
             </div>
-            <button id="refill-btn" onclick="requestRefill()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-2 rounded-lg transition text-xs">
-                + Bakiye Yenile
+            <div class="bg-slate-950/80 px-3.5 py-1.5 rounded-xl border border-slate-800">
+                <span class="text-[10px] text-slate-400 block font-medium">Enerji</span>
+                <span id="energy-display" class="text-amber-400 font-bold text-sm">100 / 100 ⚡</span>
+            </div>
+
+            <!-- Action Buttons -->
+            <button id="refill-btn" onclick="requestRefill()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium px-3 py-2 rounded-xl transition text-xs flex items-center space-x-1">
+                <span>+ Bakiye Ekle</span>
             </button>
+            <div id="auth-nav-container">
+                <button onclick="openAuthModal('login')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2 rounded-xl transition text-xs shadow-md shadow-emerald-950">
+                    Giriş / Kayıt
+                </button>
+            </div>
         </div>
     </header>
 
     <!-- Main Container -->
-    <main class="max-w-7xl mx-mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 w-full">
 
-        <!-- Left Column: Match Center & Odds Markets -->
+        <!-- Left 2 Columns: Match Fixtures, Sim Engine & NAV Benchmark Curves -->
         <section class="lg:col-span-2 space-y-6">
-            <div class="bg-slate-800/80 backdrop-blur rounded-xl border border-slate-700 p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-bold text-slate-100">⚽ Yaklaşan Maçlar & Bahis Oranları</h2>
-                    <span class="text-xs text-emerald-400 bg-emerald-950/80 px-3 py-1 rounded-full border border-emerald-800">
-                        Canlı Oran Akışı
-                    </span>
+
+            <!-- Section 1: Fixture Explorer & Live Match Simulation -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 pb-3 border-b border-slate-800">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                            <span>⚽ Yaklaşan Maçlar & Oran Bülteni</span>
+                        </h2>
+                        <p class="text-xs text-slate-400">Büro kar marjı (Vig) arındırılmış oranlar ve hızlı maç simülasyonu</p>
+                    </div>
+                    <div class="flex items-center space-x-2 text-xs">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-950 text-emerald-400 border border-emerald-800">
+                            <span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Canlı Oranlar
+                        </span>
+                    </div>
                 </div>
 
-                <!-- Match List Container -->
+                <!-- Matches List -->
                 <div id="match-list" class="space-y-4">
-                    <!-- Matches injected dynamically via JS -->
+                    <div class="text-center py-8 text-slate-500 text-xs">Fikstürler yükleniyor...</div>
                 </div>
             </div>
 
-            <!-- Equity Curve / NAV Chart Section -->
-            <div class="bg-slate-800/80 backdrop-blur rounded-xl border border-slate-700 p-6">
-                <h2 class="text-lg font-bold text-slate-100 mb-2">📈 Portföy Performans Grafiği (Unit NAV)</h2>
-                <p class="text-xs text-slate-400 mb-4">
-                    Bakiye yüklemelerinden (refill) etkilenmeyen, saf seçim becerinizi ölçen fon getiri grafiği.
-                </p>
-                <div class="h-64">
+            <!-- Section 2: Live Match Simulation Arena (Appears on Simulation) -->
+            <div id="simulation-arena" class="hidden bg-gradient-to-br from-slate-900 to-slate-950 border border-emerald-900/60 rounded-2xl p-5 shadow-2xl relative overflow-hidden">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Simülasyon Arenası (Monte Carlo & Poisson)
+                    </span>
+                    <button onclick="closeSimulationArena()" class="text-slate-400 hover:text-slate-200 text-xs">✕ Kapat</button>
+                </div>
+
+                <!-- Score Board -->
+                <div class="bg-slate-950/90 border border-slate-800 rounded-xl p-4 text-center mb-4">
+                    <div class="text-xs text-slate-400 mb-1" id="sim-match-title">Arsenal vs Chelsea</div>
+                    <div class="text-3xl md:text-4xl font-black text-slate-100 tracking-tight" id="sim-score-display">0 - 0</div>
+                    <div class="flex justify-center gap-4 mt-2 text-xs">
+                        <span class="bg-slate-900 px-2.5 py-1 rounded text-slate-300 border border-slate-800" id="sim-outcome-1x2">1X2: --</span>
+                        <span class="bg-slate-900 px-2.5 py-1 rounded text-slate-300 border border-slate-800" id="sim-outcome-ou">2.5 Gol: --</span>
+                        <span class="bg-slate-900 px-2.5 py-1 rounded text-slate-300 border border-slate-800" id="sim-outcome-btts">KG: --</span>
+                    </div>
+                </div>
+
+                <!-- Match Events Timeline -->
+                <div class="mb-4">
+                    <h4 class="text-xs font-bold text-slate-300 mb-2">⏱️ Maç Olayları & Gol Dakikaları</h4>
+                    <div id="sim-events-container" class="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar text-xs">
+                        <!-- Events injected here -->
+                    </div>
+                </div>
+
+                <!-- Settled Bets Notification Banner -->
+                <div id="sim-wagers-banner" class="hidden bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs">
+                    <!-- Settled wagers summary -->
+                </div>
+            </div>
+
+            <!-- Section 3: Equity Performance Curve vs 3 Benchmark Bots -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 pb-3 border-b border-slate-800">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-100">📈 Portföy Performans Eğrisi (Unit NAV)</h2>
+                        <p class="text-xs text-slate-400">Bakiye eklemelerinden etkilenmeyen, 3 sistematik bot endeksine karşı saf getiri performansı</p>
+                    </div>
+                    <!-- Benchmark Legend Toggles -->
+                    <div class="flex flex-wrap gap-2 text-[10px]">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800 font-semibold">● Sen (NAV)</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded bg-purple-950 text-purple-400 border border-purple-800">-- Random Walk</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800">● Favori Botu</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">● Ev Sahibi Botu</span>
+                    </div>
+                </div>
+                <div class="h-64 sm:h-72 w-full">
                     <canvas id="navChart"></canvas>
                 </div>
             </div>
-        </section>
 
-        <!-- Right Column: Bet Slip & Risk Metrics -->
-        <section class="space-y-6">
-            <!-- Bet Slip Container -->
-            <div class="bg-slate-800/80 backdrop-blur rounded-xl border border-slate-700 p-6">
-                <h2 class="text-lg font-bold text-slate-100 mb-4">📋 Simüle Kupon</h2>
-                
-                <div id="selected-selection" class="hidden bg-slate-900 border border-slate-700 rounded-lg p-4 mb-4">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span id="match-title" class="text-xs font-semibold text-slate-400">Arsenal vs Chelsea</span>
-                            <div id="selection-name" class="font-bold text-emerald-400 text-sm">Ev Sahibi (1.95)</div>
-                        </div>
-                        <span id="market-type-badge" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">1X2</span>
+            <!-- Section 4: Virtual Fund Factsheet Card (Sosyal Prestij / Paylaşım Vitrini) -->
+            <div class="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <div>
+                        <span class="text-[10px] uppercase font-bold tracking-widest text-emerald-400">GIPS Portföy Karnesi</span>
+                        <h3 class="text-sm font-bold text-slate-100" id="factsheet-fund-title">FairPlay Strategic Fund • Seri 1</h3>
                     </div>
-
-                    <!-- Vig & EV Warning Banner -->
-                    <div id="ev-warning" class="mt-3 text-xs bg-amber-950/80 text-amber-300 border border-amber-800 p-2 rounded">
-                        ⚠️ **Kar Marjı Bilgisi**: Bu bahiste büro kar marjı (Vig) %4.22'dir. Adil Oran: 1.98.
-                    </div>
+                    <button onclick="copyFactsheet()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs px-3 py-1.5 rounded-lg transition flex items-center space-x-1.5 font-medium">
+                        <span>📋 Karnemi Kopyala</span>
+                    </button>
                 </div>
 
-                <!-- Stake Input & Wager Action -->
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">Yatırılacak Sanal Bakiye (TL)</label>
-                        <input id="stake-input" type="number" value="100" min="10" step="10" 
-                               class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-slate-100 focus:outline-none focus:border-emerald-500">
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                        <span class="text-[10px] text-slate-400 block">Güncel NAV</span>
+                        <span class="text-cyan-400 font-bold text-base" id="factsheet-nav">100.00</span>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                        <span class="text-[10px] text-slate-400 block">Kümülatif TWR</span>
+                        <span class="font-bold text-base" id="factsheet-twr">0.00%</span>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                        <span class="text-[10px] text-slate-400 block">Toplam İşlem Adedi</span>
+                        <span class="text-slate-100 font-bold text-base" id="factsheet-trades">0</span>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                        <span class="text-[10px] text-slate-400 block">İflas Kademesi</span>
+                        <span class="text-emerald-400 font-bold text-base" id="factsheet-tier">Tier 0 (Temiz)</span>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Right Column: Bet Slip, Risk Controller & Active Orders -->
+        <section class="space-y-6">
+
+            <!-- Card 1: Interactive Bet Slip -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl sticky top-20">
+                <h3 class="text-base font-bold text-slate-100 mb-3 flex items-center justify-between">
+                    <span>📋 Simüle Kupon</span>
+                    <span id="slip-energy-cost" class="text-[10px] bg-slate-800 text-amber-400 px-2 py-0.5 rounded border border-slate-700">10 ⚡ Enerji</span>
+                </h3>
+
+                <!-- Selected Outcome Details -->
+                <div id="slip-empty" class="text-center py-6 border-2 border-dashed border-slate-800 rounded-xl text-slate-500 text-xs">
+                    Lütfen bültenden bir oran seçiniz.
+                </div>
+
+                <div id="slip-selected" class="hidden space-y-4">
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5">
+                        <div class="flex justify-between items-start mb-1">
+                            <span id="slip-match-name" class="text-xs font-semibold text-slate-300">Arsenal vs Chelsea</span>
+                            <span id="slip-market-badge" class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">1X2</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div id="slip-selection-name" class="text-sm font-bold text-emerald-400">Ev Sahibi (Arsenal)</div>
+                            <div id="slip-odds-value" class="text-sm font-black text-slate-100">1.95</div>
+                        </div>
+
+                        <!-- Vig & Fair Odds Info -->
+                        <div class="mt-2.5 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 flex justify-between">
+                            <span>Büro Marjı (Vig): <strong id="slip-vig-val" class="text-amber-400">4.22%</strong></span>
+                            <span>Adil Oran: <strong id="slip-fair-odds" class="text-cyan-400">1.98</strong></span>
+                        </div>
                     </div>
 
-                    <button onclick="placeWager()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition">
-                        Bahsi Onayla (10 ⚡ Enerji)
+                    <!-- Kelly Criterion Recommendation Button -->
+                    <button onclick="applyKellyStake()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 py-1.5 px-3 rounded-lg text-xs flex justify-between items-center transition">
+                        <span>⚡ <strong>Kelly Kriteri</strong> Önerisi:</span>
+                        <span id="slip-kelly-val" class="text-emerald-400 font-bold">%5.0 (50 TL)</span>
+                    </button>
+
+                    <!-- Stake Input -->
+                    <div>
+                        <div class="flex justify-between text-xs text-slate-400 mb-1">
+                            <span>Yatırılacak Bakiye (TL)</span>
+                            <span>Mevcut: <strong id="slip-cash-max" class="text-slate-200">1,000 TL</strong></span>
+                        </div>
+                        <input type="number" id="slip-stake-input" value="100" min="10" step="10" oninput="onStakeChange()" 
+                               class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 font-bold text-sm focus:outline-none focus:border-emerald-500">
+                        
+                        <!-- Quick Stake % Buttons -->
+                        <div class="grid grid-cols-4 gap-1.5 mt-2">
+                            <button onclick="setStakePct(0.05)" class="bg-slate-950 hover:bg-slate-800 border border-slate-800 py-1 rounded text-[10px] text-slate-300 font-medium">%5</button>
+                            <button onclick="setStakePct(0.10)" class="bg-slate-950 hover:bg-slate-800 border border-slate-800 py-1 rounded text-[10px] text-slate-300 font-medium">%10</button>
+                            <button onclick="setStakePct(0.15)" class="bg-slate-950 hover:bg-slate-800 border border-slate-800 py-1 rounded text-[10px] text-amber-400 font-medium">%15 ⚠️</button>
+                            <button onclick="setStakePct(0.25)" class="bg-slate-950 hover:bg-slate-800 border border-slate-800 py-1 rounded text-[10px] text-red-400 font-medium">%25 🚨</button>
+                        </div>
+                    </div>
+
+                    <!-- Ruin Risk Warning Banner (if >15%) -->
+                    <div id="ruin-warning-box" class="hidden bg-red-950/60 border border-red-800/80 rounded-xl p-2.5 text-xs text-red-300 flex items-start gap-2">
+                        <span class="text-base">⚠️</span>
+                        <div>
+                            <strong class="font-bold block">Yüksek İflas Riski (Ruin Risk):</strong>
+                            Kasanın %15'inden fazlasını tek kupona yatırmak matematiksel olarak uzun vadede portföy iflasını garanti eder.
+                        </div>
+                    </div>
+
+                    <!-- Potential Payout -->
+                    <div class="flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs">
+                        <span class="text-slate-400">Olası Kazanç:</span>
+                        <span id="slip-payout-val" class="text-emerald-400 font-bold text-sm">195.00 TL</span>
+                    </div>
+
+                    <!-- Submit Wager Button -->
+                    <button id="submit-wager-btn" onclick="placeWager()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition text-sm shadow-lg shadow-emerald-950/50 flex items-center justify-center space-x-2">
+                        <span>Bahsi Onayla</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Responsible Gaming & Cooldown Status -->
-            <div class="bg-slate-800/80 backdrop-blur rounded-xl border border-slate-700 p-6">
-                <h2 class="text-lg font-bold text-slate-100 mb-3">🛡️ Sorumlu Oyun ve Risk Durumu</h2>
+            <!-- Card 2: Responsible Gaming & Cooldown Status -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                <h3 class="text-sm font-bold text-slate-100 mb-3 flex items-center gap-1.5">
+                    <span>🛡️ Sorumlu Oyun ve Disiplin Koruması</span>
+                </h3>
                 <div class="space-y-3 text-xs text-slate-300">
-                    <div class="flex justify-between items-center bg-slate-900 p-3 rounded-lg border border-slate-700">
-                        <span>Ceza Kademesi (İflas Tier):</span>
-                        <span id="bankruptcy-tier" class="font-bold text-slate-100">0 (Aktif)</span>
+                    <div class="flex justify-between items-center bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                        <span>İflas Kademesi (Tier):</span>
+                        <span id="cd-tier-display" class="font-bold text-slate-100">0 (Aktif)</span>
                     </div>
-                    <div class="flex justify-between items-center bg-slate-900 p-3 rounded-lg border border-slate-700">
-                        <span>Sorumlu Oyun Risk Skoru:</span>
-                        <span class="font-bold text-emerald-400">12 / 100 (Düşük Risk)</span>
+                    <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
+                        <div class="flex justify-between text-[11px]">
+                            <span class="text-slate-400">Kademe Düşürme Serisi:</span>
+                            <span id="streak-display" class="font-semibold text-emerald-400">0 / 3 Gün</span>
+                        </div>
+                        <div class="w-full bg-slate-800 rounded-full h-1.5">
+                            <div id="streak-bar" class="bg-emerald-500 h-1.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="text-[11px] text-slate-400 bg-slate-950/50 p-2.5 rounded-xl border border-slate-800/60 leading-relaxed">
+                        💡 <strong>Matematik Kuralı:</strong> İflas durumunda kasa kilitlenir ($T(n) = \min(168, 4^{n-1})$ saat). 3 aktif gün batmadan kalındığında kademe 1 düşer.
                     </div>
                 </div>
             </div>
+
         </section>
 
     </main>
 
-    <!-- Embedded Application JavaScript -->
+    <!-- Application Script -->
     <script>
-        let currentFixtures = [];
-        let selectedWager = null;
-        let navChartInstance = null;
+        const API_BASE = "";
+        let authToken = localStorage.getItem("fp_auth_token") || null;
+        let currentUser = JSON.parse(localStorage.getItem("fp_user") || "null");
 
-        // Mock State
-        let portfolioState = {
-            cash: 1000.0,
+        let currentFixtures = [];
+        let selectedSlip = null;
+        let navChartInstance = null;
+        let currentPortfolio = {
             nav: 100.0,
-            energy: 100,
-            tier: 0,
-            history: [100.0, 100.0]
+            cash: 1000.0,
+            locked: 0.0,
+            units: 10.0,
+            history: [],
+            benchmarks: {}
         };
 
-        const sampleFixtures = [
-            {
-                id: "1",
-                home: "Arsenal",
-                away: "Chelsea",
-                league: "Premier League",
-                odds: { HOME: 1.95, DRAW: 3.50, AWAY: 4.10 },
-                vig: "4.22%"
-            },
-            {
-                id: "2",
-                home: "Real Madrid",
-                away: "Barcelona",
-                league: "La Liga",
-                odds: { HOME: 2.10, DRAW: 3.40, AWAY: 3.60 },
-                vig: "4.15%"
-            },
-            {
-                id: "3",
-                home: "Galatasaray",
-                away: "Fenerbahçe",
-                league: "Süper Lig",
-                odds: { HOME: 2.25, DRAW: 3.30, AWAY: 3.10 },
-                vig: "5.10%"
-            }
-        ];
-
-        function init() {
-            renderMatches();
+        // --- Init Lifecycle ---
+        async function init() {
             initChart();
+            await fetchFixtures();
+            if (authToken) {
+                updateAuthNav();
+                await fetchPortfolio();
+            } else {
+                // Auto register a guest demo user if not logged in
+                await autoGuestLogin();
+            }
         }
 
+        async function autoGuestLogin() {
+            try {
+                const guestId = Math.random().toString(36).substring(2, 8);
+                const res = await fetch(`${API_BASE}/api/auth/register`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        email: `guest_${guestId}@fairplay.local`,
+                        username: `trader_${guestId}`,
+                        password: "DemoPassword123!"
+                    })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setAuthSession(data.access_token, data.user);
+                    await fetchPortfolio();
+                }
+            } catch (err) {
+                console.error("Auto guest login error:", err);
+            }
+        }
+
+        function setAuthSession(token, user) {
+            authToken = token;
+            currentUser = user;
+            localStorage.setItem("fp_auth_token", token);
+            localStorage.setItem("fp_user", JSON.stringify(user));
+            updateAuthNav();
+        }
+
+        function updateAuthNav() {
+            const container = document.getElementById("auth-nav-container");
+            if (currentUser) {
+                container.innerHTML = `
+                    <div class="flex items-center space-x-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                        <span class="text-xs font-bold text-slate-200">${currentUser.username}</span>
+                        <button onclick="logout()" class="text-[10px] text-slate-400 hover:text-red-400 ml-1">✕</button>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <button onclick="openAuthModal('login')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2 rounded-xl transition text-xs">
+                        Giriş / Kayıt
+                    </button>
+                `;
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem("fp_auth_token");
+            localStorage.removeItem("fp_user");
+            authToken = null;
+            currentUser = null;
+            updateAuthNav();
+            showToast("Çıkış yapıldı. Yeni demo oturumu açılıyor...", "info");
+            setTimeout(autoGuestLogin, 500);
+        }
+
+        // --- Data Fetching ---
+        async function fetchFixtures() {
+            try {
+                const res = await fetch(`${API_BASE}/api/fixtures`);
+                if (!res.ok) throw new Error("Fikstürler çekilemedi.");
+                const data = await res.json();
+                currentFixtures = data.fixtures || [];
+                renderMatches();
+            } catch (err) {
+                console.error(err);
+                showToast("Fikstürler yüklenirken hata oluştu.", "error");
+            }
+        }
+
+        async function fetchPortfolio() {
+            if (!authToken) return;
+            try {
+                const res = await fetch(`${API_BASE}/api/portfolio`, {
+                    headers: { "Authorization": `Bearer ${authToken}` }
+                });
+                if (res.status === 401) {
+                    logout();
+                    return;
+                }
+                if (!res.ok) throw new Error("Portföy durumu alınamadı.");
+                const data = await res.json();
+                
+                currentPortfolio = {
+                    nav: data.nav,
+                    cash: data.cash_balance,
+                    locked: data.locked_stakes,
+                    units: data.total_units,
+                    history: data.nav_history || [],
+                    benchmarks: data.benchmarks || {}
+                };
+
+                updateHeaderStats(data);
+                updateFactsheet(data);
+                updateChartData(data);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // --- Render Functions ---
         function renderMatches() {
             const container = document.getElementById("match-list");
-            container.innerHTML = sampleFixtures.map(f => `
-                <div class="bg-slate-900 border border-slate-700/80 rounded-lg p-4">
-                    <div class="flex justify-between items-center mb-3">
-                        <span class="text-xs font-semibold text-emerald-400">${f.league}</span>
-                        <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">
-                            Büro Marjı (Vig): ${f.vig}
-                        </span>
-                    </div>
-                    <div class="text-sm font-bold text-slate-100 mb-3">${f.home} vs ${f.away}</div>
-                    <div class="grid grid-cols-3 gap-2">
-                        <button onclick="selectOdds('${f.id}', 'Ev Sahibi (${f.home})', ${f.odds.HOME}, '${f.home} vs ${f.away}')" 
-                                class="bg-slate-800 hover:bg-emerald-900/50 hover:border-emerald-500 border border-slate-700 p-2 rounded text-center transition">
-                            <span class="text-[10px] text-slate-400 block">1 (Ev)</span>
-                            <span class="text-sm font-bold text-emerald-400">${f.odds.HOME}</span>
-                        </button>
-                        <button onclick="selectOdds('${f.id}', 'Beraberlik', ${f.odds.DRAW}, '${f.home} vs ${f.away}')" 
-                                class="bg-slate-800 hover:bg-emerald-900/50 hover:border-emerald-500 border border-slate-700 p-2 rounded text-center transition">
-                            <span class="text-[10px] text-slate-400 block">X (Beraberlik)</span>
-                            <span class="text-sm font-bold text-emerald-400">${f.odds.DRAW}</span>
-                        </button>
-                        <button onclick="selectOdds('${f.id}', 'Deplasman (${f.away})', ${f.odds.AWAY}, '${f.home} vs ${f.away}')" 
-                                class="bg-slate-800 hover:bg-emerald-900/50 hover:border-emerald-500 border border-slate-700 p-2 rounded text-center transition">
-                            <span class="text-[10px] text-slate-400 block">2 (Dep)</span>
-                            <span class="text-sm font-bold text-emerald-400">${f.odds.AWAY}</span>
-                        </button>
-                    </div>
-                </div>
-            `).join("");
-        }
-
-        function selectOdds(matchId, selectionName, odds, matchTitle) {
-            selectedWager = { matchId, selectionName, odds, matchTitle };
-            document.getElementById("selected-selection").classList.remove("hidden");
-            document.getElementById("match-title").innerText = matchTitle;
-            document.getElementById("selection-name").innerText = `${selectionName} (${odds})`;
-        }
-
-        function placeWager() {
-            if (!selectedWager) {
-                alert("Lütfen önce bir maç ve oran seçiniz.");
-                return;
-            }
-            const stake = parseFloat(document.getElementById("stake-input").value);
-            if (stake > portfolioState.cash) {
-                alert("Yetersiz bakiyeniz bulunmamaktadır.");
+            if (!currentFixtures.length) {
+                container.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs">Aktif maç bulunamadı.</div>`;
                 return;
             }
 
-            // Simulate Wager Result
-            portfolioState.cash -= stake;
-            portfolioState.energy -= 10;
+            container.innerHTML = currentFixtures.map(f => {
+                const m1x2 = f.markets?.["1X2"] || { outcomes: { HOME: 2.0, DRAW: 3.2, AWAY: 3.5 }, overround: 0.045, fair_odds: { HOME: 2.09, DRAW: 3.35, AWAY: 3.66 } };
+                const vigPct = (m1x2.overround * 100).toFixed(2);
+
+                return `
+                    <div class="bg-slate-950 border border-slate-800 hover:border-slate-700/80 transition rounded-xl p-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-xs font-bold text-emerald-400">${f.league || "Futbol Ligi"}</span>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-[10px] bg-slate-900 text-amber-400 border border-slate-800 px-2 py-0.5 rounded font-medium">
+                                    Vig: %${vigPct}
+                                </span>
+                                <button onclick="simulateMatch('${f.match_id}')" class="bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-800 text-[11px] px-2.5 py-1 rounded-lg transition font-semibold flex items-center gap-1">
+                                    <span>⚡ Simüle Et</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="text-sm font-black text-slate-100 mb-3 flex items-center justify-between">
+                            <span>${f.home_team} vs ${f.away_team}</span>
+                        </div>
+
+                        <!-- 1X2 Odds Buttons Grid -->
+                        <div class="grid grid-cols-3 gap-2">
+                            <button onclick="selectOdds('${f.match_id}', '${f.home_team} vs ${f.away_team}', '1X2', 'HOME', ${m1x2.outcomes.HOME}, ${vigPct}, ${m1x2.fair_odds?.HOME || m1x2.outcomes.HOME})"
+                                    class="bg-slate-900 hover:bg-emerald-950/60 hover:border-emerald-500/80 border border-slate-800 p-2.5 rounded-xl text-center transition group">
+                                <span class="text-[10px] text-slate-400 block group-hover:text-slate-300">1 (Ev)</span>
+                                <span class="text-sm font-bold text-emerald-400">${m1x2.outcomes.HOME.toFixed(2)}</span>
+                            </button>
+                            <button onclick="selectOdds('${f.match_id}', '${f.home_team} vs ${f.away_team}', '1X2', 'DRAW', ${m1x2.outcomes.DRAW}, ${vigPct}, ${m1x2.fair_odds?.DRAW || m1x2.outcomes.DRAW})"
+                                    class="bg-slate-900 hover:bg-emerald-950/60 hover:border-emerald-500/80 border border-slate-800 p-2.5 rounded-xl text-center transition group">
+                                <span class="text-[10px] text-slate-400 block group-hover:text-slate-300">X (Beraberlik)</span>
+                                <span class="text-sm font-bold text-emerald-400">${m1x2.outcomes.DRAW.toFixed(2)}</span>
+                            </button>
+                            <button onclick="selectOdds('${f.match_id}', '${f.home_team} vs ${f.away_team}', '1X2', 'AWAY', ${m1x2.outcomes.AWAY}, ${vigPct}, ${m1x2.fair_odds?.AWAY || m1x2.outcomes.AWAY})"
+                                    class="bg-slate-900 hover:bg-emerald-950/60 hover:border-emerald-500/80 border border-slate-800 p-2.5 rounded-xl text-center transition group">
+                                <span class="text-[10px] text-slate-400 block group-hover:text-slate-300">2 (Deplasman)</span>
+                                <span class="text-sm font-bold text-emerald-400">${m1x2.outcomes.AWAY.toFixed(2)}</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function selectOdds(matchId, matchTitle, marketType, selection, odds, vig, fairOdds) {
+            selectedSlip = { matchId, matchTitle, marketType, selection, odds, vig, fairOdds };
             
-            // Random win/loss simulation
-            const isWin = Math.random() > 0.45;
-            if (isWin) {
-                const payout = stake * selectedWager.odds;
-                portfolioState.cash += payout;
-                portfolioState.nav = round(portfolioState.nav * (1 + (payout - stake) / 1000), 2);
-                alert(`🎉 Bahis Kazandı! Ödeme: ${payout.toFixed(2)} TL`);
+            document.getElementById("slip-empty").classList.add("hidden");
+            document.getElementById("slip-selected").classList.remove("hidden");
+            
+            document.getElementById("slip-match-name").innerText = matchTitle;
+            document.getElementById("slip-market-badge").innerText = marketType;
+            document.getElementById("slip-selection-name").innerText = `${selection === 'HOME' ? '1 (Ev Sahibi)' : selection === 'AWAY' ? '2 (Deplasman)' : 'X (Beraberlik)'}`;
+            document.getElementById("slip-odds-value").innerText = odds.toFixed(2);
+            document.getElementById("slip-vig-val").innerText = `%${vig}`;
+            document.getElementById("slip-fair-odds").innerText = fairOdds ? fairOdds.toFixed(2) : odds.toFixed(2);
+
+            // Calculate Kelly recommended stake fraction: f* = (p*o - 1) / (o - 1)
+            const pFair = 1.0 / (fairOdds || odds);
+            const edge = (pFair * odds) - 1.0;
+            const kellyFraction = edge > 0 ? Math.min(0.15, edge / (odds - 1.0)) : 0.05;
+            const kellyAmount = Math.max(10, Math.round(currentPortfolio.cash * kellyFraction));
+            
+            document.getElementById("slip-kelly-val").innerText = `%${(kellyFraction * 100).toFixed(1)} (${kellyAmount} TL)`;
+            onStakeChange();
+        }
+
+        function onStakeChange() {
+            if (!selectedSlip) return;
+            const stakeInput = document.getElementById("slip-stake-input");
+            const stake = parseFloat(stakeInput.value) || 0;
+            
+            const payout = (stake * selectedSlip.odds).toFixed(2);
+            document.getElementById("slip-payout-val").innerText = `${payout} TL`;
+
+            // Check ruin warning threshold (>15% cash)
+            const ruinWarningBox = document.getElementById("ruin-warning-box");
+            if (currentPortfolio.cash > 0 && stake > (0.15 * currentPortfolio.cash)) {
+                ruinWarningBox.classList.remove("hidden");
             } else {
-                portfolioState.nav = round(portfolioState.nav * (1 - stake / 1000), 2);
-                alert(`❌ Bahis Kaybetti. Kayıp: ${stake.toFixed(2)} TL`);
-            }
-
-            portfolioState.history.push(portfolioState.nav);
-            updateUI();
-        }
-
-        function requestRefill() {
-            portfolioState.cash += 1000.0;
-            // NAV is preserved during refill!
-            alert("1,000 TL Sanal Bakiye Hesabınıza Tanımlandı. (NAV Değişmedi!)");
-            updateUI();
-        }
-
-        function updateUI() {
-            document.getElementById("cash-balance-display").innerText = `${portfolioState.cash.toFixed(2)} TL`;
-            document.getElementById("nav-display").innerText = portfolioState.nav.toFixed(2);
-            document.getElementById("energy-display").innerText = `${portfolioState.energy} / 100 ⚡`;
-            
-            if (navChartInstance) {
-                navChartInstance.data.labels = portfolioState.history.map((_, i) => `İşlem ${i}`);
-                navChartInstance.data.datasets[0].data = portfolioState.history;
-                navChartInstance.update();
+                ruinWarningBox.classList.add("hidden");
             }
         }
 
+        function setStakePct(fraction) {
+            if (currentPortfolio.cash <= 0) return;
+            const amount = Math.max(10, Math.round(currentPortfolio.cash * fraction));
+            document.getElementById("slip-stake-input").value = amount;
+            onStakeChange();
+        }
+
+        function applyKellyStake() {
+            if (!selectedSlip) return;
+            const pFair = 1.0 / (selectedSlip.fairOdds || selectedSlip.odds);
+            const edge = (pFair * selectedSlip.odds) - 1.0;
+            const kellyFraction = edge > 0 ? Math.min(0.15, edge / (selectedSlip.odds - 1.0)) : 0.05;
+            const amount = Math.max(10, Math.round(currentPortfolio.cash * kellyFraction));
+            document.getElementById("slip-stake-input").value = amount;
+            onStakeChange();
+            showToast(`Kelly Kriteri uygulandı: ${amount} TL (%${(kellyFraction * 100).toFixed(1)})`, "info");
+        }
+
+        // --- Wager Placement ---
+        async function placeWager() {
+            if (!selectedSlip) {
+                showToast("Lütfen bir maç ve oran seçiniz.", "error");
+                return;
+            }
+            if (!authToken) {
+                openAuthModal("login");
+                return;
+            }
+
+            const stake = parseFloat(document.getElementById("slip-stake-input").value);
+            if (stake <= 0 || stake > currentPortfolio.cash) {
+                showToast("Yetersiz bakiye veya geçersiz tutar.", "error");
+                return;
+            }
+
+            const btn = document.getElementById("submit-wager-btn");
+            btn.disabled = true;
+            btn.innerHTML = `<span>İşleniyor...</span>`;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/wager`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        match_id: selectedSlip.matchId,
+                        market_type: selectedSlip.marketType,
+                        selection: selectedSlip.selection,
+                        stake: stake
+                    })
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.detail || "Bahis onaylanamadı.");
+                }
+
+                showToast(`✅ ${stake} TL Kupon Yatırıldı!`, "success");
+                if (data.ruin_risk_warning) {
+                    showToast("⚠️ Dikkat: Kasanın %15'inden fazla oynandı!", "warning");
+                }
+
+                await fetchPortfolio();
+            } catch (err) {
+                showToast(err.message, "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<span>Bahsi Onayla</span>`;
+            }
+        }
+
+        // --- Live Match Simulation ---
+        async function simulateMatch(matchId) {
+            if (!authToken) {
+                openAuthModal("login");
+                return;
+            }
+
+            const arena = document.getElementById("simulation-arena");
+            arena.classList.remove("hidden");
+            document.getElementById("sim-score-display").innerText = "Simüle ediliyor...";
+            document.getElementById("sim-events-container").innerHTML = `<div class="text-slate-500 py-2 text-center">Poisson motoru çalışıyor...</div>`;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/matches/simulate`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ match_id: matchId })
+                });
+
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || "Simülasyon başarısız oldu.");
+
+                // Update Arena UI
+                document.getElementById("sim-match-title").innerText = `${data.home_team} vs ${data.away_team}`;
+                document.getElementById("sim-score-display").innerText = data.score;
+                document.getElementById("sim-outcome-1x2").innerText = `1X2: ${data.outcomes["1X2"]}`;
+                document.getElementById("sim-outcome-ou").innerText = `2.5 Gol: ${data.outcomes["OVER_UNDER_2.5"]}`;
+                document.getElementById("sim-outcome-btts").innerText = `KG: ${data.outcomes["BTTS"]}`;
+
+                // Events
+                const eventsContainer = document.getElementById("sim-events-container");
+                if (data.events && data.events.length) {
+                    eventsContainer.innerHTML = data.events.map(e => `
+                        <div class="flex items-center justify-between bg-slate-950 p-2 rounded-lg border border-slate-800">
+                            <span class="font-bold text-amber-400">${e.minute}'</span>
+                            <span class="text-slate-200">${e.description}</span>
+                            <span class="text-[10px] bg-slate-900 text-slate-400 px-1.5 py-0.5 rounded">${e.team}</span>
+                        </div>
+                    `).join("");
+                } else {
+                    eventsContainer.innerHTML = `<div class="text-slate-400 py-2 text-center">Golsüz beraberlik (0-0).</div>`;
+                }
+
+                // Settled wagers summary
+                const banner = document.getElementById("sim-wagers-banner");
+                if (data.settled_wagers && data.settled_wagers.length) {
+                    banner.classList.remove("hidden");
+                    banner.innerHTML = data.settled_wagers.map(w => `
+                        <div class="flex justify-between items-center py-1">
+                            <span>Kuponun (${w.selection}): <strong class="${w.status === 'WON' ? 'text-emerald-400' : 'text-red-400'} font-bold">${w.status === 'WON' ? 'KAZANDI 🎉' : 'KAYBETTİ ❌'}</strong></span>
+                            <span class="font-bold">${w.net_gain >= 0 ? '+' : ''}${w.net_gain} TL</span>
+                        </div>
+                    `).join("");
+                } else {
+                    banner.classList.add("hidden");
+                }
+
+                showToast(`Maç Bitti: ${data.score}`, "info");
+                await fetchPortfolio();
+            } catch (err) {
+                showToast(err.message, "error");
+            }
+        }
+
+        function closeSimulationArena() {
+            document.getElementById("simulation-arena").classList.add("hidden");
+        }
+
+        // --- Refill ---
+        async function requestRefill() {
+            if (!authToken) {
+                openAuthModal("login");
+                return;
+            }
+            try {
+                const res = await fetch(`${API_BASE}/api/refill`, {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${authToken}` }
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || "Bakiye yükleme reddedildi.");
+                showToast("🎉 1,000 TL Sanal Bakiye Eklendi (NAV Değişmedi!)", "success");
+                await fetchPortfolio();
+            } catch (err) {
+                showToast(err.message, "error");
+            }
+        }
+
+        // --- Stats & Factsheet Updaters ---
+        function updateHeaderStats(data) {
+            document.getElementById("cash-balance-display").innerText = `${data.cash_balance.toFixed(2)} TL`;
+            document.getElementById("nav-display").innerText = data.nav.toFixed(2);
+            document.getElementById("slip-cash-max").innerText = `${data.cash_balance.toFixed(2)} TL`;
+
+            const twr = (((data.nav / 100.0) - 1.0) * 100.0);
+            const twrEl = document.getElementById("twr-display");
+            twrEl.innerText = `${twr >= 0 ? '+' : ''}${twr.toFixed(2)}%`;
+            twrEl.className = `font-bold text-sm ${twr >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+
+            document.getElementById("cd-tier-display").innerText = `${data.bankruptcy_tier} (${data.cooldown_status})`;
+        }
+
+        function updateFactsheet(data) {
+            document.getElementById("factsheet-nav").innerText = data.nav.toFixed(2);
+            const twr = (((data.nav / 100.0) - 1.0) * 100.0);
+            const twrEl = document.getElementById("factsheet-twr");
+            twrEl.innerText = `${twr >= 0 ? '+' : ''}${twr.toFixed(2)}%`;
+            twrEl.className = `font-bold text-base ${twr >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+            document.getElementById("factsheet-trades").innerText = (data.nav_history || []).length;
+            document.getElementById("factsheet-tier").innerText = `Tier ${data.bankruptcy_tier} (${data.cooldown_status === 'ACTIVE' ? 'Aktif' : 'Kilitli'})`;
+        }
+
+        function copyFactsheet() {
+            const nav = currentPortfolio.nav.toFixed(2);
+            const twr = (((currentPortfolio.nav / 100.0) - 1.0) * 100.0).toFixed(2);
+            const text = `📊 FairPlay Strategic Fund Factsheet\n• Fon Yöneticisi: ${currentUser?.username || 'Trader'}\n• Birim NAV: ${nav}\n• Kümülatif Getiri (TWR): ${twr >= 0 ? '+' : ''}${twr}%\n• İşlem Adedi: ${currentPortfolio.history.length}\n• GIPS Uyumlu Sanal Portföy`;
+            navigator.clipboard.writeText(text);
+            showToast("📋 Factsheet panoya kopyalandı!", "success");
+        }
+
+        // --- Chart.js Benchmark Multi-Curve ---
         function initChart() {
             const ctx = document.getElementById("navChart").getContext("2d");
             navChartInstance = new Chart(ctx, {
                 type: "line",
                 data: {
-                    labels: ["Başlangıç", "İşlem 1"],
-                    datasets: [{
-                        label: "Unit NAV (Fon Birim Değeri)",
-                        data: portfolioState.history,
-                        borderColor: "#38bdf8",
-                        backgroundColor: "rgba(56, 189, 248, 0.1)",
-                        fill: true,
-                        tension: 0.3
-                    }]
+                    labels: ["Başlangıç"],
+                    datasets: [
+                        {
+                            label: "Sen (Unit NAV)",
+                            data: [100.0],
+                            borderColor: "#22d3ee",
+                            backgroundColor: "rgba(34, 211, 238, 0.1)",
+                            borderWidth: 2.5,
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: "Random Walk Bot",
+                            data: [100.0],
+                            borderColor: "#c084fc",
+                            borderDash: [5, 5],
+                            borderWidth: 1.5,
+                            fill: false,
+                            tension: 0.2
+                        },
+                        {
+                            label: "Favori Botu",
+                            data: [100.0],
+                            borderColor: "#fbbf24",
+                            borderWidth: 1.5,
+                            fill: false,
+                            tension: 0.2
+                        },
+                        {
+                            label: "Ev Sahibi Botu",
+                            data: [100.0],
+                            borderColor: "#34d399",
+                            borderWidth: 1.5,
+                            fill: false,
+                            tension: 0.2
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        y: { grid: { color: "#334155" }, ticks: { color: "#94a3b8" } },
-                        x: { grid: { color: "#334155" }, ticks: { color: "#94a3b8" } }
+                        y: {
+                            grid: { color: "#1e293b" },
+                            ticks: { color: "#94a3b8", font: { size: 10 } }
+                        },
+                        x: {
+                            grid: { color: "#1e293b" },
+                            ticks: { color: "#94a3b8", font: { size: 10 } }
+                        }
                     },
-                    plugins: { legend: { labels: { color: "#f8fafc" } } }
+                    plugins: {
+                        legend: { display: false }
+                    }
                 }
             });
+        }
+
+        function updateChartData(data) {
+            if (!navChartInstance || !data.nav_history) return;
+            const history = data.nav_history;
+            if (!history.length) return;
+
+            const labels = history.map((h, i) => i === 0 ? "Başlangıç" : `İşlem ${i}`);
+            const playerNavs = history.map(h => h.nav);
+            
+            // Derive benchmark curves proportionally
+            const bm = data.benchmarks || {};
+            const randNav = bm.random_walk_index || 100.0;
+            const favNav = bm.favorite_heavy_index || 100.0;
+            const homeNav = bm.home_advantage_index || 100.0;
+
+            const randCurve = history.map((_, i) => round(100.0 + (randNav - 100.0) * (i / Math.max(1, history.length - 1)), 2));
+            const favCurve = history.map((_, i) => round(100.0 + (favNav - 100.0) * (i / Math.max(1, history.length - 1)), 2));
+            const homeCurve = history.map((_, i) => round(100.0 + (homeNav - 100.0) * (i / Math.max(1, history.length - 1)), 2));
+
+            navChartInstance.data.labels = labels;
+            navChartInstance.data.datasets[0].data = playerNavs;
+            navChartInstance.data.datasets[1].data = randCurve;
+            navChartInstance.data.datasets[2].data = favCurve;
+            navChartInstance.data.datasets[3].data = homeCurve;
+            navChartInstance.update();
+        }
+
+        // --- Toast Notifications ---
+        function showToast(message, type = "info") {
+            const container = document.getElementById("toast-container");
+            const toast = document.createElement("div");
+            const colors = {
+                success: "bg-emerald-950 border-emerald-800 text-emerald-200",
+                error: "bg-red-950 border-red-800 text-red-200",
+                warning: "bg-amber-950 border-amber-800 text-amber-200",
+                info: "bg-slate-900 border-slate-700 text-slate-200"
+            };
+            toast.className = `${colors[type] || colors.info} border px-4 py-2.5 rounded-xl text-xs font-semibold shadow-2xl flex items-center space-x-2 transition-all duration-300 opacity-0 translate-y-2 pointer-events-auto`;
+            toast.innerText = message;
+            container.appendChild(toast);
+
+            setTimeout(() => { toast.classList.remove("opacity-0", "translate-y-2"); }, 10);
+            setTimeout(() => {
+                toast.classList.add("opacity-0", "translate-y-2");
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // --- Auth Modal Handlers ---
+        let currentAuthTab = "login";
+        function openAuthModal(tab = "login") {
+            currentAuthTab = tab;
+            document.getElementById("auth-modal").classList.remove("hidden");
+            switchAuthTab(tab);
+        }
+
+        function closeAuthModal() {
+            document.getElementById("auth-modal").classList.add("hidden");
+        }
+
+        function switchAuthTab(tab) {
+            currentAuthTab = tab;
+            const isLogin = tab === "login";
+            document.getElementById("auth-modal-title").innerText = isLogin ? "Giriş Yap" : "Hesap Oluştur";
+            document.getElementById("auth-btn-text").innerText = isLogin ? "Giriş Yap" : "Kayıt Ol";
+            document.getElementById("email-field").classList.toggle("hidden", isLogin);
+
+            document.getElementById("tab-login").className = isLogin 
+                ? "flex-1 py-2 text-center text-sm font-semibold border-b-2 border-emerald-500 text-emerald-400"
+                : "flex-1 py-2 text-center text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200";
+            document.getElementById("tab-register").className = !isLogin 
+                ? "flex-1 py-2 text-center text-sm font-semibold border-b-2 border-emerald-500 text-emerald-400"
+                : "flex-1 py-2 text-center text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200";
+        }
+
+        async function handleAuthSubmit(e) {
+            e.preventDefault();
+            const username = document.getElementById("auth-username").value;
+            const password = document.getElementById("auth-password").value;
+            const email = document.getElementById("auth-email").value;
+
+            const endpoint = currentAuthTab === "login" ? "/api/auth/login" : "/api/auth/register";
+            const payload = currentAuthTab === "login" ? { username, password } : { email, username, password };
+
+            try {
+                const res = await fetch(`${API_BASE}${endpoint}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || "Kimlik doğrulama başarısız.");
+
+                setAuthSession(data.access_token, data.user);
+                closeAuthModal();
+                showToast(`Hoş geldin, ${data.user.username}!`, "success");
+                await fetchPortfolio();
+            } catch (err) {
+                showToast(err.message, "error");
+            }
         }
 
         function round(val, dec) { return Math.round(val * Math.pow(10, dec)) / Math.pow(10, dec); }

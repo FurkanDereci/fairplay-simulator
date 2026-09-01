@@ -1,7 +1,9 @@
+import os
 import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, HTTPException, Header, Depends
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -20,6 +22,13 @@ app = FastAPI(title="FairPlay Football Simulator API", version="2.1.0")
 
 cached_fixtures = MockDataGenerator.generate_fixtures_and_odds()
 benchmark_manager = BenchmarkManager()
+
+@app.get("/")
+def serve_root():
+    frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "index.html")
+    if os.path.exists(frontend_path):
+        return FileResponse(frontend_path)
+    return {"message": "FairPlay Football Simulator API v2.1.0"}
 
 class UserRegisterRequest(BaseModel):
     email: str

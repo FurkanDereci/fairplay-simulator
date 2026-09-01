@@ -21,5 +21,9 @@ class TestAPIEndpoints(unittest.TestCase):
         res_wager = self.client.post("/api/wager", json={"match_id": "1", "market_type": "1X2", "selection": "HOME", "stake": 100})
         self.assertEqual(res_wager.status_code, 401)
 
+    def test_serve_frontend_root(self):
+        res = self.client.get("/")
+        self.assertEqual(res.status_code, 200)
+
 if __name__ == '__main__':
     unittest.main()

@@ -66,11 +66,11 @@ $$f^* = \max\left(0, \; \frac{p \cdot o - 1}{o - 1}\right)$$
 - [x] **Görev 2.3:** Benchmark endekslerini (Random Walk, Favorite Heavy) formül uydurmak yerine gerçek bot simülasyonları olarak işlet. (Data/Math PASS: 26/26 testler doğrulandı)
 
 ### [FAZ 3: Frontend ve Görselleştirme Entegrasyonu]
-- [ ] **Görev 3.1:** `src/frontend/index.html` içindeki sahte JS state'ini kaldır; gerçek REST API istemcisi (`fetch`) ekle.
-- [ ] **Görev 3.2:** Kullanıcı giriş (Login/Register) ekranı ve Token yönetimini arayüze ekle.
-- [ ] **Görev 3.3:** Backend'den gelen gerçek NAV serisini ve Benchmark eğrilerini Chart.js grafiğine bağla.
-- [ ] **Görev 3.4:** Sosyal Paylaşım / Fon Bülteni (Factsheet Card) görselleştirme bileşeni ekle.
+- [x] **Görev 3.1:** `src/frontend/index.html` içindeki sahte JS state'ini kaldır; gerçek REST API istemcisi (`fetch`) ekle. (UI/UX PASS: 27/27 testler doğrulandı)
+- [x] **Görev 3.2:** Kullanıcı giriş (Login/Register) ekranı ve Token yönetimini arayüze ekle. (UI/UX PASS)
+- [x] **Görev 3.3:** Backend'den gelen gerçek NAV serisini ve Benchmark eğrilerini Chart.js grafiğine bağla. (UI/UX PASS)
+- [x] **Görev 3.4:** Sosyal Paylaşım / Fon Bülteni (Factsheet Card) görselleştirme bileşeni ekle. (UI/UX PASS)
 
 ### [FAZ 4: Açık Kaynak ve Yayın Hazırlığı]
-- [ ] **Görev 4.1:** `.env.example` ve kapsamlı `.gitignore` oluşturarak tüm anahtar/gizli bilgileri repodan izole et.
-- [ ] **Görev 4.2:** Yasal sorumluluk reddi (Educational Disclaimer) içeren profesyonel bir `README.md` hazırla.
+- [x] **Görev 4.1:** `.env.example` ve kapsamlı `.gitignore` oluşturarak tüm anahtar/gizli bilgileri repodan izole et. (Tamamlandı)
+- [x] **Görev 4.2:** Yasal sorumluluk reddi (Educational Disclaimer) içeren profesyonel bir `README.md` hazırla. (Tamamlandı)

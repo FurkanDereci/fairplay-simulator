@@ -550,8 +550,8 @@
 
             container.innerHTML = currentFixtures.map(f => {
                 const m1x2 = f.markets?.["1X2"] || { outcomes: { HOME: 2.0, DRAW: 3.2, AWAY: 3.5 }, overround: 0.045, fair_odds: { HOME: 2.09, DRAW: 3.35, AWAY: 3.66 } };
-                const mou = f.markets?.["OVER_UNDER_2.5"] || { outcomes: { OVER_2.5: 1.85, UNDER_2.5: 2.02 }, overround: 0.048, fair_odds: { OVER_2.5: 1.94, UNDER_2.5: 2.12 } };
-                const mbtts = f.markets?.["BTTS"] || { outcomes: { BTTS_YES: 1.78, BTTS_NO: 2.12 }, overround: 0.052, fair_odds: { BTTS_YES: 1.87, BTTS_NO: 2.23 } };
+                const mou = f.markets?.["OVER_UNDER_2.5"] || { outcomes: { "OVER_2.5": 1.85, "UNDER_2.5": 2.02 }, overround: 0.048, fair_odds: { "OVER_2.5": 1.94, "UNDER_2.5": 2.12 } };
+                const mbtts = f.markets?.["BTTS"] || { outcomes: { "BTTS_YES": 1.78, "BTTS_NO": 2.12 }, overround: 0.052, fair_odds: { "BTTS_YES": 1.87, "BTTS_NO": 2.23 } };
 
                 const vigPct = (m1x2.overround * 100).toFixed(2);
                 const ouVig = (mou.overround * 100).toFixed(2);

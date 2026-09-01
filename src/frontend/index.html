@@ -1119,7 +1119,28 @@
 
         function round(val, dec) { return Math.round(val * Math.pow(10, dec)) / Math.pow(10, dec); }
 
-        document.addEventListener("DOMContentLoaded", init);
+        // Bind functions to window scope for onclick handlers
+        window.requestRefill = requestRefill;
+        window.openAuthModal = openAuthModal;
+        window.closeAuthModal = closeAuthModal;
+        window.switchAuthTab = switchAuthTab;
+        window.handleAuthSubmit = handleAuthSubmit;
+        window.copyFactsheet = copyFactsheet;
+        window.switchMarketTab = switchMarketTab;
+        window.selectOdds = selectOdds;
+        window.simulateMatch = simulateMatch;
+        window.confirmWager = confirmWager;
+        window.setStakePercent = setStakePercent;
+        window.updateStakeFromInput = updateStakeFromInput;
+        window.closeSimulationArena = closeSimulationArena;
+        window.logout = logout;
+        window.fetchFixtures = fetchFixtures;
+
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", init);
+        } else {
+            init();
+        }
     </script>
 </body>
 </html>

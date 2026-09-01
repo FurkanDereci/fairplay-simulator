@@ -400,14 +400,27 @@
 
         // --- Init Lifecycle ---
         async function init() {
-            initChart();
-            await fetchFixtures();
-            if (authToken) {
-                updateAuthNav();
-                await fetchPortfolio();
-            } else {
-                // Auto register a guest demo user if not logged in
-                await autoGuestLogin();
+            try {
+                initChart();
+            } catch (err) {
+                console.warn("Chart init deferred:", err);
+            }
+
+            try {
+                await fetchFixtures();
+            } catch (err) {
+                console.error("fetchFixtures failed:", err);
+            }
+
+            try {
+                if (authToken) {
+                    updateAuthNav();
+                    await fetchPortfolio();
+                } else {
+                    await autoGuestLogin();
+                }
+            } catch (err) {
+                console.error("Auth init failed:", err);
             }
         }
 
@@ -927,7 +940,17 @@
 
         // --- Chart.js Benchmark Multi-Curve ---
         function initChart() {
-            const ctx = document.getElementById("navChart").getContext("2d");
+            if (typeof Chart === "undefined") {
+                console.warn("Chart.js not loaded yet.");
+                return;
+            }
+            const canvas = document.getElementById("navChart");
+            if (!canvas) return;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return;
+            if (navChartInstance) {
+                try { navChartInstance.destroy(); } catch (e) {}
+            }
             navChartInstance = new Chart(ctx, {
                 type: "line",
                 data: {
@@ -990,6 +1013,10 @@
         }
 
         function updateChartData(data) {
+            if (typeof Chart === "undefined") return;
+            if (!navChartInstance) {
+                initChart();
+            }
             if (!navChartInstance || !data.nav_history) return;
             const history = data.nav_history;
             if (!history.length) return;

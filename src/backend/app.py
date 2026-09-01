@@ -11,6 +11,7 @@ from src.backend.models.database import (
 from src.backend.auth import hash_password, verify_password, create_access_token, decode_access_token
 from src.backend.cooldown_engine import CooldownEngine
 from src.backend.match_engine import VirtualMatchEngine
+from src.backend.benchmark_engine import BenchmarkManager
 from src.data_ingestion.mock_data_generator import MockDataGenerator
 
 init_db()
@@ -18,6 +19,7 @@ init_db()
 app = FastAPI(title="FairPlay Football Simulator API", version="2.1.0")
 
 cached_fixtures = MockDataGenerator.generate_fixtures_and_odds()
+benchmark_manager = BenchmarkManager()
 
 class UserRegisterRequest(BaseModel):
     email: str
@@ -139,12 +141,7 @@ def get_portfolio_status(user_id: str = Depends(get_current_user_id), db: Sessio
         "total_units": round(bal.total_units, 4),
         "series_id": bal.series_id,
         "nav_history": history,
-        "benchmarks": {
-            "player_nav": round(current_nav, 2),
-            "random_walk_index": round(100.0 * ((current_nav / 100.0) ** 0.8), 2) if current_nav > 0 else 0.0,
-            "favorite_heavy_index": round(100.0 * ((current_nav / 100.0) ** 1.1), 2) if current_nav > 0 else 0.0,
-            "home_advantage_index": round(100.0 * ((current_nav / 100.0) ** 0.95), 2) if current_nav > 0 else 0.0
-        },
+        "benchmarks": benchmark_manager.get_benchmarks_summary(player_nav=current_nav),
         "cooldown_status": cd.status,
         "bankruptcy_tier": cd.current_tier
     }
@@ -442,6 +439,14 @@ def simulate_match_and_settle(req: MatchSimulateRequest, user_id: str = Depends(
         lockout_hours = CooldownEngine.calculate_cooldown_hours(cd.current_tier)
         cd.cooldown_expires_at = now + timedelta(hours=lockout_hours)
 
+    # Process systematic benchmark bots on this match
+    benchmark_manager.process_match(
+        match_id=req.match_id,
+        market_1x2=market_1x2,
+        outcome_1x2=match_result.outcome_1x2,
+        seed=req.seed
+    )
+
     db.commit()
 
     total_value = bal.cash_balance + bal.locked_stakes
@@ -470,7 +475,8 @@ def simulate_match_and_settle(req: MatchSimulateRequest, user_id: str = Depends(
             "nav": final_nav,
             "bankruptcy_triggered": bankruptcy_triggered,
             "cooldown_status": cd.status
-        }
+        },
+        "benchmarks": benchmark_manager.get_benchmarks_summary(player_nav=final_nav)
     }
 
 @app.post("/api/matches/monte_carlo")

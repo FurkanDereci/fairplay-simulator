@@ -1,21 +1,21 @@
 import uuid
-from datetime import datetime, timezone
-from fastapi import FastAPI, HTTPException, Header
-from pydantic import BaseModel
+from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
+from fastapi import FastAPI, HTTPException, Header, Depends
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
-from src.backend.models.sqlite_db import get_db_connection, init_sqlite_db
-from src.backend.auth_jwt import hash_password, verify_password, create_jwt, decode_jwt
-from src.data_ingestion.mock_data_generator import MockDataGenerator
-from src.backend.nav_engine import NAVPortfolioEngine
+from src.backend.models.database import (
+    get_db, init_db, UserModel, UserBalanceModel, CooldownStateModel, WagerModel, NAVHistoryModel
+)
+from src.backend.auth import hash_password, verify_password, create_access_token, decode_access_token
 from src.backend.cooldown_engine import CooldownEngine
+from src.data_ingestion.mock_data_generator import MockDataGenerator
 
-init_sqlite_db()
+init_db()
 
-app = FastAPI(title="FairPlay Football Simulator API", version="2.0.0")
+app = FastAPI(title="FairPlay Football Simulator API", version="2.1.0")
 
-user_portfolios: Dict[str, NAVPortfolioEngine] = {}
-user_cooldowns: Dict[str, CooldownEngine] = {}
 cached_fixtures = MockDataGenerator.generate_fixtures_and_odds()
 
 class UserRegisterRequest(BaseModel):
@@ -29,43 +29,48 @@ class UserLoginRequest(BaseModel):
 
 class WagerRequest(BaseModel):
     match_id: str
-    market_type: str
-    selection: str
+    market_type: str = "1X2"
+    selection: str = "HOME"
     stake: float
 
-def get_current_user_payload(authorization: Optional[str] = Header(None)) -> dict:
+class WagerSettleRequest(BaseModel):
+    wager_id: str
+    won: bool
+
+def get_current_user_id(authorization: Optional[str] = Header(None)) -> str:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid Authorization header.")
     token = authorization.split(" ")[1]
-    payload = decode_jwt(token)
+    payload = decode_access_token(token)
     if not payload or "sub" not in payload:
         raise HTTPException(status_code=401, detail="Invalid or expired token.")
-    return payload
+    return payload["sub"]
 
 @app.post("/api/auth/register")
-def register_user(req: UserRegisterRequest):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute("SELECT id FROM users WHERE email = ? OR username = ?", (req.email, req.username))
-    if cursor.fetchone():
-        conn.close()
+def register_user(req: UserRegisterRequest, db: Session = Depends(get_db)):
+    existing = db.query(UserModel).filter(
+        (UserModel.email == req.email) | (UserModel.username == req.username)
+    ).first()
+    if existing:
         raise HTTPException(status_code=400, detail="Username or email already exists.")
     
     user_id = str(uuid.uuid4())
-    now_str = datetime.now(timezone.utc).isoformat()
     pwd_hash = hash_password(req.password)
     
-    cursor.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?)", (user_id, req.email, req.username, pwd_hash, now_str))
-    cursor.execute("INSERT INTO user_balances VALUES (?, 1000.0, 0.0, 100)", (user_id,))
-    cursor.execute("INSERT INTO cooldown_states VALUES (?, 0, 'ACTIVE', NULL)", (user_id,))
-    conn.commit()
-    conn.close()
+    user = UserModel(id=user_id, email=req.email, username=req.username, password_hash=pwd_hash)
+    balance = UserBalanceModel(
+        user_id=user_id, cash_balance=1000.0, locked_stakes=0.0, simulation_energy=100, total_units=10.0, series_id=1
+    )
+    cooldown = CooldownStateModel(user_id=user_id, current_tier=0, status="ACTIVE")
+    initial_nav = NAVHistoryModel(
+        user_id=user_id, series_id=1, nav=100.0, cash_balance=1000.0, locked_stakes=0.0,
+        total_units=10.0, tx_type="INITIAL_DEPOSIT", amount=1000.0
+    )
+    
+    db.add_all([user, balance, cooldown, initial_nav])
+    db.commit()
 
-    token = create_jwt({"sub": user_id, "username": req.username})
-    user_portfolios[user_id] = NAVPortfolioEngine(initial_balance=1000.0, base_nav=100.0)
-    user_cooldowns[user_id] = CooldownEngine()
-
+    token = create_access_token({"sub": user_id, "username": req.username})
     return {
         "message": "Registration successful",
         "access_token": token,
@@ -73,26 +78,16 @@ def register_user(req: UserRegisterRequest):
     }
 
 @app.post("/api/auth/login")
-def login_user(req: UserLoginRequest):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, email, username, password_hash FROM users WHERE username = ?", (req.username,))
-    row = cursor.fetchone()
-    conn.close()
-
-    if not row or not verify_password(req.password, row["password_hash"]):
+def login_user(req: UserLoginRequest, db: Session = Depends(get_db)):
+    user = db.query(UserModel).filter(UserModel.username == req.username).first()
+    if not user or not verify_password(req.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid username or password.")
     
-    user_id = row["id"]
-    token = create_jwt({"sub": user_id, "username": row["username"]})
-    if user_id not in user_portfolios:
-        user_portfolios[user_id] = NAVPortfolioEngine(initial_balance=1000.0, base_nav=100.0)
-        user_cooldowns[user_id] = CooldownEngine()
-
+    token = create_access_token({"sub": user.id, "username": user.username})
     return {
         "message": "Login successful",
         "access_token": token,
-        "user": {"id": user_id, "username": row["username"], "email": row["email"]}
+        "user": {"id": user.id, "username": user.username, "email": user.email}
     }
 
 @app.get("/api/fixtures")
@@ -100,74 +95,252 @@ def get_fixtures():
     return {"fixtures": cached_fixtures}
 
 @app.get("/api/portfolio")
-def get_portfolio_status(authorization: Optional[str] = Header(None)):
-    auth = get_current_user_payload(authorization)
-    user_id = auth["sub"]
-    p = user_portfolios.setdefault(user_id, NAVPortfolioEngine(1000.0, 100.0))
-    c = user_cooldowns.setdefault(user_id, CooldownEngine())
+def get_portfolio_status(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
     
-    current_nav = p.nav
+    bal = user.balance
+    cd = user.cooldown
+    
+    # Auto-unlock cooldown if expired
+    now = datetime.now(timezone.utc)
+    if cd.status == "COOLDOWN_LOCKED" and cd.cooldown_expires_at:
+        exp = cd.cooldown_expires_at if cd.cooldown_expires_at.tzinfo else cd.cooldown_expires_at.replace(tzinfo=timezone.utc)
+        if now >= exp:
+            cd.status = "ACTIVE"
+            cd.cooldown_expires_at = None
+            db.commit()
+
+    total_value = bal.cash_balance + bal.locked_stakes
+    current_nav = round(total_value / bal.total_units, 4) if bal.total_units > 0 else 0.0
+
+    history = [
+        {
+            "timestamp": h.recorded_at.isoformat() if h.recorded_at else "",
+            "nav": round(h.nav, 4),
+            "cash": round(h.cash_balance, 2),
+            "locked_stakes": round(h.locked_stakes, 2),
+            "units": round(h.total_units, 4),
+            "tx_type": h.tx_type,
+            "amount": round(h.amount, 2)
+        }
+        for h in user.nav_history[-50:]
+    ]
+
     return {
-        "user_id": user_id,
-        "username": auth.get("username", "User"),
-        "nav": round(p.nav, 4),
-        "cash_balance": round(p.cash_balance, 2),
-        "locked_stakes": round(p.locked_stakes, 2),
-        "total_portfolio_value": round(p.total_portfolio_value, 2),
-        "total_units": round(p.total_units, 4),
-        "series_id": p.series_id,
-        "nav_history": p.nav_history,
+        "user_id": user.id,
+        "username": user.username,
+        "nav": current_nav,
+        "cash_balance": round(bal.cash_balance, 2),
+        "locked_stakes": round(bal.locked_stakes, 2),
+        "total_portfolio_value": round(total_value, 2),
+        "total_units": round(bal.total_units, 4),
+        "series_id": bal.series_id,
+        "nav_history": history,
         "benchmarks": {
             "player_nav": round(current_nav, 2),
-            "random_walk_index": round(100.0 * (current_nav / 100.0) ** 0.8, 2),
-            "favorite_heavy_index": round(100.0 * (current_nav / 100.0) ** 1.1, 2),
-            "home_advantage_index": round(100.0 * (current_nav / 100.0) ** 0.95, 2)
+            "random_walk_index": round(100.0 * ((current_nav / 100.0) ** 0.8), 2) if current_nav > 0 else 0.0,
+            "favorite_heavy_index": round(100.0 * ((current_nav / 100.0) ** 1.1), 2) if current_nav > 0 else 0.0,
+            "home_advantage_index": round(100.0 * ((current_nav / 100.0) ** 0.95), 2) if current_nav > 0 else 0.0
         },
-        "cooldown_status": c.status,
-        "bankruptcy_tier": c.bankruptcy_tier
+        "cooldown_status": cd.status,
+        "bankruptcy_tier": cd.current_tier
     }
 
 @app.post("/api/wager")
-def place_wager(req: WagerRequest, authorization: Optional[str] = Header(None)):
-    auth = get_current_user_payload(authorization)
-    user_id = auth["sub"]
-    p = user_portfolios.setdefault(user_id, NAVPortfolioEngine(1000.0, 100.0))
-    c = user_cooldowns.setdefault(user_id, CooldownEngine())
+def place_wager(req: WagerRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    
+    bal = user.balance
+    cd = user.cooldown
 
-    if not c.check_and_unlock():
-        raise HTTPException(status_code=423, detail=f"Account locked in Bankruptcy Cooldown Tier {c.bankruptcy_tier}.")
+    # Check cooldown
+    now = datetime.now(timezone.utc)
+    if cd.status == "COOLDOWN_LOCKED" and cd.cooldown_expires_at:
+        exp = cd.cooldown_expires_at if cd.cooldown_expires_at.tzinfo else cd.cooldown_expires_at.replace(tzinfo=timezone.utc)
+        if now < exp:
+            raise HTTPException(status_code=423, detail=f"Account locked in Bankruptcy Cooldown Tier {cd.current_tier}.")
+        else:
+            cd.status = "ACTIVE"
+            cd.cooldown_expires_at = None
 
-    if req.stake > p.cash_balance:
-        raise HTTPException(status_code=400, detail="Insufficient available cash balance.")
+    if req.stake <= 0 or req.stake > bal.cash_balance:
+        raise HTTPException(status_code=400, detail="Invalid stake amount or insufficient cash balance.")
 
-    ruin_risk_warning = req.stake > (0.15 * p.cash_balance)
-    success = p.place_wager(req.stake)
-    if not success:
-        raise HTTPException(status_code=400, detail="Wager placement failed.")
+    # Find fixture odds (default to 2.0 if not in mock fixture list)
+    odds = 2.0
+    match_title = "Match Simulation"
+    for f in cached_fixtures:
+        if f.get("match_id") == req.match_id:
+            match_title = f"{f.get('home_team')} vs {f.get('away_team')}"
+            market = f.get("markets", {}).get(req.market_type, {})
+            odds = market.get("outcomes", {}).get(req.selection, 2.0)
+            break
+
+    potential_payout = round(req.stake * odds, 2)
+    ruin_risk_warning = req.stake > (0.15 * bal.cash_balance)
+
+    # Balance transaction
+    bal.cash_balance -= req.stake
+    bal.locked_stakes += req.stake
+    if bal.simulation_energy >= 10:
+        bal.simulation_energy -= 10
+
+    total_value = bal.cash_balance + bal.locked_stakes
+    current_nav = round(total_value / bal.total_units, 4) if bal.total_units > 0 else 0.0
+
+    wager = WagerModel(
+        user_id=user.id,
+        match_id=req.match_id,
+        match_title=match_title,
+        market_type=req.market_type,
+        selection=req.selection,
+        stake=req.stake,
+        odds=odds,
+        potential_payout=potential_payout,
+        status="PENDING"
+    )
+
+    nav_record = NAVHistoryModel(
+        user_id=user.id,
+        series_id=bal.series_id,
+        nav=current_nav,
+        cash_balance=bal.cash_balance,
+        locked_stakes=bal.locked_stakes,
+        total_units=bal.total_units,
+        tx_type="BET_STAKE",
+        amount=-req.stake
+    )
+
+    db.add_all([wager, nav_record])
+    db.commit()
 
     return {
         "message": "Wager placed successfully",
+        "wager_id": wager.id,
         "stake": req.stake,
-        "remaining_cash": round(p.cash_balance, 2),
-        "nav": round(p.nav, 4),
+        "odds": odds,
+        "potential_payout": potential_payout,
+        "remaining_cash": round(bal.cash_balance, 2),
+        "nav": current_nav,
         "ruin_risk_warning": ruin_risk_warning,
         "warning_message": "⚠️ Stake exceeds 15% of bankroll! High probability of portfolio ruin." if ruin_risk_warning else None
     }
 
+@app.post("/api/wager/settle")
+def settle_wager(req: WagerSettleRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    wager = db.query(WagerModel).filter(WagerModel.id == req.wager_id, WagerModel.user_id == user_id).first()
+    if not wager:
+        raise HTTPException(status_code=404, detail="Wager not found.")
+    if wager.status != "PENDING":
+        raise HTTPException(status_code=400, detail="Wager already settled.")
+
+    bal = wager.user.balance
+    cd = wager.user.cooldown
+    now = datetime.now(timezone.utc)
+
+    payout = wager.potential_payout if req.won else 0.0
+    wager.status = "WON" if req.won else "LOST"
+    wager.payout = payout
+    wager.settled_at = now
+
+    bal.locked_stakes = max(0.0, bal.locked_stakes - wager.stake)
+    bal.cash_balance += payout
+
+    total_value = bal.cash_balance + bal.locked_stakes
+    current_nav = round(total_value / bal.total_units, 4) if bal.total_units > 0 else 0.0
+
+    nav_record = NAVHistoryModel(
+        user_id=user_id,
+        series_id=bal.series_id,
+        nav=current_nav,
+        cash_balance=bal.cash_balance,
+        locked_stakes=bal.locked_stakes,
+        total_units=bal.total_units,
+        tx_type="BET_PAYOUT",
+        amount=payout - wager.stake
+    )
+
+    # Check insolvency / bankruptcy condition
+    bankruptcy_triggered = False
+    if bal.cash_balance <= 0 and bal.locked_stakes <= 0:
+        bankruptcy_triggered = True
+        cd.current_tier += 1
+        cd.solvent_days_streak = 0
+        cd.status = "COOLDOWN_LOCKED"
+        lockout_hours = CooldownEngine.calculate_cooldown_hours(cd.current_tier)
+        cd.cooldown_expires_at = now + timedelta(hours=lockout_hours)
+
+    db.add(nav_record)
+    db.commit()
+
+    return {
+        "message": f"Wager settled as {wager.status}",
+        "wager_id": wager.id,
+        "status": wager.status,
+        "payout": payout,
+        "cash_balance": round(bal.cash_balance, 2),
+        "nav": current_nav,
+        "bankruptcy_triggered": bankruptcy_triggered,
+        "cooldown_status": cd.status,
+        "bankruptcy_tier": cd.current_tier
+    }
+
 @app.post("/api/refill")
-def request_refill(authorization: Optional[str] = Header(None)):
-    auth = get_current_user_payload(authorization)
-    user_id = auth["sub"]
-    p = user_portfolios.setdefault(user_id, NAVPortfolioEngine(1000.0, 100.0))
-    c = user_cooldowns.setdefault(user_id, CooldownEngine())
+def request_refill(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    
+    bal = user.balance
+    cd = user.cooldown
+    now = datetime.now(timezone.utc)
 
-    if c.status == "COOLDOWN_LOCKED" and not c.check_and_unlock():
-        raise HTTPException(status_code=423, detail="Refill disabled during active cooldown lockout.")
+    # Check cooldown lockout
+    if cd.status == "COOLDOWN_LOCKED" and cd.cooldown_expires_at:
+        exp = cd.cooldown_expires_at if cd.cooldown_expires_at.tzinfo else cd.cooldown_expires_at.replace(tzinfo=timezone.utc)
+        if now < exp:
+            raise HTTPException(status_code=423, detail="Refill disabled during active cooldown lockout.")
+        else:
+            cd.status = "ACTIVE"
+            cd.cooldown_expires_at = None
 
-    p.deposit_refill(1000.0)
+    refill_amount = 1000.0
+    total_val = bal.cash_balance + bal.locked_stakes
+    
+    if total_val <= 0 or bal.total_units <= 0:
+        # Re-unitization after full bankruptcy
+        bal.series_id += 1
+        bal.cash_balance = refill_amount
+        bal.locked_stakes = 0.0
+        bal.total_units = 10.0
+        current_nav = 100.0
+    else:
+        current_nav = total_val / bal.total_units
+        new_units = refill_amount / current_nav
+        bal.total_units += new_units
+        bal.cash_balance += refill_amount
+
+    nav_record = NAVHistoryModel(
+        user_id=user.id,
+        series_id=bal.series_id,
+        nav=round(current_nav, 4),
+        cash_balance=bal.cash_balance,
+        locked_stakes=bal.locked_stakes,
+        total_units=bal.total_units,
+        tx_type="REFILL_DEPOSIT",
+        amount=refill_amount
+    )
+
+    db.add(nav_record)
+    db.commit()
+
     return {
         "message": "1,000 TL virtual balance refill granted.",
-        "cash_balance": round(p.cash_balance, 2),
-        "nav": round(p.nav, 4),
-        "units": round(p.total_units, 4)
+        "cash_balance": round(bal.cash_balance, 2),
+        "nav": round(current_nav, 4),
+        "units": round(bal.total_units, 4)
     }

@@ -57,11 +57,11 @@ $$f^* = \max\left(0, \; \frac{p \cdot o - 1}{o - 1}\right)$$
 ### [FAZ 1: Çekirdek Altyapı ve Veri Tabanı Onarımı]
 - [x] **Görev 1.1:** `src/backend/nav_engine.py` içindeki `calculate_twr()` metodundaki `self` hatasını düzelt ve testleri güncelle. (QA PASS: 15/15 testler doğrulandı)
 - [x] **Görev 1.2:** SQLAlchemy veritabanı modellerini (`src/backend/models/database.py`) aktifleştir; hardcoded Linux yolunu kaldırıp SQLite/Postgres uyumlu hale getir. (QA PASS: 17/17 testler doğrulandı)
-- [ ] **Görev 1.3:** `src/backend/app.py` içindeki RAM tabanlı sözlükleri (`user_portfolios`, `user_cooldowns`) kaldır; bakiye, bahis ve NAV geçmişini DB transaction'larına bağla.
-- [ ] **Görev 1.4:** `auth_jwt.py` kopyasını sil; `auth.py` içinde `bcrypt` şifreleme ve güvenli JWT standardına geç.
+- [x] **Görev 1.3:** `src/backend/app.py` içindeki RAM tabanlı sözlükleri (`user_portfolios`, `user_cooldowns`) kaldır; bakiye, bahis ve NAV geçmişini DB transaction'larına bağla. (QA PASS: 18/18 testler doğrulandı)
+- [x] **Görev 1.4:** `auth_jwt.py` kopyasını sil; `auth.py` içinde `bcrypt` şifreleme ve güvenli JWT standardına geç. (QA PASS)
 
 ### [FAZ 2: Oyun Döngüsü ve Simülasyon Motoru]
-- [ ] **Görev 2.1:** Bahis Sonuçlandırma motoru (`settle_wager`) ve API endpoint'i yaz (`/api/wager/settle`).
+- [x] **Görev 2.1:** Bahis Sonuçlandırma motoru (`settle_wager`) ve API endpoint'i yaz (`/api/wager/settle`). (QA PASS)
 - [ ] **Görev 2.2:** Hızlı test ve Zaman Makinesi modu için Monte Carlo / Poisson tabanlı Sanal Maç Motoru (Virtual Match Engine) geliştir.
 - [ ] **Görev 2.3:** Benchmark endekslerini (Random Walk, Favorite Heavy) formül uydurmak yerine gerçek bot simülasyonları olarak işlet.
 

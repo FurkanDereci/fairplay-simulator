@@ -217,22 +217,41 @@
                     </button>
                 </div>
 
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs mb-3">
                     <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
-                        <span class="text-[10px] text-slate-400 block">Güncel NAV</span>
+                        <span class="text-[10px] text-slate-400 block font-medium">Birim NAV</span>
                         <span class="text-cyan-400 font-bold text-base" id="factsheet-nav">100.00</span>
                     </div>
                     <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
-                        <span class="text-[10px] text-slate-400 block">Kümülatif TWR</span>
+                        <span class="text-[10px] text-slate-400 block font-medium">Kümülatif TWR</span>
                         <span class="font-bold text-base" id="factsheet-twr">0.00%</span>
                     </div>
                     <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
-                        <span class="text-[10px] text-slate-400 block">Toplam İşlem Adedi</span>
-                        <span class="text-slate-100 font-bold text-base" id="factsheet-trades">0</span>
+                        <span class="text-[10px] text-slate-400 block font-medium">Sharpe Oranı</span>
+                        <span class="text-emerald-400 font-bold text-base" id="factsheet-sharpe">0.00</span>
                     </div>
                     <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
-                        <span class="text-[10px] text-slate-400 block">İflas Kademesi</span>
-                        <span class="text-emerald-400 font-bold text-base" id="factsheet-tier">Tier 0 (Temiz)</span>
+                        <span class="text-[10px] text-slate-400 block font-medium">Max Drawdown (MDD)</span>
+                        <span class="text-red-400 font-bold text-base" id="factsheet-mdd">0.00%</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                        <span class="text-[10px] text-slate-400 block font-medium">Sortino Oranı</span>
+                        <span class="text-emerald-400 font-bold text-sm" id="factsheet-sortino">0.00</span>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                        <span class="text-[10px] text-slate-400 block font-medium">Kazanma Oranı (Win %)</span>
+                        <span class="text-slate-200 font-bold text-sm" id="factsheet-winrate">0.00%</span>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                        <span class="text-[10px] text-slate-400 block font-medium">Profit Factor</span>
+                        <span class="text-slate-200 font-bold text-sm" id="factsheet-pf">0.00</span>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                        <span class="text-[10px] text-slate-400 block font-medium">Jensen's Alpha / Beta</span>
+                        <span class="text-cyan-400 font-bold text-sm" id="factsheet-alpha-beta">0.00 / 1.00</span>
                     </div>
                 </div>
             </div>
@@ -518,11 +537,16 @@
 
             container.innerHTML = currentFixtures.map(f => {
                 const m1x2 = f.markets?.["1X2"] || { outcomes: { HOME: 2.0, DRAW: 3.2, AWAY: 3.5 }, overround: 0.045, fair_odds: { HOME: 2.09, DRAW: 3.35, AWAY: 3.66 } };
+                const mou = f.markets?.["OVER_UNDER_2.5"] || { outcomes: { OVER_2.5: 1.85, UNDER_2.5: 2.02 }, overround: 0.048, fair_odds: { OVER_2.5: 1.94, UNDER_2.5: 2.12 } };
+                const mbtts = f.markets?.["BTTS"] || { outcomes: { BTTS_YES: 1.78, BTTS_NO: 2.12 }, overround: 0.052, fair_odds: { BTTS_YES: 1.87, BTTS_NO: 2.23 } };
+
                 const vigPct = (m1x2.overround * 100).toFixed(2);
+                const ouVig = (mou.overround * 100).toFixed(2);
+                const bttsVig = (mbtts.overround * 100).toFixed(2);
 
                 return `
-                    <div class="bg-slate-950 border border-slate-800 hover:border-slate-700/80 transition rounded-xl p-4">
-                        <div class="flex justify-between items-center mb-3">
+                    <div class="bg-slate-950 border border-slate-800 hover:border-slate-700/80 transition rounded-xl p-4 space-y-3">
+                        <div class="flex justify-between items-center">
                             <span class="text-xs font-bold text-emerald-400">${f.league || "Futbol Ligi"}</span>
                             <div class="flex items-center space-x-2">
                                 <span class="text-[10px] bg-slate-900 text-amber-400 border border-slate-800 px-2 py-0.5 rounded font-medium">
@@ -534,12 +558,19 @@
                             </div>
                         </div>
 
-                        <div class="text-sm font-black text-slate-100 mb-3 flex items-center justify-between">
+                        <div class="text-sm font-black text-slate-100 flex items-center justify-between">
                             <span>${f.home_team} vs ${f.away_team}</span>
                         </div>
 
+                        <!-- Market Navigation Tabs -->
+                        <div class="flex space-x-1 border-b border-slate-800 pb-1 text-[11px]">
+                            <button onclick="switchMarketTab('${f.match_id}', '1x2')" id="tab-btn-${f.match_id}-1x2" class="tab-btn-${f.match_id} px-2.5 py-1 rounded-t font-bold text-emerald-400 bg-slate-900 border-b-2 border-emerald-400">1X2 (Sonuç)</button>
+                            <button onclick="switchMarketTab('${f.match_id}', 'ou')" id="tab-btn-${f.match_id}-ou" class="tab-btn-${f.match_id} px-2.5 py-1 rounded-t font-semibold text-slate-400 hover:text-slate-200">2.5 Gol</button>
+                            <button onclick="switchMarketTab('${f.match_id}', 'btts')" id="tab-btn-${f.match_id}-btts" class="tab-btn-${f.match_id} px-2.5 py-1 rounded-t font-semibold text-slate-400 hover:text-slate-200">KG Var/Yok</button>
+                        </div>
+
                         <!-- 1X2 Odds Buttons Grid -->
-                        <div class="grid grid-cols-3 gap-2">
+                        <div id="market-panel-${f.match_id}-1x2" class="market-panel-${f.match_id} grid grid-cols-3 gap-2">
                             <button onclick="selectOdds('${f.match_id}', '${f.home_team} vs ${f.away_team}', '1X2', 'HOME', ${m1x2.outcomes.HOME}, ${vigPct}, ${m1x2.fair_odds?.HOME || m1x2.outcomes.HOME}, this)"
                                     class="odds-btn bg-slate-900 hover:bg-emerald-950/60 hover:border-emerald-500/80 border border-slate-800 p-2.5 rounded-xl text-center transition group">
                                 <span class="text-[10px] text-slate-400 block group-hover:text-slate-300">1 (Ev)</span>
@@ -556,9 +587,51 @@
                                 <span class="text-sm font-bold text-emerald-400">${m1x2.outcomes.AWAY.toFixed(2)}</span>
                             </button>
                         </div>
+
+                        <!-- 2.5 Over/Under Odds Grid -->
+                        <div id="market-panel-${f.match_id}-ou" class="market-panel-${f.match_id} hidden grid grid-cols-2 gap-2">
+                            <button onclick="selectOdds('${f.match_id}', '${f.home_team} vs ${f.away_team}', 'OVER_UNDER_2.5', 'OVER_2.5', ${mou.outcomes.OVER_2.5}, ${ouVig}, ${mou.fair_odds?.OVER_2.5 || mou.outcomes.OVER_2.5}, this)"
+                                    class="odds-btn bg-slate-900 hover:bg-emerald-950/60 hover:border-emerald-500/80 border border-slate-800 p-2.5 rounded-xl text-center transition group">
+                                <span class="text-[10px] text-slate-400 block group-hover:text-slate-300">2.5 Gol Üst</span>
+                                <span class="text-sm font-bold text-emerald-400">${mou.outcomes.OVER_2.5.toFixed(2)}</span>
+                            </button>
+                            <button onclick="selectOdds('${f.match_id}', '${f.home_team} vs ${f.away_team}', 'OVER_UNDER_2.5', 'UNDER_2.5', ${mou.outcomes.UNDER_2.5}, ${ouVig}, ${mou.fair_odds?.UNDER_2.5 || mou.outcomes.UNDER_2.5}, this)"
+                                    class="odds-btn bg-slate-900 hover:bg-emerald-950/60 hover:border-emerald-500/80 border border-slate-800 p-2.5 rounded-xl text-center transition group">
+                                <span class="text-[10px] text-slate-400 block group-hover:text-slate-300">2.5 Gol Alt</span>
+                                <span class="text-sm font-bold text-emerald-400">${mou.outcomes.UNDER_2.5.toFixed(2)}</span>
+                            </button>
+                        </div>
+
+                        <!-- BTTS (KG Var/Yok) Odds Grid -->
+                        <div id="market-panel-${f.match_id}-btts" class="market-panel-${f.match_id} hidden grid grid-cols-2 gap-2">
+                            <button onclick="selectOdds('${f.match_id}', '${f.home_team} vs ${f.away_team}', 'BTTS', 'BTTS_YES', ${mbtts.outcomes.BTTS_YES}, ${bttsVig}, ${mbtts.fair_odds?.BTTS_YES || mbtts.outcomes.BTTS_YES}, this)"
+                                    class="odds-btn bg-slate-900 hover:bg-emerald-950/60 hover:border-emerald-500/80 border border-slate-800 p-2.5 rounded-xl text-center transition group">
+                                <span class="text-[10px] text-slate-400 block group-hover:text-slate-300">KG Var (Evet)</span>
+                                <span class="text-sm font-bold text-emerald-400">${mbtts.outcomes.BTTS_YES.toFixed(2)}</span>
+                            </button>
+                            <button onclick="selectOdds('${f.match_id}', '${f.home_team} vs ${f.away_team}', 'BTTS', 'BTTS_NO', ${mbtts.outcomes.BTTS_NO}, ${bttsVig}, ${mbtts.fair_odds?.BTTS_NO || mbtts.outcomes.BTTS_NO}, this)"
+                                    class="odds-btn bg-slate-900 hover:bg-emerald-950/60 hover:border-emerald-500/80 border border-slate-800 p-2.5 rounded-xl text-center transition group">
+                                <span class="text-[10px] text-slate-400 block group-hover:text-slate-300">KG Yok (Hayır)</span>
+                                <span class="text-sm font-bold text-emerald-400">${mbtts.outcomes.BTTS_NO.toFixed(2)}</span>
+                            </button>
+                        </div>
                     </div>
                 `;
             }).join("");
+        }
+
+        function switchMarketTab(matchId, tabKey) {
+            document.querySelectorAll(`.market-panel-${matchId}`).forEach(el => el.classList.add("hidden"));
+            const targetPanel = document.getElementById(`market-panel-${matchId}-${tabKey}`);
+            if (targetPanel) targetPanel.classList.remove("hidden");
+
+            document.querySelectorAll(`.tab-btn-${matchId}`).forEach(btn => {
+                btn.className = `tab-btn-${matchId} px-2.5 py-1 rounded-t font-semibold text-slate-400 hover:text-slate-200`;
+            });
+            const activeBtn = document.getElementById(`tab-btn-${matchId}-${tabKey}`);
+            if (activeBtn) {
+                activeBtn.className = `tab-btn-${matchId} px-2.5 py-1 rounded-t font-bold text-emerald-400 bg-slate-900 border-b-2 border-emerald-400`;
+            }
         }
 
         function selectOdds(matchId, matchTitle, marketType, selection, odds, vig, fairOdds, buttonEl) {
@@ -826,16 +899,30 @@
             const twrEl = document.getElementById("factsheet-twr");
             twrEl.innerText = `${twr >= 0 ? '+' : ''}${twr.toFixed(2)}%`;
             twrEl.className = `font-bold text-base ${twr >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-            document.getElementById("factsheet-trades").innerText = (data.nav_history || []).length;
-            document.getElementById("factsheet-tier").innerText = `Tier ${data.bankruptcy_tier} (${data.cooldown_status === 'ACTIVE' ? 'Aktif' : 'Kilitli'})`;
+            
+            const ra = data.risk_analytics || {};
+            document.getElementById("factsheet-sharpe").innerText = (ra.sharpe_ratio || 0.0).toFixed(2);
+            document.getElementById("factsheet-mdd").innerText = `%${(ra.max_drawdown_pct || 0.0).toFixed(2)}`;
+            document.getElementById("factsheet-sortino").innerText = (ra.sortino_ratio || 0.0).toFixed(2);
+            
+            const ts = ra.trade_stats || {};
+            document.getElementById("factsheet-winrate").innerText = `%${(ts.win_rate_pct || 0.0).toFixed(1)}`;
+            document.getElementById("factsheet-pf").innerText = (ts.profit_factor || 0.0).toFixed(2);
+            document.getElementById("factsheet-alpha-beta").innerText = `${(ra.alpha || 0.0).toFixed(2)} / ${(ra.beta || 1.0).toFixed(2)}`;
         }
 
         function copyFactsheet() {
             const nav = currentPortfolio.nav.toFixed(2);
             const twr = (((currentPortfolio.nav / 100.0) - 1.0) * 100.0).toFixed(2);
-            const text = `📊 FairPlay Strategic Fund Factsheet\n• Fon Yöneticisi: ${currentUser?.username || 'Trader'}\n• Birim NAV: ${nav}\n• Kümülatif Getiri (TWR): ${twr >= 0 ? '+' : ''}${twr}%\n• İşlem Adedi: ${currentPortfolio.history.length}\n• GIPS Uyumlu Sanal Portföy`;
+            const sharpe = document.getElementById("factsheet-sharpe").innerText;
+            const mdd = document.getElementById("factsheet-mdd").innerText;
+            const winrate = document.getElementById("factsheet-winrate").innerText;
+            const pf = document.getElementById("factsheet-pf").innerText;
+            const alphaBeta = document.getElementById("factsheet-alpha-beta").innerText;
+
+            const text = `📊 FairPlay Institutional Fund Factsheet\n• Fon Yöneticisi: ${currentUser?.username || 'Trader'}\n• Birim NAV: ${nav}\n• Kümülatif Getiri (TWR): ${twr >= 0 ? '+' : ''}${twr}%\n• Sharpe Oranı: ${sharpe}\n• Max Drawdown (MDD): ${mdd}\n• Win Rate / Profit Factor: ${winrate} / ${pf}\n• Jensen Alpha / Beta: ${alphaBeta}\n• GIPS Uyumlu Kantitatif Spor Portföyü`;
             navigator.clipboard.writeText(text);
-            showToast("📋 Factsheet panoya kopyalandı!", "success");
+            showToast("📋 8 Metrikli Kurumsal Karnen panoya kopyalandı!", "success");
         }
 
         // --- Chart.js Benchmark Multi-Curve ---

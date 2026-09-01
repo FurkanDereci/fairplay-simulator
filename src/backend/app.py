@@ -15,6 +15,7 @@ from src.backend.auth import hash_password, verify_password, create_access_token
 from src.backend.cooldown_engine import CooldownEngine
 from src.backend.match_engine import VirtualMatchEngine
 from src.backend.benchmark_engine import BenchmarkManager
+from src.backend.risk_engine import QuantRiskEngine
 from src.data_ingestion.mock_data_generator import MockDataGenerator
 
 init_db()
@@ -178,6 +179,35 @@ def get_portfolio_status(user_id: str = Depends(get_current_user_id), db: Sessio
         for w in user.wagers if w.status in ("WON", "LOST")
     ][-10:]
 
+    # Quantitative Risk Analytics
+    nav_series = [100.0] + [h.nav for h in user.nav_history] if user.nav_history else [100.0, current_nav]
+    returns_p = QuantRiskEngine.calculate_returns_series(nav_series)
+    
+    sharpe = QuantRiskEngine.calculate_sharpe_ratio(returns_p)
+    sortino = QuantRiskEngine.calculate_sortino_ratio(returns_p)
+    mdd = QuantRiskEngine.calculate_max_drawdown(nav_series)
+    
+    wagers_data = [{"status": w.status, "stake": w.stake, "payout": w.payout} for w in user.wagers]
+    trade_stats = QuantRiskEngine.calculate_trade_analytics(wagers_data)
+    
+    # Benchmarking Alpha & Beta against Favorite-Heavy strategy
+    fav_series = [h.get("favorite_heavy", 100.0) for h in benchmark_manager.history]
+    returns_b = QuantRiskEngine.calculate_returns_series(fav_series)
+    beta, alpha = QuantRiskEngine.calculate_beta_and_alpha(returns_p, returns_b)
+    
+    twr_pct = round(((current_nav / 100.0) - 1.0) * 100.0, 2)
+    ras = QuantRiskEngine.calculate_risk_adjusted_score(twr_pct=twr_pct, max_drawdown_pct=mdd, sharpe=sharpe)
+
+    risk_analytics = {
+        "sharpe_ratio": sharpe,
+        "sortino_ratio": sortino,
+        "max_drawdown_pct": mdd,
+        "beta": beta,
+        "alpha": alpha,
+        "risk_adjusted_score": ras,
+        "trade_stats": trade_stats
+    }
+
     return {
         "user_id": user.id,
         "username": user.username,
@@ -191,6 +221,7 @@ def get_portfolio_status(user_id: str = Depends(get_current_user_id), db: Sessio
         "pending_wagers": pending,
         "settled_wagers": settled,
         "benchmarks": benchmark_manager.get_benchmarks_summary(player_nav=current_nav),
+        "risk_analytics": risk_analytics,
         "cooldown_status": cd.status,
         "bankruptcy_tier": cd.current_tier
     }
@@ -488,12 +519,13 @@ def simulate_match_and_settle(req: MatchSimulateRequest, user_id: str = Depends(
         lockout_hours = CooldownEngine.calculate_cooldown_hours(cd.current_tier)
         cd.cooldown_expires_at = now + timedelta(hours=lockout_hours)
 
-    # Process systematic benchmark bots on this match
+    # Process systematic benchmark bots on this match and persist to DB
     benchmark_manager.process_match(
         match_id=req.match_id,
         market_1x2=market_1x2,
         outcome_1x2=match_result.outcome_1x2,
-        seed=req.seed
+        seed=req.seed,
+        db=db
     )
 
     db.commit()

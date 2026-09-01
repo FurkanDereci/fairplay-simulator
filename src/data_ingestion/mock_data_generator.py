@@ -25,9 +25,11 @@ class MockDataGenerator:
             # Raw odds with built-in ~4-6% overround
             raw_1x2 = {"HOME": 1.95, "DRAW": 3.50, "AWAY": 4.10}
             raw_ou = {"OVER_2.5": 1.85, "UNDER_2.5": 2.02}
+            raw_btts = {"BTTS_YES": 1.78, "BTTS_NO": 2.12}
             
             normalized_1x2 = OddsNormalizer.normalize_market("1X2", raw_1x2)
             normalized_ou = OddsNormalizer.normalize_market("OVER_UNDER_2.5", raw_ou)
+            normalized_btts = OddsNormalizer.normalize_market("BTTS", raw_btts)
             
             fixtures.append({
                 "match_id": match_id,
@@ -38,7 +40,8 @@ class MockDataGenerator:
                 "status": "SCHEDULED",
                 "markets": {
                     "1X2": normalized_1x2.__dict__,
-                    "OVER_UNDER_2.5": normalized_ou.__dict__
+                    "OVER_UNDER_2.5": normalized_ou.__dict__,
+                    "BTTS": normalized_btts.__dict__
                 }
             })
         return fixtures

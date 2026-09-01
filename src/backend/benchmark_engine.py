@@ -70,6 +70,14 @@ class BenchmarkManager:
         self.random_bot = BenchmarkBot(name="Random Walk Index", strategy_type="RANDOM")
         self.favorite_bot = BenchmarkBot(name="Favorite-Heavy Index", strategy_type="FAVORITE")
         self.home_bot = BenchmarkBot(name="Home-Advantage Index", strategy_type="HOME_BIAS")
+        self.history: List[Dict[str, Any]] = [
+            {
+                "step": 0,
+                "random_walk": 100.0,
+                "favorite_heavy": 100.0,
+                "home_advantage": 100.0
+            }
+        ]
 
     def on_match_scheduled(self, match_id: str, market_1x2: Dict[str, float], seed: Optional[int] = None):
         """Bots place wagers when a match is scheduled or simulated."""
@@ -83,10 +91,32 @@ class BenchmarkManager:
         self.favorite_bot.settle_match(match_id, outcome_1x2)
         self.home_bot.settle_match(match_id, outcome_1x2)
 
-    def process_match(self, match_id: str, market_1x2: Dict[str, float], outcome_1x2: str, seed: Optional[int] = None):
+        self.history.append({
+            "step": len(self.history),
+            "match_id": match_id,
+            "random_walk": round(self.random_bot.portfolio.nav, 2),
+            "favorite_heavy": round(self.favorite_bot.portfolio.nav, 2),
+            "home_advantage": round(self.home_bot.portfolio.nav, 2)
+        })
+
+    def process_match(self, match_id: str, market_1x2: Dict[str, float], outcome_1x2: str, seed: Optional[int] = None, db = None):
         """Simulates full bot lifecycle (placement + settlement) on a completed match."""
         self.on_match_scheduled(match_id, market_1x2, seed=seed)
         self.on_match_settled(match_id, outcome_1x2)
+
+        if db is not None:
+            try:
+                from src.backend.models.database import BenchmarkNAVHistoryModel
+                rec = BenchmarkNAVHistoryModel(
+                    match_id=match_id,
+                    random_walk_nav=self.random_bot.portfolio.nav,
+                    favorite_heavy_nav=self.favorite_bot.portfolio.nav,
+                    home_advantage_nav=self.home_bot.portfolio.nav,
+                    step_index=len(self.history) - 1
+                )
+                db.add(rec)
+            except Exception as e:
+                pass
 
     def get_benchmarks_summary(self, player_nav: float) -> Dict[str, Any]:
         """Returns actual live bot NAVs compared to the player."""
@@ -95,6 +125,7 @@ class BenchmarkManager:
             "random_walk_index": round(self.random_bot.portfolio.nav, 2),
             "favorite_heavy_index": round(self.favorite_bot.portfolio.nav, 2),
             "home_advantage_index": round(self.home_bot.portfolio.nav, 2),
+            "history": self.history[-50:],
             "twr": {
                 "player": round(((player_nav / 100.0) - 1.0) * 100.0, 2),
                 "random_walk": self.random_bot.portfolio.calculate_twr(),

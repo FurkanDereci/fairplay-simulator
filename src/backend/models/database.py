@@ -77,6 +77,17 @@ class NAVHistoryModel(Base):
     user = relationship("UserModel", back_populates="nav_history")
 
 # Cross-platform Database Engine (Environment configurable, SQLite default for local development)
+class BenchmarkNAVHistoryModel(Base):
+    __tablename__ = "benchmark_nav_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    match_id = Column(String(64), nullable=False)
+    recorded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    random_walk_nav = Column(Float, default=100.0)
+    favorite_heavy_nav = Column(Float, default=100.0)
+    home_advantage_nav = Column(Float, default=100.0)
+    step_index = Column(Integer, default=0)
+
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./fairplay.db")
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 

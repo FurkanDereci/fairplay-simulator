@@ -240,7 +240,7 @@
         </section>
 
         <!-- Right Column: Bet Slip, Risk Controller & Active Orders -->
-        <aside class="space-y-6 lg:sticky lg:top-20 lg:self-start">
+        <aside class="space-y-6 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto custom-scrollbar pr-1 lg:self-start">
 
             <!-- Card 1: Interactive Bet Slip -->
             <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl">
@@ -318,7 +318,21 @@
                 </div>
             </div>
 
-            <!-- Card 2: Responsible Gaming & Cooldown Status -->
+            <!-- Card 2: Pending Wagers Tracker -->
+            <div id="pending-wagers-card" class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl hidden">
+                <h3 class="text-sm font-bold text-slate-100 mb-3 flex items-center justify-between">
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                        <span>Bekleyen Kuponlarım</span>
+                    </span>
+                    <span id="pending-count-badge" class="text-[10px] bg-amber-950 text-amber-400 border border-amber-800 px-2 py-0.5 rounded-full font-bold">0</span>
+                </h3>
+                <div id="pending-wagers-list" class="space-y-2.5 max-h-56 overflow-y-auto custom-scrollbar text-xs">
+                    <!-- Injected dynamically -->
+                </div>
+            </div>
+
+            <!-- Card 3: Responsible Gaming & Cooldown Status -->
             <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl">
                 <h3 class="text-sm font-bold text-slate-100 mb-3 flex items-center gap-1.5">
                     <span>🛡️ Sorumlu Oyun ve Disiplin Koruması</span>
@@ -774,6 +788,36 @@
             twrEl.className = `font-bold text-sm ${twr >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
 
             document.getElementById("cd-tier-display").innerText = `${data.bankruptcy_tier} (${data.cooldown_status})`;
+
+            // Render Pending Wagers
+            const pendingCard = document.getElementById("pending-wagers-card");
+            const pendingList = document.getElementById("pending-wagers-list");
+            const pendingBadge = document.getElementById("pending-count-badge");
+            const pw = data.pending_wagers || [];
+
+            if (pw.length > 0) {
+                pendingCard.classList.remove("hidden");
+                pendingBadge.innerText = pw.length;
+                pendingList.innerHTML = pw.map(w => `
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="font-bold text-slate-200 block">${w.match_title}</span>
+                                <span class="text-[11px] text-emerald-400 font-semibold">${w.selection} (${w.market_type})</span>
+                            </div>
+                            <span class="text-xs font-bold text-amber-400">${w.stake} TL</span>
+                        </div>
+                        <div class="flex justify-between items-center pt-1.5 border-t border-slate-800/60">
+                            <span class="text-[10px] text-slate-400">Olası: <strong class="text-emerald-400">${w.potential_payout} TL</strong></span>
+                            <button onclick="simulateMatch('${w.match_id}')" class="bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold transition">
+                                ⚡ Simüle Et
+                            </button>
+                        </div>
+                    </div>
+                `).join("");
+            } else {
+                pendingCard.classList.add("hidden");
+            }
         }
 
         function updateFactsheet(data) {

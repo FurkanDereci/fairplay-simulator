@@ -149,6 +149,35 @@ def get_portfolio_status(user_id: str = Depends(get_current_user_id), db: Sessio
         for h in user.nav_history[-50:]
     ]
 
+    pending = [
+        {
+            "id": w.id,
+            "match_id": w.match_id,
+            "match_title": w.match_title,
+            "market_type": w.market_type,
+            "selection": w.selection,
+            "stake": round(w.stake, 2),
+            "potential_payout": round(w.potential_payout, 2),
+            "created_at": w.created_at.isoformat() if w.created_at else ""
+        }
+        for w in user.wagers if w.status == "PENDING"
+    ]
+
+    settled = [
+        {
+            "id": w.id,
+            "match_id": w.match_id,
+            "match_title": w.match_title,
+            "market_type": w.market_type,
+            "selection": w.selection,
+            "stake": round(w.stake, 2),
+            "payout": round(w.payout, 2),
+            "status": w.status,
+            "settled_at": w.settled_at.isoformat() if w.settled_at else ""
+        }
+        for w in user.wagers if w.status in ("WON", "LOST")
+    ][-10:]
+
     return {
         "user_id": user.id,
         "username": user.username,
@@ -159,6 +188,8 @@ def get_portfolio_status(user_id: str = Depends(get_current_user_id), db: Sessio
         "total_units": round(bal.total_units, 4),
         "series_id": bal.series_id,
         "nav_history": history,
+        "pending_wagers": pending,
+        "settled_wagers": settled,
         "benchmarks": benchmark_manager.get_benchmarks_summary(player_nav=current_nav),
         "cooldown_status": cd.status,
         "bankruptcy_tier": cd.current_tier

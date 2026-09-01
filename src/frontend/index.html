@@ -660,7 +660,8 @@
                             </button>
                         </div>
                     </div>
-                }).join("");
+                `;
+            }).join("");
             } catch (renderErr) {
                 console.error("renderMatches error:", renderErr);
                 container.innerHTML = `<div class="text-center py-6 text-red-400 text-xs">Render hatası: ${renderErr.message}</div>`;

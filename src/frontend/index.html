@@ -240,10 +240,10 @@
         </section>
 
         <!-- Right Column: Bet Slip, Risk Controller & Active Orders -->
-        <section class="space-y-6">
+        <aside class="space-y-6 lg:sticky lg:top-20 lg:self-start">
 
             <!-- Card 1: Interactive Bet Slip -->
-            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl sticky top-20">
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl">
                 <h3 class="text-base font-bold text-slate-100 mb-3 flex items-center justify-between">
                     <span>📋 Simüle Kupon</span>
                     <span id="slip-energy-cost" class="text-[10px] bg-slate-800 text-amber-400 px-2 py-0.5 rounded border border-slate-700">10 ⚡ Enerji</span>
@@ -338,18 +338,18 @@
                         </div>
                     </div>
                     <div class="text-[11px] text-slate-400 bg-slate-950/50 p-2.5 rounded-xl border border-slate-800/60 leading-relaxed">
-                        💡 <strong>Matematik Kuralı:</strong> İflas durumunda kasa kilitlenir ($T(n) = \min(168, 4^{n-1})$ saat). 3 aktif gün batmadan kalındığında kademe 1 düşer.
+                        💡 <strong>Matematik Kuralı:</strong> İflas durumunda kasa kilitlenir (T(n) = min(168, 4^(n-1)) saat). 3 aktif gün batmadan kalındığında kademe 1 düşer.
                     </div>
                 </div>
             </div>
 
-        </section>
+        </aside>
 
     </main>
 
     <!-- Application Script -->
     <script>
-        const API_BASE = "";
+        const API_BASE = (window.location.protocol === "file:" || !window.location.port) ? "http://localhost:8000" : "";
         let authToken = localStorage.getItem("fp_auth_token") || null;
         let currentUser = JSON.parse(localStorage.getItem("fp_user") || "null");
 
@@ -439,15 +439,28 @@
 
         // --- Data Fetching ---
         async function fetchFixtures() {
+            const container = document.getElementById("match-list");
             try {
                 const res = await fetch(`${API_BASE}/api/fixtures`);
-                if (!res.ok) throw new Error("Fikstürler çekilemedi.");
+                if (!res.ok) throw new Error("Fikstürler çekilemedi (HTTP " + res.status + ")");
                 const data = await res.json();
                 currentFixtures = data.fixtures || [];
                 renderMatches();
             } catch (err) {
                 console.error(err);
-                showToast("Fikstürler yüklenirken hata oluştu.", "error");
+                container.innerHTML = `
+                    <div class="bg-slate-950 border border-amber-800/80 rounded-xl p-5 text-center space-y-2">
+                        <div class="text-amber-400 font-bold text-sm">⚠️ Backend Sunucusuna Bağlanılamadı</div>
+                        <p class="text-xs text-slate-400">
+                            Backend API sunucusunun aktif olduğundan emin olun: <br>
+                            <span class="text-emerald-400 font-mono bg-slate-900 px-2 py-0.5 rounded text-[11px] inline-block mt-1">python run_demo.py</span>
+                        </p>
+                        <button onclick="fetchFixtures()" class="mt-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs px-3.5 py-1.5 rounded-lg transition font-medium">
+                            🔄 Yeniden Bağlanmayı Dene
+                        </button>
+                    </div>
+                `;
+                showToast("Backend bağlantısı kurulamadı. Lütfen sunucuyu başlatınız.", "warning");
             }
         }
 
@@ -513,18 +526,18 @@
 
                         <!-- 1X2 Odds Buttons Grid -->
                         <div class="grid grid-cols-3 gap-2">
-                            <button onclick="selectOdds('${f.match_id}', '${f.home_team} vs ${f.away_team}', '1X2', 'HOME', ${m1x2.outcomes.HOME}, ${vigPct}, ${m1x2.fair_odds?.HOME || m1x2.outcomes.HOME})"
-                                    class="bg-slate-900 hover:bg-emerald-950/60 hover:border-emerald-500/80 border border-slate-800 p-2.5 rounded-xl text-center transition group">
+                            <button onclick="selectOdds('${f.match_id}', '${f.home_team} vs ${f.away_team}', '1X2', 'HOME', ${m1x2.outcomes.HOME}, ${vigPct}, ${m1x2.fair_odds?.HOME || m1x2.outcomes.HOME}, this)"
+                                    class="odds-btn bg-slate-900 hover:bg-emerald-950/60 hover:border-emerald-500/80 border border-slate-800 p-2.5 rounded-xl text-center transition group">
                                 <span class="text-[10px] text-slate-400 block group-hover:text-slate-300">1 (Ev)</span>
                                 <span class="text-sm font-bold text-emerald-400">${m1x2.outcomes.HOME.toFixed(2)}</span>
                             </button>
-                            <button onclick="selectOdds('${f.match_id}', '${f.home_team} vs ${f.away_team}', '1X2', 'DRAW', ${m1x2.outcomes.DRAW}, ${vigPct}, ${m1x2.fair_odds?.DRAW || m1x2.outcomes.DRAW})"
-                                    class="bg-slate-900 hover:bg-emerald-950/60 hover:border-emerald-500/80 border border-slate-800 p-2.5 rounded-xl text-center transition group">
+                            <button onclick="selectOdds('${f.match_id}', '${f.home_team} vs ${f.away_team}', '1X2', 'DRAW', ${m1x2.outcomes.DRAW}, ${vigPct}, ${m1x2.fair_odds?.DRAW || m1x2.outcomes.DRAW}, this)"
+                                    class="odds-btn bg-slate-900 hover:bg-emerald-950/60 hover:border-emerald-500/80 border border-slate-800 p-2.5 rounded-xl text-center transition group">
                                 <span class="text-[10px] text-slate-400 block group-hover:text-slate-300">X (Beraberlik)</span>
                                 <span class="text-sm font-bold text-emerald-400">${m1x2.outcomes.DRAW.toFixed(2)}</span>
                             </button>
-                            <button onclick="selectOdds('${f.match_id}', '${f.home_team} vs ${f.away_team}', '1X2', 'AWAY', ${m1x2.outcomes.AWAY}, ${vigPct}, ${m1x2.fair_odds?.AWAY || m1x2.outcomes.AWAY})"
-                                    class="bg-slate-900 hover:bg-emerald-950/60 hover:border-emerald-500/80 border border-slate-800 p-2.5 rounded-xl text-center transition group">
+                            <button onclick="selectOdds('${f.match_id}', '${f.home_team} vs ${f.away_team}', '1X2', 'AWAY', ${m1x2.outcomes.AWAY}, ${vigPct}, ${m1x2.fair_odds?.AWAY || m1x2.outcomes.AWAY}, this)"
+                                    class="odds-btn bg-slate-900 hover:bg-emerald-950/60 hover:border-emerald-500/80 border border-slate-800 p-2.5 rounded-xl text-center transition group">
                                 <span class="text-[10px] text-slate-400 block group-hover:text-slate-300">2 (Deplasman)</span>
                                 <span class="text-sm font-bold text-emerald-400">${m1x2.outcomes.AWAY.toFixed(2)}</span>
                             </button>
@@ -534,8 +547,19 @@
             }).join("");
         }
 
-        function selectOdds(matchId, matchTitle, marketType, selection, odds, vig, fairOdds) {
+        function selectOdds(matchId, matchTitle, marketType, selection, odds, vig, fairOdds, buttonEl) {
             selectedSlip = { matchId, matchTitle, marketType, selection, odds, vig, fairOdds };
+            
+            // Remove active style from all odds buttons
+            document.querySelectorAll(".odds-btn").forEach(btn => {
+                btn.classList.remove("ring-2", "ring-emerald-400", "bg-emerald-950/80");
+                btn.classList.add("bg-slate-900");
+            });
+            // Add active style to selected button
+            if (buttonEl) {
+                buttonEl.classList.remove("bg-slate-900");
+                buttonEl.classList.add("ring-2", "ring-emerald-400", "bg-emerald-950/80");
+            }
             
             document.getElementById("slip-empty").classList.add("hidden");
             document.getElementById("slip-selected").classList.remove("hidden");

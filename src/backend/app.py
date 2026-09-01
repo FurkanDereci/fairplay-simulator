@@ -4,6 +4,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, HTTPException, Header, Depends
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -19,6 +20,14 @@ from src.data_ingestion.mock_data_generator import MockDataGenerator
 init_db()
 
 app = FastAPI(title="FairPlay Football Simulator API", version="2.1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 cached_fixtures = MockDataGenerator.generate_fixtures_and_odds()
 benchmark_manager = BenchmarkManager()

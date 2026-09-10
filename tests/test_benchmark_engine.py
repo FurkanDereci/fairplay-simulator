@@ -64,5 +64,36 @@ class TestBenchmarkEngine(unittest.TestCase):
         self.assertIn('twr', summary)
         self.assertEqual(summary['twr']['player'], 10.0)
 
+    def test_restore_from_db_rebuilds_history(self):
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        from src.backend.models.database import Base, BenchmarkNAVHistoryModel
+
+        engine = create_engine("sqlite://")
+        Base.metadata.create_all(bind=engine)
+        Session = sessionmaker(bind=engine)
+
+        manager = BenchmarkManager()
+        market = {'HOME': 2.0, 'DRAW': 3.2, 'AWAY': 3.6}
+        db = Session()
+        manager.process_match('m1', market, outcome_1x2='HOME', seed=1, db=db)
+        manager.process_match('m2', market, outcome_1x2='AWAY', seed=2, db=db)
+        db.commit()
+        expected = manager.get_benchmarks_summary(player_nav=100.0)
+        db.close()
+
+        # A fresh manager (as after a server restart) must recover the persisted curve.
+        fresh = BenchmarkManager()
+        db2 = Session()
+        restored = fresh.restore_from_db(db2)
+        db2.close()
+
+        self.assertTrue(restored)
+        summary = fresh.get_benchmarks_summary(player_nav=100.0)
+        self.assertEqual(summary['random_walk_index'], expected['random_walk_index'])
+        self.assertEqual(summary['favorite_heavy_index'], expected['favorite_heavy_index'])
+        self.assertEqual(summary['home_advantage_index'], expected['home_advantage_index'])
+        self.assertEqual(len(summary['history']), len(expected['history']))
+
 if __name__ == '__main__':
     unittest.main()

@@ -1,5 +1,9 @@
 # FairPlay Simulator: Master Architectural Blueprint & Development Roadmap
 
+> **Durum (2026-09-10):** Bu doküman hedef vizyonu ve tamamlanmış backlog'u tutar. Faz 1-4
+> görevleri kodda karşılanmıştır, ancak çalışan sistem tek FastAPI süreci + SQLite'dır;
+> `docs/architecture/` altındaki PostgreSQL/Redis topolojisi henüz uygulanmamış hedeftir.
+
 ## 1. Ürün Vizyonu ve Çıkış Noktası (The "Why")
 FairPlay Simulator; gerçek para yatırmadan spor müsabakalarına tahmin yapan, ancak bu tahminlerin performansını şans yerine **yatırım fonu disiplini (GIPS / Unit NAV)**, **Kelly Kriteri** ve **matematiksel risk yönetimi** ile ölçmek isteyenler için tasarlanmış eğitici bir simülasyon platformudur.
 
@@ -48,7 +52,7 @@ $$f^* = \max\left(0, \; \frac{p \cdot o - 1}{o - 1}\right)$$
 ## 4. İki Ajanlı Geliştirme Protokolü (Dev Workflow)
 
 * **Rol 1 (Coder / Builder - örn. Claude Code):** `ROADMAP.md`'deki atomik görevleri alır, kodu yazar, syntax ve yerel testleri çalıştırır, commit atar.
-* **Rol 2 (Gatekeeper & QA - Antigravity):** Git diff'i inceler, `pytest` ile deterministik testleri koşturur, matematiksel ve mimari açıkları denetler, PASS / REVISE verir.
+* **Rol 2 (Gatekeeper & QA - Antigravity):** Git diff'i inceler, `python -m unittest discover tests` ile deterministik testleri koşturur, matematiksel ve mimari açıkları denetler, PASS / REVISE verir.
 
 ---
 

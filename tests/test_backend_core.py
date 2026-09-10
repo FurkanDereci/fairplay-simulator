@@ -73,7 +73,25 @@ class TestBackendCore(unittest.TestCase):
         self.assertEqual(portfolio.series_id, 2)
         self.assertEqual(portfolio.nav, 100.0)
         self.assertEqual(portfolio.total_units, 10.0)
-        self.assertEqual(portfolio.calculate_twr(), 0.0)
+        # Series 1 ended at -100% and is permanent: the refill resets NAV, not the record.
+        self.assertEqual(portfolio.calculate_twr(), -100.0)
+
+    def test_calculate_twr_compounds_across_series(self):
+        portfolio = NAVPortfolioEngine(initial_balance=1000.0, base_nav=100.0)
+
+        # Series 1: wipe out.
+        portfolio.place_wager(1000.0)
+        portfolio.settle_wager(1000.0, payout=0.0)
+        self.assertEqual(portfolio.calculate_twr(), -100.0)
+
+        # Series 2 starts clean at NAV 100 after the refill.
+        portfolio.deposit_refill(1000.0)
+        portfolio.place_wager(500.0)
+        portfolio.settle_wager(500.0, payout=1000.0)
+        self.assertEqual(portfolio.nav, 150.0)
+
+        # The new series gains +50%, but the compounding keeps the bankruptcy on the record.
+        self.assertEqual(portfolio.calculate_twr(), -100.0)
 
     def test_cooldown_engine_exponential_backoff(self):
         engine = CooldownEngine()

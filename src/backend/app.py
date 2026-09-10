@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from src.backend.models.database import (
-    get_db, init_db, UserModel, UserBalanceModel, CooldownStateModel, WagerModel, NAVHistoryModel
+    get_db, init_db, SessionLocal, UserModel, UserBalanceModel, CooldownStateModel, WagerModel, NAVHistoryModel
 )
 from src.backend.auth import hash_password, verify_password, create_access_token, decode_access_token
 from src.backend.cooldown_engine import CooldownEngine
@@ -22,9 +22,15 @@ init_db()
 
 app = FastAPI(title="FairPlay Football Simulator API", version="2.1.0")
 
+# Allowed browser origins; override with a comma-separated CORS_ORIGINS env var. The defaults
+# cover the backend-served frontend and the literal `null` origin a file:// page sends.
+CORS_ORIGINS = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "").split(",") if origin.strip()]
+if not CORS_ORIGINS:
+    CORS_ORIGINS = ["http://localhost:8000", "http://127.0.0.1:8000", "null"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -32,6 +38,44 @@ app.add_middleware(
 
 cached_fixtures = MockDataGenerator.generate_fixtures_and_odds()
 benchmark_manager = BenchmarkManager()
+
+# Simulation energy: 10 per wager, recharging 10/hour up to 100.
+ENERGY_MAX = 100
+ENERGY_PER_BET = 10
+ENERGY_REGEN_PER_HOUR = 10.0
+ENERGY_REGEN_PER_SECOND = ENERGY_REGEN_PER_HOUR / 3600.0
+
+
+def apply_energy_regen(balance, now: datetime) -> None:
+    """Lazily recharges simulation energy for the time elapsed since the last update."""
+    last = balance.last_energy_update
+    if last is not None and last.tzinfo is None:
+        last = last.replace(tzinfo=timezone.utc)
+    if last is None:
+        balance.last_energy_update = now
+        return
+    if balance.simulation_energy >= ENERGY_MAX:
+        balance.last_energy_update = now
+        return
+
+    gained = int((now - last).total_seconds() * ENERGY_REGEN_PER_SECOND)
+    if gained <= 0:
+        return
+    balance.simulation_energy = min(ENERGY_MAX, balance.simulation_energy + gained)
+    # Advance the clock only by the energy actually granted, so partial progress isn't lost.
+    balance.last_energy_update = last + timedelta(seconds=gained / ENERGY_REGEN_PER_SECOND)
+
+
+def restore_benchmark_state() -> None:
+    """Reloads the benchmark curve from the database so a restart doesn't reset it."""
+    db = SessionLocal()
+    try:
+        benchmark_manager.restore_from_db(db)
+    finally:
+        db.close()
+
+
+restore_benchmark_state()
 
 @app.get("/")
 def serve_root():
@@ -134,6 +178,9 @@ def get_portfolio_status(user_id: str = Depends(get_current_user_id), db: Sessio
             cd.cooldown_expires_at = None
             db.commit()
 
+    apply_energy_regen(bal, now)
+    db.commit()
+
     total_value = bal.cash_balance + bal.locked_stakes
     current_nav = round(total_value / bal.total_units, 4) if bal.total_units > 0 else 0.0
 
@@ -159,7 +206,7 @@ def get_portfolio_status(user_id: str = Depends(get_current_user_id), db: Sessio
             "selection": w.selection,
             "stake": round(w.stake, 2),
             "potential_payout": round(w.potential_payout, 2),
-            "created_at": w.created_at.isoformat() if w.created_at else ""
+            "placed_at": w.placed_at.isoformat() if w.placed_at else ""
         }
         for w in user.wagers if w.status == "PENDING"
     ]
@@ -223,7 +270,8 @@ def get_portfolio_status(user_id: str = Depends(get_current_user_id), db: Sessio
         "benchmarks": benchmark_manager.get_benchmarks_summary(player_nav=current_nav),
         "risk_analytics": risk_analytics,
         "cooldown_status": cd.status,
-        "bankruptcy_tier": cd.current_tier
+        "bankruptcy_tier": cd.current_tier,
+        "simulation_energy": bal.simulation_energy
     }
 
 @app.post("/api/wager")
@@ -245,6 +293,16 @@ def place_wager(req: WagerRequest, user_id: str = Depends(get_current_user_id), 
             cd.status = "ACTIVE"
             cd.cooldown_expires_at = None
 
+    apply_energy_regen(bal, now)
+    if bal.simulation_energy < ENERGY_PER_BET:
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Simulation energy depleted ({bal.simulation_energy}/{ENERGY_MAX}). "
+                f"Each wager costs {ENERGY_PER_BET}; energy recharges {int(ENERGY_REGEN_PER_HOUR)}/hour."
+            )
+        )
+
     if req.stake <= 0 or req.stake > bal.cash_balance:
         raise HTTPException(status_code=400, detail="Invalid stake amount or insufficient cash balance.")
 
@@ -264,8 +322,7 @@ def place_wager(req: WagerRequest, user_id: str = Depends(get_current_user_id), 
     # Balance transaction
     bal.cash_balance -= req.stake
     bal.locked_stakes += req.stake
-    if bal.simulation_energy >= 10:
-        bal.simulation_energy -= 10
+    bal.simulation_energy = max(0, bal.simulation_energy - ENERGY_PER_BET)
 
     total_value = bal.cash_balance + bal.locked_stakes
     current_nav = round(total_value / bal.total_units, 4) if bal.total_units > 0 else 0.0

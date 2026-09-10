@@ -1,10 +1,22 @@
 import os
+import secrets
+import warnings
 import bcrypt
 import jwt
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "fairplay_super_secret_jwt_key_2026_production_safe_256bit")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    SECRET_KEY = secrets.token_urlsafe(48)
+    warnings.warn(
+        "JWT_SECRET_KEY tanimli degil; bu calisma icin rastgele bir anahtar uretildi. "
+        "Sunucu yeniden baslatildiginda mevcut token'lar gecersiz olur. Kalici oturumlar icin "
+        ".env dosyasina JWT_SECRET_KEY ekleyin (.env.example'a bakin).",
+        RuntimeWarning,
+        stacklevel=2,
+    )
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 Hours
 

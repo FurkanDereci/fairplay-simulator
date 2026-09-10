@@ -25,5 +25,31 @@ class TestAPIEndpoints(unittest.TestCase):
         res = self.client.get("/")
         self.assertEqual(res.status_code, 200)
 
+    def test_energy_depletion_blocks_wager(self):
+        unique_id = str(uuid.uuid4())[:8]
+        res_reg = self.client.post("/api/auth/register", json={
+            "email": f"energy_{unique_id}@example.com",
+            "username": f"energy_{unique_id}",
+            "password": "Password123!"
+        })
+        self.assertEqual(res_reg.status_code, 200)
+        headers = {"Authorization": f"Bearer {res_reg.json()['access_token']}"}
+
+        # 100 energy / 10 per bet -> the first ten wagers are accepted.
+        for i in range(10):
+            res = self.client.post("/api/wager", json={
+                "match_id": f"energy-{i}", "market_type": "1X2", "selection": "HOME", "stake": 10.0
+            }, headers=headers)
+            self.assertEqual(res.status_code, 200, res.text)
+
+        # The eleventh is rejected until energy recharges.
+        res_blocked = self.client.post("/api/wager", json={
+            "match_id": "energy-final", "market_type": "1X2", "selection": "HOME", "stake": 10.0
+        }, headers=headers)
+        self.assertEqual(res_blocked.status_code, 429)
+
+        portfolio = self.client.get("/api/portfolio", headers=headers).json()
+        self.assertEqual(portfolio["simulation_energy"], 0)
+
 if __name__ == '__main__':
     unittest.main()

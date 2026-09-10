@@ -21,6 +21,9 @@ class NAVPortfolioEngine:
         self.nav: float = base_nav
         self.total_units: float = initial_balance / base_nav if base_nav > 0 else 0.0
         self.series_id: int = 1
+        # Completed series' growth factors, multiplied together (GIPS cross-series TWR).
+        self.series_growth: float = 1.0
+        self._series_closed: bool = False
         self.transactions: List[TransactionRecord] = []
         self.nav_history: List[Dict[str, Any]] = []
         
@@ -56,17 +59,27 @@ class NAVPortfolioEngine:
             units_after=round(self.total_units, 4)
         ))
 
+    def _close_series(self) -> None:
+        """Records the current series' final growth factor when the fund is wiped out."""
+        if self._series_closed:
+            return
+        factor = (self.nav / self.base_nav) if self.base_nav > 0 else 0.0
+        self.series_growth *= factor
+        self._series_closed = True
+
     def deposit_refill(self, amount: float) -> bool:
         """Processes virtual balance refill without altering current NAV performance."""
         if amount <= 0:
             return False
         if self.total_portfolio_value <= 0 or self.total_units <= 0:
             # Re-unitization after complete bankruptcy
+            self._close_series()
             self.series_id += 1
             self.cash_balance = amount
             self.locked_stakes = 0.0
             self.nav = self.base_nav
             self.total_units = amount / self.base_nav
+            self._series_closed = False
         else:
             # Issue new units at current NAV
             new_units = amount / self.nav
@@ -90,10 +103,17 @@ class NAVPortfolioEngine:
         self.locked_stakes -= stake
         self.cash_balance += payout
         self._record_transaction("BET_PAYOUT", payout - stake)
+        if self.total_portfolio_value <= 0:
+            self._close_series()
         return True
 
     def calculate_twr(self) -> float:
-        """Time-Weighted Return % relative to baseline NAV."""
+        """Time-Weighted Return %, compounded across series (GIPS).
+
+        A wiped-out series is closed at its final growth factor, so a bankruptcy stays on the
+        record instead of being reset by the next refill's re-unitization.
+        """
         if self.base_nav <= 0:
             return 0.0
-        return round(((self.nav / self.base_nav) - 1.0) * 100.0, 2)
+        growth = self.series_growth * (self.nav / self.base_nav)
+        return round((growth - 1.0) * 100.0, 2)

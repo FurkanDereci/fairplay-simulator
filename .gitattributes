@@ -1,0 +1,11 @@
+# Satir sonu normalizasyonu
+# Repoda daima LF saklanir. Windows'ta duzenlenen dosyalardaki CRLF artik
+# sahte "tum satirlar degisti" diff'i uretmez.
+* text=auto
+
+# Ikili dosyalar (normalizasyon uygulanmasin)
+*.db binary
+*.pyc binary
+*.png binary
+*.jpg binary
+*.ico binary

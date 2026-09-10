@@ -47,7 +47,9 @@ fairplay_simulator_src/
 
 ### 1. Requirements
 - Python 3.10+
-- FastAPI, Uvicorn, Requests
+- Tüm bağımlılıklar `requirements.txt` içinde sabitlenmiştir.
+
+    pip install -r requirements.txt
 
 ### 2. Run the Backend
 `ash

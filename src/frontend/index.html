@@ -394,6 +394,7 @@
             cash: 1000.0,
             locked: 0.0,
             units: 10.0,
+            energy: 100,
             history: [],
             benchmarks: {}
         };
@@ -426,6 +427,7 @@
                             cash: data.cash_balance,
                             locked: data.locked_stakes,
                             units: data.total_units,
+                            energy: data.simulation_energy != null ? data.simulation_energy : 100,
                             history: data.nav_history || [],
                             benchmarks: data.benchmarks || {}
                         };
@@ -558,6 +560,7 @@
                     cash: data.cash_balance,
                     locked: data.locked_stakes,
                     units: data.total_units,
+                    energy: data.simulation_energy != null ? data.simulation_energy : 100,
                     history: data.nav_history || [],
                     benchmarks: data.benchmarks || {}
                 };
@@ -767,6 +770,10 @@
                 showToast("Yetersiz bakiye veya geçersiz tutar.", "error");
                 return;
             }
+            if (currentPortfolio.energy < 10) {
+                showToast(`Simülasyon enerjisi yetersiz (${currentPortfolio.energy}/100). Her kupon 10 enerji ister; enerji saatte 10 yenilenir.`, "error");
+                return;
+            }
 
             const btn = document.getElementById("submit-wager-btn");
             btn.disabled = true;
@@ -909,6 +916,11 @@
             twrEl.className = `font-bold text-sm ${twr >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
 
             document.getElementById("cd-tier-display").innerText = `${data.bankruptcy_tier} (${data.cooldown_status})`;
+
+            const energy = data.simulation_energy != null ? data.simulation_energy : 100;
+            const energyEl = document.getElementById("energy-display");
+            energyEl.innerText = `${energy} / 100 ⚡`;
+            energyEl.className = `font-bold text-sm ${energy >= 10 ? 'text-amber-400' : 'text-red-400'}`;
 
             // Render Pending Wagers
             const pendingCard = document.getElementById("pending-wagers-card");

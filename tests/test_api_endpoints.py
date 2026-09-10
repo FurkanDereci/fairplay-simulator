@@ -51,5 +51,30 @@ class TestAPIEndpoints(unittest.TestCase):
         portfolio = self.client.get("/api/portfolio", headers=headers).json()
         self.assertEqual(portfolio["simulation_energy"], 0)
 
+    def test_energy_recharges_over_time(self):
+        from datetime import datetime, timedelta, timezone
+        from src.backend.models.database import SessionLocal, UserBalanceModel
+
+        unique_id = str(uuid.uuid4())[:8]
+        res_reg = self.client.post("/api/auth/register", json={
+            "email": f"regen_{unique_id}@example.com",
+            "username": f"regen_{unique_id}",
+            "password": "Password123!"
+        })
+        user_id = res_reg.json()["user"]["id"]
+        headers = {"Authorization": f"Bearer {res_reg.json()['access_token']}"}
+
+        # Drain the balance and backdate the clock by two hours.
+        db = SessionLocal()
+        bal = db.query(UserBalanceModel).filter(UserBalanceModel.user_id == user_id).first()
+        bal.simulation_energy = 0
+        bal.last_energy_update = datetime.now(timezone.utc) - timedelta(hours=2)
+        db.commit()
+        db.close()
+
+        # 2 hours at 10/hour -> 20 energy recharged.
+        portfolio = self.client.get("/api/portfolio", headers=headers).json()
+        self.assertEqual(portfolio["simulation_energy"], 20)
+
 if __name__ == '__main__':
     unittest.main()

@@ -105,18 +105,58 @@ class BenchmarkManager:
         self.on_match_settled(match_id, outcome_1x2)
 
         if db is not None:
-            try:
-                from src.backend.models.database import BenchmarkNAVHistoryModel
-                rec = BenchmarkNAVHistoryModel(
-                    match_id=match_id,
-                    random_walk_nav=self.random_bot.portfolio.nav,
-                    favorite_heavy_nav=self.favorite_bot.portfolio.nav,
-                    home_advantage_nav=self.home_bot.portfolio.nav,
-                    step_index=len(self.history) - 1
-                )
-                db.add(rec)
-            except Exception as e:
-                pass
+            from src.backend.models.database import BenchmarkNAVHistoryModel
+            rec = BenchmarkNAVHistoryModel(
+                match_id=match_id,
+                random_walk_nav=self.random_bot.portfolio.nav,
+                favorite_heavy_nav=self.favorite_bot.portfolio.nav,
+                home_advantage_nav=self.home_bot.portfolio.nav,
+                step_index=len(self.history) - 1
+            )
+            db.add(rec)
+
+    @staticmethod
+    def _rebase_bot(bot: "BenchmarkBot", nav_value: float) -> None:
+        """Restores a bot to a persisted NAV, keeping its staking scale (10 units) intact."""
+        portfolio = bot.portfolio
+        portfolio.nav = round(nav_value, 4)
+        portfolio.total_units = 10.0
+        portfolio.locked_stakes = 0.0
+        portfolio.cash_balance = round(portfolio.nav * portfolio.total_units, 2)
+
+    def restore_from_db(self, db, limit: int = 50) -> bool:
+        """Rebuilds the benchmark curve from persisted rows so a restart doesn't reset it."""
+        from src.backend.models.database import BenchmarkNAVHistoryModel
+        rows = (
+            db.query(BenchmarkNAVHistoryModel)
+            .order_by(BenchmarkNAVHistoryModel.id.desc())
+            .limit(limit)
+            .all()
+        )
+        if not rows:
+            return False
+
+        rows = list(reversed(rows))
+        self.history = [{
+            "step": 0,
+            "random_walk": 100.0,
+            "favorite_heavy": 100.0,
+            "home_advantage": 100.0
+        }]
+        for row in rows:
+            self.history.append({
+                "step": row.step_index + 1,
+                "match_id": row.match_id,
+                "random_walk": round(row.random_walk_nav, 2),
+                "favorite_heavy": round(row.favorite_heavy_nav, 2),
+                "home_advantage": round(row.home_advantage_nav, 2)
+            })
+
+        last = rows[-1]
+        self._rebase_bot(self.random_bot, last.random_walk_nav)
+        self._rebase_bot(self.favorite_bot, last.favorite_heavy_nav)
+        self._rebase_bot(self.home_bot, last.home_advantage_nav)
+        return True
 
     def get_benchmarks_summary(self, player_nav: float) -> Dict[str, Any]:
         """Returns actual live bot NAVs compared to the player."""

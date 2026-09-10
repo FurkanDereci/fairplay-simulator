@@ -24,4 +24,26 @@ To guarantee platform integrity and prevent financial or state bugs, the system 
 
 ## 2. Automated Test Suite Scripts
 
-The platform includes Python automated test scripts (`tests/test_nav_engine.py`, `tests/test_cooldown_engine.py`, `tests/test_odds_vig.py`) to verify calculations automatically during CI/CD or agentic execution.
+The platform ships an automated test suite run with Python's built-in `unittest` (no extra
+runner required):
+
+```bash
+python -m unittest discover tests
+```
+
+| Test file | Covers |
+| --------- | ------ |
+| `tests/test_backend_core.py` | NAV engine (refill invariance, cross-series TWR, bankruptcy) and cooldown invariants (backoff, tier decay) |
+| `tests/test_data_ingestion.py` | Odds normalization and vig extraction (`OddsNormalizer`, `MockDataGenerator`) |
+| `tests/test_database_models.py` | SQLAlchemy models, relations and cascade deletes |
+| `tests/test_match_engine.py` | Poisson lambda derivation, deterministic simulation, Monte Carlo, settle flow |
+| `tests/test_benchmark_engine.py` | Benchmark bot strategies and NAV evolution |
+| `tests/test_risk_engine.py` | Sharpe, Sortino, MDD, beta/alpha, trade analytics |
+| `tests/test_agent_router.py` | Multi-agent routing, gatekeeper loop, deadlock breaker |
+| `tests/test_api_endpoints.py` | API surface, auth guards, energy depletion gate |
+| `tests/test_full_architecture.py` | End-to-end register/login/wager/settle/bankruptcy flow |
+| `tests/verify_simulator_math.py` | Standalone math checks (backoff curve, overround) |
+
+This table is the authoritative list. Earlier revisions referenced `tests/test_nav_engine.py`,
+`tests/test_cooldown_engine.py` and `tests/test_odds_vig.py` — those files were never created;
+their coverage lives in the files above.

@@ -1,5 +1,11 @@
 # Architecture Document: System Architecture & Database Schema
 
+> **Durum (2026-09-10): Bu belge HEDEF mimariyi anlatır, çalışan kodu değil.**
+> Aşağıdaki mikroservis topolojisi (PostgreSQL 16 + TimescaleDB + Redis, pub/sub broadcaster) ve
+> DDL şeması ölçeklenme hedefidir; henüz uygulanmamıştır. Çalışan kod tek bir FastAPI süreci +
+> SQLAlchemy/SQLite (`fairplay.db`) üzerinde durur ve şeması `src/backend/models/database.py`
+> içindedir. Fark bir sapma değil, planlı bir yol haritasıdır.
+
 ## 1. System Topology & Microservices
 
 ```

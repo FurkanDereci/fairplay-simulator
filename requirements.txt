@@ -1,0 +1,16 @@
+# FairPlay Simulator - Python dependencies
+# Python 3.10+
+#
+# Kurulum:  pip install -r requirements.txt
+
+# --- Runtime ---
+fastapi==0.141.1
+uvicorn==0.52.4
+SQLAlchemy==2.0.52
+bcrypt==5.0.0
+PyJWT==2.13.0
+requests==2.34.2
+pydantic==2.13.5
+
+# --- Test (fastapi.testclient icin gerekli) ---
+httpx==0.28.1

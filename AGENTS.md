@@ -23,7 +23,8 @@ Bu depo, "sözleşme-önce" yöntemiyle inşa edilir. Aşağıdaki kurallar bağ
 
 ## 5. Doğrulama standardı (her değişiklikte)
 1. `pytest -q` — tümü geçer.
-2. `mypy --strict core app` — tip hatası yok.
+2. `mypy` — tip hatası yok. (Ayarlar `pyproject.toml`'da: `strict = true`,
+   `files = ["src/fairplay_echo"]`, `mypy_path = "src"`. Yol vermek gerekmez; `core app` kökte yok.)
 3. `ruff check .` — lint temiz.
 4. `docs-sync` geçer (iddialar gerçekle uyuşur).
 

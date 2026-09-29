@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+.coverage
+htmlcov/
+
+# Yerel veri / sır
+.env
+*.db
+
+# Windows/OneDrive kabuğu (bu sınıf bir kez repoya sızdı — bir daha sızmasın)
+*:Zone.Identifier
+Thumbs.db
+desktop.ini

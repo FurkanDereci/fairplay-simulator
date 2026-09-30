@@ -431,6 +431,23 @@ def test_monte_carlo_does_not_touch_the_ledger(world: tuple[TestClient, FixedClo
     assert after["pending_wagers"] == []
 
 
+def test_risk_reliability_flags_a_thin_sample(world: tuple[TestClient, FixedClock]) -> None:
+    """Anlamlılık kapısı (docs/20 §2.8): az işlemli portföyde risk metrikleri etiketlenir."""
+    client, _ = world
+    headers = _auth(client)
+    _wager(client, headers, stake="100", match_id="md-01")
+    client.post("/api/matches/simulate", headers=headers, json={"match_id": "md-01", "seed": 5})
+
+    risk = client.get("/api/portfolio", headers=headers).json()["risk"]
+    reliability = risk["reliability"]
+
+    assert reliability["sharpe_reliable"] is False, "tek işlemli portföy 'anlamlı' olamaz"
+    assert reliability["sharpe_t_statistic"] < reliability["min_t_statistic"]
+    assert "Örneklem yetersiz" in reliability["note"]
+    assert isinstance(reliability["profit_factor_defined"], bool)
+    assert reliability["periods"] >= 1
+
+
 def test_root_serves_the_ui_without_mock_state(world: tuple[TestClient, FixedClock]) -> None:
     """Arayüz API'den beslenir; enerji görünür (görünmeyen kural yok sayılır dersi)."""
     client, _ = world

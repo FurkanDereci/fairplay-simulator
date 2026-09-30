@@ -146,6 +146,21 @@ RAS = TWR(%) × mdd_f × sharpe_f
 > `TWR = 15.00`, `MDD = 20.00`, `Sharpe = 1.00` → `mdd_f = 0.80`, `sharpe_f = 1.00`
 > **Beklenen:** `RAS = 15.00 × 0.80 × 1.00 = 12.00`
 
+### 2.8 Anlamlılık kapısı — "bu sayı ne zaman anlamsız"
+
+Sharpe'ın kendi bağıntısı: `t = SR × √T` (T = **getiri dönemi sayısı**, yıl değil).
+`t < 2` iken metrik **istatistiksel olarak anlamsızdır**; çıplak sayı olarak sunulmaz,
+"örneklem yetersiz" etiketiyle gelir. Aynı örneklem kuralı Sortino ve MDD için de geçerlidir
+(hepsi aynı getiri serisinden hesaplanır).
+
+`ProfitFactor` **hiç kayıp yokken tanımsızdır** (sonsuz); sayı uydurmak yerine
+`tanımsız` olarak işaretlenir.
+
+> **[G-14] Anlamlılık**
+> `SR = 1.00, T = 4` → `t = 1.00 × √4 = 2.00` → **ANLAMLI**
+> `SR = 1.00, T = 1` → `t = 1.00` → **ANLAMSIZ**
+> `SR = 0.29` (`[G-4]`), `T = 3` → `t = 0.50` → **ANLAMSIZ**
+
 ---
 
 ## 3. Oran matematiği

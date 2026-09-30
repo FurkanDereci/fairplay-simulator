@@ -26,10 +26,10 @@ Aynı ikili `replay`, `export-openapi`, `render-api-docs` ve `version` alt komut
 
 ## Nasıl test edilir
 
-**1. Otomatik testler** — 64 test (golden · property · repo · engines · api · docs-sync):
+**1. Otomatik testler** — golden · property · repo · engines · api · ui · docs-sync:
 
 ```bash
-.venv/bin/pytest                # 64 passed
+.venv/bin/pytest                # tümü geçmeli
 ```
 
 **2. Kalite kapıları:**

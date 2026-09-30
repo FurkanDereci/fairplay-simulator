@@ -15,6 +15,27 @@ from .money import ZERO, Money
 
 _EPS = 1e-6
 
+# Sharpe'ın kendi bağıntısı: `t = SR·√T`. Anlamlılık için `t ≥ 2` (bkz. `docs/20` §2.8).
+MIN_T_STATISTIC = 2.0
+
+
+def sharpe_t_statistic(sharpe_ratio: float, periods: int) -> float:
+    """Ortalamanın t istatistiği: `SR × √T` (T = getiri dönemi sayısı).
+
+    Yetersiz örneklemde Sharpe bir *sayı* olarak görünür ama **anlamlı değildir**;
+    bu fonksiyon o ayrımı ölçülebilir kılar.
+    """
+    if periods <= 0:
+        return 0.0
+    return round(sharpe_ratio * math.sqrt(periods), 2)
+
+
+def is_statistically_reliable(
+    t_statistic: float, *, minimum: float = MIN_T_STATISTIC
+) -> bool:
+    """`t ≥ 2` mi? Değilse metrik yorumlanmamalı."""
+    return t_statistic >= minimum
+
 
 @dataclass(frozen=True)
 class SettledWager:

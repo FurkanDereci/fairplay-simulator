@@ -19,11 +19,14 @@ from ..core.cooldown import CooldownState
 from ..core.errors import InsufficientCash, InvalidAmount
 from ..core.ledger import EntryType, LedgerEntry
 from ..core.metrics import (
+    MIN_T_STATISTIC,
     beta_alpha,
+    is_statistically_reliable,
     max_drawdown_pct,
     returns_series,
     risk_adjusted_score,
     sharpe,
+    sharpe_t_statistic,
     sortino,
     trade_stats,
 )
@@ -550,9 +553,29 @@ class PortfolioService:
         beta, alpha = beta_alpha(returns, returns_series(favourite))
 
         stats = trade_stats(settled_outcomes(entries))
+        # Anlamlılık kapısı (docs/20 §2.8): yetersiz örneklemde risk metrikleri yorumlanmamalı.
+        periods = len(returns)
+        t_statistic = sharpe_t_statistic(sharpe_ratio, periods)
+        reliable = is_statistically_reliable(t_statistic)
         energy, last_update = self._energy(user_id)
         self.repo.save_energy(user_id, energy, last_update)
         cooldown = self._cooldown(user_id)
+
+        reliability = {
+            "periods": periods,
+            "min_t_statistic": MIN_T_STATISTIC,
+            "sharpe_t_statistic": t_statistic,
+            "sharpe_reliable": reliable,
+            "profit_factor_defined": stats.gross_loss > 0,
+            "note": (
+                ""
+                if reliable
+                else (
+                    "Örneklem yetersiz: Sharpe/Sortino/MDD yorumlanmamalı "
+                    f"(t = {t_statistic} < {MIN_T_STATISTIC}, T = {periods})."
+                )
+            ),
+        }
 
         payouts = {
             entry.wager_id: entry
@@ -604,6 +627,7 @@ class PortfolioService:
                 "beta": beta,
                 "alpha": alpha,
                 "risk_adjusted_score": risk_adjusted_score(twr, max_drawdown, sharpe_ratio),
+                "reliability": reliability,
                 "trade_stats": {
                     "total_trades": stats.total_trades,
                     "win_rate_pct": stats.win_rate_pct,

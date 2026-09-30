@@ -143,6 +143,19 @@ def test_g12_energy() -> None:
     assert two_hours == 20
 
 
+def test_g14_significance_gate() -> None:
+    """[G-14] t = SR·√T; t < 2 → anlamsız."""
+    assert metrics.sharpe_t_statistic(1.0, 4) == 2.0
+    assert metrics.is_statistically_reliable(2.0) is True
+
+    assert metrics.sharpe_t_statistic(1.0, 1) == 1.0
+    assert metrics.is_statistically_reliable(1.0) is False
+
+    sharpe_ratio = metrics.sharpe([0.10, -0.10, 0.10])  # [G-4] → 0.29
+    assert metrics.sharpe_t_statistic(sharpe_ratio, 3) == 0.5
+    assert metrics.is_statistically_reliable(0.5) is False
+
+
 def test_g13_cooldown() -> None:
     """[G-13] T(n): 1 · 4 · 16 · 64 · 168 (tavan)."""
     assert [cooldown_mod.cooldown_hours(n) for n in (1, 2, 3, 4, 5)] == [

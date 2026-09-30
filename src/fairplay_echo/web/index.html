@@ -335,6 +335,7 @@
             <div class="tile"><small>Alpha</small><b id="t-alpha">–</b></div>
             <div class="tile"><small>RAS</small><b id="t-ras">–</b></div>
           </div>
+          <p id="risk-note" class="muted" style="font-size:11.5px;margin:8px 0 0"></p>
           <h2 style="margin-top:16px">İşlemler</h2>
           <div class="tiles">
             <div class="tile"><small>Adet</small><b id="t-trades">–</b></div>
@@ -843,9 +844,19 @@ function renderPortfolio(portfolio) {
   setTile("t-ras", fmtNumber(risk.risk_adjusted_score, 2));
 
   const stats = risk.trade_stats;
+  const reliability = risk.reliability;
   setTile("t-trades", String(stats.total_trades));
   setTile("t-wins", fmtPct(stats.win_rate_pct));
-  setTile("t-pf", fmtNumber(stats.profit_factor, 2));
+  setTile(
+    "t-pf",
+    reliability.profit_factor_defined ? fmtNumber(stats.profit_factor, 2) : "tanımsız"
+  );
+  // Anlamlılık kapısı: yetersiz örneklemde çıplak sayı "ölçüm" gibi okunmasın.
+  el("risk-note").textContent = reliability.sharpe_reliable
+    ? ""
+    : reliability.note +
+      " Profit factor " +
+      (reliability.profit_factor_defined ? "tanımlı." : "hiç kayıp olmadığı için tanımsız.");
 
   el("cooldown-note").textContent = portfolio.cooldown.locked
     ? "Cooldown aktif (tier " + portfolio.cooldown.tier + ")"

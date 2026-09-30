@@ -141,6 +141,22 @@ def test_quality_index_paths_exist() -> None:
     assert not missing, f"docs/80 var olmayan yola işaret ediyor: {sorted(missing)}"
 
 
+def test_docs_do_not_claim_a_test_count() -> None:
+    """Belgeler **test sayısı iddia etmez**: sayı her turda kayar, kapı sabit kalır.
+
+    Ölçüldü (2026-09-30): aynı gün içinde üç belgede yazılı sayı (64/80/91) gerçek sayıdan
+    sapmıştı — üstelik sayıların bir kısmı saatler önce yazılmıştı. Haritanın kendi kuralı da
+    "test sayısı çıta değil" der; o yüzden iddia **yasaklanır**, güncellenmez.
+    """
+    pattern = re.compile(r"\d+\s+test\b|\d+\s+passed\b")
+    offenders: dict[str, list[str]] = {}
+    for path in (ROOT / "README.md", DOCS / "30-architecture.md", DOCS / "80-kalite-alanlari.md"):
+        found = pattern.findall(_read(path))
+        if found:
+            offenders[path.name] = found
+    assert not offenders, f"Belgede test sayısı iddiası var (kapı: `pytest`): {offenders}"
+
+
 def test_documented_test_paths_exist() -> None:
     listed = set(re.findall(r"`(tests/[A-Za-z0-9_/\.]+)`", _read(DOCS / "50-test-strategy.md")))
     assert listed, "docs/50-test-strategy.md'de test yolu listesi bulunamadı."

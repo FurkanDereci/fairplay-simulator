@@ -49,8 +49,9 @@ Orijinalin 2026-09-10 incelemesinde çıkan ve belgelenen kod riskleri:
 | CORS `*` | `CORS_ORIGINS` ile yapılandırılabilir; varsayılan localhost + `null` | `app/config.py` · `app/main.py` |
 | `WagerModel.created_at` yok → bekleyen kuponu olan kullanıcıda `/api/portfolio` çöküyordu | böyle bir model yok; kupon durumu defterden türer | `core/nav.py` · `tests/api` |
 
-**Kapılar:** orijinal 40 test (`unittest`) · echo **86 test** (`pytest` + Hypothesis + gerçek
-tarayıcı). Test sayısı tek başına üstünlük değildir; asıl fark **neyin** test edildiğidir (§4).
+**Kapılar:** orijinal 40 test (`unittest`; 2026-09-30 ölçümü) · echo'nun paketi `pytest` + Hypothesis +
+gerçek tarayıcı (güncel sayı bilinçli olarak yazılmaz — sayı kayar, kapı kalır; bkz. `docs/80`). Asıl fark
+**neyin** test edildiğidir (§4).
 
 ## 3. Bilinçli farklar (eksik değil)
 

@@ -157,6 +157,21 @@ def test_docs_do_not_claim_a_test_count() -> None:
     assert not offenders, f"Belgede test sayısı iddiası var (kapı: `pytest`): {offenders}"
 
 
+def test_boundary_table_names_real_tests() -> None:
+    """`docs/50` §9 sınır tablosu **gerçek** testleri adlandırmalı (liste çürümesin)."""
+    document = _read(DOCS / "50-test-strategy.md")
+    assert "## 9." in document, "docs/50 §9 (sınır kararları) bulunamadı."
+    section = document.split("## 9.", 1)[1]
+    names = set(re.findall(r"`(test_[a-z0-9_]+)`", section))
+    assert names, "docs/50 §9'da hiç test adı yok."
+
+    sources = "\n".join(
+        path.read_text(encoding="utf-8") for path in (ROOT / "tests").rglob("test_*.py")
+    )
+    missing = {name for name in names if f"def {name}(" not in sources}
+    assert not missing, f"docs/50 §9 var olmayan testi adlandırıyor: {sorted(missing)}"
+
+
 def test_documented_test_paths_exist() -> None:
     listed = set(re.findall(r"`(tests/[A-Za-z0-9_/\.]+)`", _read(DOCS / "50-test-strategy.md")))
     assert listed, "docs/50-test-strategy.md'de test yolu listesi bulunamadı."

@@ -92,3 +92,31 @@ satır satır yazılı (R3–R6). Özet:
 | Suite 2 | `NAV × U = Cash + Exposure` | Model gereği sağlanıyor, **kimlik testi yok** |
 | Suite 3 | Bozuk/negatif vig'li oran **reddedilmeli** | **Kırpılıyor, reddedilmiyor** |
 | Suite 4 | Aynı finalizasyon tekrar işlenirse tek ödeme | Çekirdekte testli, **uç düzeyinde değil** |
+
+## 9. Sınır kararları (mutation denetimi yerine)
+
+Araç denemesi (2026-09-30): `mutmut 3.8` bu ortamda **çalışmadı** — kopyalama adımı
+`/run/udev/watch` symlink döngüsüne giriyor (`OSError: Too many levels of symbolic links`);
+ayrıca maliyeti ~28 sn × mutant olurdu. Çita araca değil **kararın sınırına** bağlandı:
+aşağıdaki her satır, karşılaştırma veya sabit değiştiğinde **kırmızıya düşen** testi adıyla
+gösterir (ADR-0010). Testler: `tests/test_boundaries.py` (+ `[G-15]` golden).
+
+| Sınır kararı | Onu öldüren test |
+| --- | --- |
+| `money.q` `ROUND_HALF_UP` (`0.125 → 0.13`) | `test_money_rounds_half_up_never_half_even` |
+| `money.dec` `float` reddi | `test_money_refuses_float` |
+| Oranı `≤ 0` olan sonuç atılır (`v > ZERO`) | `test_normalize_market_drops_non_positive_odds` |
+| Overround tabanı 0 (`max(ZERO, total − 1)`) | `test_overround_never_goes_negative` |
+| Tümü geçersiz pazar (`total > ZERO` guard) | `test_normalize_market_survives_an_all_invalid_market` |
+| Kelly: kenar yoksa **tam 0** (orijinalde 0.05'e düşüyordu) | `test_kelly_returns_exactly_zero_when_there_is_no_edge` |
+| Kelly: `O ≤ 1` guard | `test_kelly_guards_odds_at_or_below_one` |
+| CLV: kapanış oranı 0 guard | `test_clv_guards_a_zero_closing_odds` |
+| Enerji: tavanda geçen süre yanar | `test_g15_energy_cap_rules` |
+| Enerji: bahis **tam** maliyette kabul | `test_wager_is_allowed_at_exactly_the_cost` |
+| Enerji: harcama tabanı 0 | `test_spend_never_goes_below_zero` |
+| Cooldown: `tier < 1` ücretsiz, `tier = 1` değil | `test_cooldown_tier_zero_is_free_and_tier_one_is_not` |
+| Cooldown: kilit **tam** bitiş anında açılır | `test_unlock_happens_at_the_exact_expiry_instant` |
+| Cooldown: 3. solvent günü tier'ı düşürür | `test_solvent_day_streak_drops_the_tier_at_exactly_three` |
+| Sharpe t: `periods ≤ 0` guard | `test_sharpe_t_statistic_guards_a_zero_period_count` |
+
+Tablodaki adlar **uydurulamaz**: `tests/test_docs_sync.py` her adın gerçekten var olduğunu doğrular.

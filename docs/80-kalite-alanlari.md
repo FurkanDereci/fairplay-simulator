@@ -15,7 +15,7 @@ yazmak yasak).
 
 | # | Alan | Karar | Kapı | Durum |
 | --- | --- | --- | --- | --- |
-| 1 | **Doğrulama mimarisi** | Golden (spec örnekleri) + property (değişmezler) + **davranış** (gerçek tarayıcı) testleri; coverage yüzdesi hedef değil, **test sayısı çıta değil** | `pytest` · `tests/ui` · `tests/golden` · `tests/property` | ✅ (mutation testing ⏳) |
+| 1 | **Doğrulama mimarisi** | Golden (spec örnekleri) + property (değişmezler) + **davranış** (gerçek tarayıcı) testleri; kapsam yüzdesi de test sayısı da **çıta değil**; kritik karşılaştırma/sabitler **adlandırılmış sınır testleriyle** kilitli | `pytest` · `tests/ui` · `tests/test_boundaries.py` · `docs/50-test-strategy.md` §9 tablosu (docs-sync doğrular) · ADR-0010 | ✅ |
 | 2 | **Domen değişmezleri, tek otorite** | Event-sourced defter **tek gerçek kaynak**; NAV/TWR yalnız `core/`'da hesaplanır | `I1`–`I4` property testleri · `tests/test_docs_sync.py` | ✅ |
 | 3 | **Ölçümün tanımı** | Her metriğin formülü + işlenmiş örneği + **"ne zaman anlamsız"** kuralı: `t = SR·√T`, `t < 2` ise "örneklem yetersiz"; `ProfitFactor` kayıp yokken **tanımsız** | `[G-3]`–`[G-7]`, `[G-14]` golden · `tests/api` anlamlılık testi · arayüz notu | ✅ |
 
@@ -41,15 +41,15 @@ yazmak yasak).
 
 ## Boşluklar (öncelik sırasıyla)
 
-1. **Alan 1 — mutation testing yok.** Davranış testleri güçlü ama "test ölü kodu mu görüyor"
-   sorusunun kapısı yok.
-2. **Alan 9 — ürün değeri ölçüsüz.** "Öğretiyor mu" iddiasının kapısı tanımlı değil.
+1. **Alan 9 — ürün değeri ölçüsüz.** "Öğretiyor mu" iddiasının kapısı tanımlı değil.
 
 > **Kapananlar (2026-09-30):** Alan 5 (veri dayanıklılığı) — ADR-0008 + geri yükleme tatbikatı;
 > bu arada FK zorlamasının hiç açık olmadığı (yazılı ama yürürlükte olmayan kısıtlar) ortaya çıktı
 > ve kapatıldı. Alan 3 (metrik anlamlılığı) — `t = SR·√T` kapısı, `[G-14]`, `ProfitFactor`
 > tanımsızlığı ve arayüz notu. Alan 6 (olay şeması evrimi) — ADR-0009: sürüm damgası, bilinmeyen
 > sürümde açık hata, donmuş `ledger_v1.json` fixture'ı, ölçülmüş snapshot tetikleyicisi.
+> Alan 1 (doğrulama mimarisi) — ADR-0010: sınır tablosu (`docs/50-test-strategy.md` §9) +
+> `tests/test_boundaries.py`; denetim enerji tavanı kuralını buldu ve `[G-15]` olarak yazıldı.
 
 ## İlgili belgeler
 

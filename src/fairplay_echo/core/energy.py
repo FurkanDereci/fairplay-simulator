@@ -27,7 +27,12 @@ def regen(
 ) -> tuple[int, datetime]:
     """Geçen süreye göre enerjiyi yeniler; saati **kazanılan kadar** ilerletir.
 
-    Kısmi ilerleme kaybolmaz: yalnız gerçekten verilen enerjinin karşılığı kadar saat ilerler.
+    Kısmi ilerleme kaybolmaz: artan saat dilimi (`gained <= 0`) `last_update`'i ilerletmez,
+    böylece 100 dakikalık beklemenin 4 dakikalık artığı saklanır.
+
+    **Tavandayken geçen süre yanar** (batarya yok): `energy >= max_energy` ise `last_update`
+    `now`'a çekilir. Yoksa oyuncu tavanda bekleyip biriktirdiği süreyi sonra arka arkaya
+    bahislerle harcayabilir, yani tavan enerji depolamayı engelleyemezdi.
     """
     if energy >= max_energy:
         return max_energy, now

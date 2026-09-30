@@ -143,6 +143,15 @@ def test_g12_energy() -> None:
     assert two_hours == 20
 
 
+def test_g15_energy_cap_rules() -> None:
+    """[G-15] Tavanda geçen süre yanar; artık dakikalar saklanır."""
+    at_cap, cap_stamp = energy_mod.regen(100, EPOCH, EPOCH + timedelta(hours=3))
+    assert (at_cap, cap_stamp) == (100, EPOCH + timedelta(hours=3))
+
+    remainder, stamp = energy_mod.regen(50, EPOCH, EPOCH + timedelta(minutes=100))
+    assert (remainder, stamp) == (66, EPOCH + timedelta(minutes=96))
+
+
 def test_g14_significance_gate() -> None:
     """[G-14] t = SR·√T; t < 2 → anlamsız."""
     assert metrics.sharpe_t_statistic(1.0, 4) == 2.0

@@ -224,11 +224,21 @@ Sabitler: `MAX = 100`, `cost = 10 / bahis`, `regen = 10 / saat`.
 gained = floor(geçen_saniye × 10/3600)
 energy = min(MAX, energy + gained)
 ```
-Saat, geçen süreyle **oransal** ilerletilir ki kısmi ilerleme kaybolmasın. Bahis anında
-`energy < cost` ise **429**.
+Saat ilerlemesinin **iki** kuralı vardır:
+- **Kısmi ilerleme saklanır:** `gained = 0` ise `last_update` ilerlemez; artık dakikalar durur
+  (100 dakikanın 4 dakikalık artığı kaybolmaz).
+- **Tavanda geçen süre yanar:** `energy ≥ MAX` ise `last_update = now` olur. Tavan **depolamayı**
+  engellemek için vardır; yoksa oyuncu tavanda bekleyip biriken süreyi sonra arka arkaya
+  bahislerle harcayabilirdi.
+
+Bahis anında `energy < cost` ise **429**.
 
 > **[G-12] Enerji**
 > `100` enerji, 10 bahis → `0`; 30 dk sonra `+5` → `5`; `0`'dan 2 saat sonra `+20` → `20`
+
+> **[G-15] Enerji tavanı ve artık**
+> `energy = 100`, 3 saat geçti → `energy = 100`, `last_update = now` (süre yandı, birikmedi)
+> `energy = 50`, 100 dk geçti → `energy = 66`, `last_update = +96 dk` (4 dk artık saklandı)
 
 ### 4.2 Cooldown
 ```

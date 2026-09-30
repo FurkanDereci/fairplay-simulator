@@ -78,6 +78,7 @@ uyarı bandı çıkar.
 | API (OpenAPI'den üretilir) | `docs/40-api.md` |
 | Risk → test matrisi | `docs/50-test-strategy.md` |
 | İnşa sırası ve durum | `docs/ROADMAP.md` |
+| **Kalite alanları — karar ve kapı indeksi** | `docs/80-kalite-alanlari.md` |
 | Orijinal repo ile parite + devralma planı | `docs/70-parite-ve-devralma.md` |
 | Mimari kararlar (ADR) | `docs/60-decisions/` |
 

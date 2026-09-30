@@ -127,6 +127,20 @@ def test_design_tokens_have_no_raw_hex_outside_root() -> None:
     assert not found, f":root dışında ham hex var: {found}"
 
 
+def test_quality_index_paths_exist() -> None:
+    """`docs/80-kalite-alanlari.md` bir **indekstir**: işaret ettiği her yol gerçekten var olmalı.
+
+    İndeks kendi başına sürüklenirse "şu alan şurada yaşıyor" iddiası yalan olur.
+    """
+    text = _read(DOCS / "80-kalite-alanlari.md")
+    listed = set(
+        re.findall(r"`((?:docs|tests)/[A-Za-z0-9_./-]+|DESIGN\.md|AGENTS\.md)`", text)
+    )
+    assert listed, "docs/80-kalite-alanlari.md içinde yol listesi bulunamadı."
+    missing = {path for path in listed if not (ROOT / path).exists()}
+    assert not missing, f"docs/80 var olmayan yola işaret ediyor: {sorted(missing)}"
+
+
 def test_documented_test_paths_exist() -> None:
     listed = set(re.findall(r"`(tests/[A-Za-z0-9_/\.]+)`", _read(DOCS / "50-test-strategy.md")))
     assert listed, "docs/50-test-strategy.md'de test yolu listesi bulunamadı."

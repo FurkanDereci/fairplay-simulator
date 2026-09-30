@@ -24,7 +24,7 @@ yazmak yasak).
 | # | Alan | Karar | Kapı | Durum |
 | --- | --- | --- | --- | --- |
 | 4 | **Güven sınırı ve yetki** | Durumun ve paranın otoritesi **sunucuda**; istemci sonuç bildirmez; sır için güvensiz varsayılan yok | `test_client_cannot_declare_a_result` · 401/403 testleri · `test_validation_error_is_readable…` | ✅ |
-| 5 | **Veri dayanıklılığı** | Yedek **online backup API**'siyle alınır; `synchronous` seviyesi **yazılı** karardır; kurtarma **tatbikatla** kanıtlanır | geri yükleme tatbikatı (`tests/repo`) | ⏳ **alan boş** |
+| 5 | **Veri dayanıklılığı** | Yedek **online backup API**'siyle alınır; `journal_mode=WAL` + `synchronous=NORMAL` + `foreign_keys=ON` **yazılı karar** (ADR-0008); kurtarma **tatbikatla** kanıtlanır | `tests/repo` geri yükleme tatbikatı · pragma + FK testleri | ✅ |
 | 6 | **Gözlemlenebilirlik ve replay** | Defter şeması **sürümlü**; değişiklik **upcaster** gerektirir; snapshot tetikleyicisi **sayısal** yazılır | donmuş defter fixture'ıyla replay testi · `/healthz` | ⏳ (replay var, şema evrim kuralı yok) |
 | 7 | **Arayüz kalitesi ve durumlar** | **"Arayüz işi görmeden bitmez"**; sessiz başarısızlık yasak; renk/boşluk token'dan | `tests/ui` (akış + taşma/kırpılma) · `DESIGN.md` token testi | ✅ |
 
@@ -41,16 +41,17 @@ yazmak yasak).
 
 ## Boşluklar (öncelik sırasıyla)
 
-1. **Alan 5 — veri dayanıklılığı hiç yok.** WAL/`synchronous` kararı yazılı değil, yedek tatbikatı
-   yok. En yüksek riskli boşluk: defter "tek gerçek kaynak" ama dosya kurtarılabilirliği
-   kanıtlanmamış.
-2. **Alan 3 — anlamlılık etiketi yok.** Tek işlemli portföyde `Profit Factor 99` ve anlamsız
-   Sharpe çıplak sayı olarak görünüyor.
-3. **Alan 6 — olay şeması evrim kuralı yok.** Defter sürümlenmiyor; ilk şema değişikliğinde
-   sessiz bozulma riski.
-4. **Alan 1 — mutation testing yok.** Davranış testleri güçlü ama "test ölü kodu mu görüyor"
+1. **Alan 3 — anlamlılık etiketi yok.** Tek işlemli portföyde `Profit Factor 99` ve anlamsız
+   Sharpe çıplak sayı olarak görünüyor (`t = SR·√T` kuralı henüz uygulanmadı).
+2. **Alan 6 — olay şeması evrim kuralı yok.** Defter sürümlenmiyor; ilk şema değişikliğinde
+   sessiz bozulma riski (upcaster + donmuş fixture yok).
+3. **Alan 1 — mutation testing yok.** Davranış testleri güçlü ama "test ölü kodu mu görüyor"
    sorusunun kapısı yok.
-5. **Alan 9 — ürün değeri ölçüsüz.** "Öğretiyor mu" iddiasının kapısı tanımlı değil.
+4. **Alan 9 — ürün değeri ölçüsüz.** "Öğretiyor mu" iddiasının kapısı tanımlı değil.
+
+> **Kapanan:** Alan 5 (veri dayanıklılığı) 2026-09-30'da kapandı — ADR-0008 + geri yükleme
+> tatbikatı; bu arada FK zorlamasının hiç açık olmadığı (yazılı ama yürürlükte olmayan kısıtlar)
+> ortaya çıktı ve kapatıldı.
 
 ## İlgili belgeler
 

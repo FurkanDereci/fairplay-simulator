@@ -135,11 +135,44 @@ class Repository:
         self._clock: Clock = clock or _utcnow
         self._conn = sqlite3.connect(self.path)
         self._conn.row_factory = sqlite3.Row
+        # WAL: okuma/yazma çakışmasını azaltır (istek başına bağlantı açıyoruz).
+        # synchronous=NORMAL: tutarlılık korunur; bedeli, elektrik kesintisinde son commit'in
+        # geri alınabilmesidir (bkz. ADR-0008 — bilinçli karar, varsayılana bırakılmadı).
+        # foreign_keys: SQLite kısıtları varsayılan olarak UYGULAMAZ; açıkça açılmalı.
+        self._conn.execute("PRAGMA journal_mode = WAL")
+        self._conn.execute("PRAGMA synchronous = NORMAL")
+        self._conn.execute("PRAGMA foreign_keys = ON")
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
 
+    def backup_to(self, target: str | Path) -> Path:
+        """Tutarlı yedek: **online backup API**'si (WAL'da düz dosya kopyası yırtılır).
+
+        Yedeğin gerçekten kurtarılabilir olduğu `tests/repo` içindeki geri yükleme
+        tatbikatıyla kanıtlanır — `integrity_check` geçmesi bunu kanıtlamaz.
+        """
+        destination = sqlite3.connect(str(target))
+        try:
+            self._conn.backup(destination)
+            destination.commit()
+        finally:
+            destination.close()
+        return Path(target)
+
     def close(self) -> None:
         self._conn.close()
+
+    def journal_mode(self) -> str:
+        """Etkin journal modu (`wal`/`delete`/`memory`) — karar testle doğrulanabilsin."""
+        return str(self._conn.execute("PRAGMA journal_mode").fetchone()[0]).lower()
+
+    def synchronous(self) -> int:
+        """Etkin `synchronous` seviyesi (0=OFF, 1=NORMAL, 2=FULL, 3=EXTRA)."""
+        return int(self._conn.execute("PRAGMA synchronous").fetchone()[0])
+
+    def foreign_keys_enabled(self) -> bool:
+        """Yabancı anahtar zorlaması açık mı (SQLite'ta varsayılan KAPALI)."""
+        return bool(self._conn.execute("PRAGMA foreign_keys").fetchone()[0])
 
     def __enter__(self) -> Repository:
         return self

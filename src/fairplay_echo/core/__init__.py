@@ -11,6 +11,7 @@ from .errors import (
     InsufficientCash,
     InvalidAmount,
     UnknownWager,
+    UnsupportedLedgerVersion,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "InsufficientCash",
     "InvalidAmount",
     "UnknownWager",
+    "UnsupportedLedgerVersion",
 ]

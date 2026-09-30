@@ -28,3 +28,10 @@ class AlreadySettled(DomainError):
 
 class DuplicateWager(DomainError):
     """Aynı kimlikli kupon ikinci kez açılmak istendi."""
+
+
+class UnsupportedLedgerVersion(DomainError):
+    """Defter/veritabanı şema sürümü kodun tanımadığı bir sürüm.
+
+    Sessizce okumak yerine **açıkça** durur: eski sürüm upcaster ister, yeni sürüm kod güncellemesi.
+    """

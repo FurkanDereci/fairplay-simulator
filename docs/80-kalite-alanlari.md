@@ -25,7 +25,7 @@ yazmak yasak).
 | --- | --- | --- | --- | --- |
 | 4 | **Güven sınırı ve yetki** | Durumun ve paranın otoritesi **sunucuda**; istemci sonuç bildirmez; sır için güvensiz varsayılan yok | `test_client_cannot_declare_a_result` · 401/403 testleri · `test_validation_error_is_readable…` | ✅ |
 | 5 | **Veri dayanıklılığı** | Yedek **online backup API**'siyle alınır; `journal_mode=WAL` + `synchronous=NORMAL` + `foreign_keys=ON` **yazılı karar** (ADR-0008); kurtarma **tatbikatla** kanıtlanır | `tests/repo` geri yükleme tatbikatı · pragma + FK testleri | ✅ |
-| 6 | **Gözlemlenebilirlik ve replay** | Defter şeması **sürümlü**; değişiklik **upcaster** gerektirir; snapshot tetikleyicisi **sayısal** yazılır | donmuş defter fixture'ıyla replay testi · `/healthz` | ⏳ (replay var, şema evrim kuralı yok) |
+| 6 | **Gözlemlenebilirlik ve replay** | Defter biçimi **sürümlenir**; bilinmeyen sürüm **açık hata** (sessiz okuma yok); snapshot tetikleyicisi **sayısal ve ölçülmüş** (> 100.000 olay / > 250 ms) | `tests/data` donmuş defter fixture'ı · `tests/repo` sürüm testleri · `/healthz` · ADR-0009 | ✅ |
 | 7 | **Arayüz kalitesi ve durumlar** | **"Arayüz işi görmeden bitmez"**; sessiz başarısızlık yasak; renk/boşluk token'dan | `tests/ui` (akış + taşma/kırpılma) · `DESIGN.md` token testi | ✅ |
 
 ## C — Fark yaratan alanlar
@@ -41,16 +41,15 @@ yazmak yasak).
 
 ## Boşluklar (öncelik sırasıyla)
 
-1. **Alan 6 — olay şeması evrim kuralı yok.** Defter sürümlenmiyor; ilk şema değişikliğinde
-   sessiz bozulma riski (upcaster + donmuş fixture yok).
-2. **Alan 1 — mutation testing yok.** Davranış testleri güçlü ama "test ölü kodu mu görüyor"
+1. **Alan 1 — mutation testing yok.** Davranış testleri güçlü ama "test ölü kodu mu görüyor"
    sorusunun kapısı yok.
-3. **Alan 9 — ürün değeri ölçüsüz.** "Öğretiyor mu" iddiasının kapısı tanımlı değil.
+2. **Alan 9 — ürün değeri ölçüsüz.** "Öğretiyor mu" iddiasının kapısı tanımlı değil.
 
 > **Kapananlar (2026-09-30):** Alan 5 (veri dayanıklılığı) — ADR-0008 + geri yükleme tatbikatı;
 > bu arada FK zorlamasının hiç açık olmadığı (yazılı ama yürürlükte olmayan kısıtlar) ortaya çıktı
 > ve kapatıldı. Alan 3 (metrik anlamlılığı) — `t = SR·√T` kapısı, `[G-14]`, `ProfitFactor`
-> tanımsızlığı ve arayüz notu; tek işlemli portföyde çıplak `99` gösterilmiyor.
+> tanımsızlığı ve arayüz notu. Alan 6 (olay şeması evrimi) — ADR-0009: sürüm damgası, bilinmeyen
+> sürümde açık hata, donmuş `ledger_v1.json` fixture'ı, ölçülmüş snapshot tetikleyicisi.
 
 ## İlgili belgeler
 

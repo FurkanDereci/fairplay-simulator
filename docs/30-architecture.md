@@ -74,6 +74,7 @@ Aşağıdakilerden **biri ölçülüp gerçekleşene kadar** ilgili teknoloji ek
 | Redis / önbellek | Portföy ucu p95 > 200 ms ve DB profili önbelleği işaret ettiğinde |
 | Mikroservis ayrımı | Tek süreç derleme+test süresi > 10 dk, ya da bağımsız ölçekleme gerekene kadar |
 | Rate limiting | Gerçek kötüye kullanım gözlemlendiğinde |
+| Defter snapshot'ı | Kullanıcı başına **> 100.000 olay** veya `cli replay` **> 250 ms** (ölçüm 2026-09-30: 5.001 olay → 7,1 ms; ADR-0009) |
 
 ## Kayıt
 

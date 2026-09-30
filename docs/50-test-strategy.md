@@ -68,7 +68,10 @@ Hepsi yeşil değilse dilim kapanmaz (DoD).
 
 ## 7. Test yerleşimi
 
-`tests/golden` · `tests/property` · `tests/repo` · `tests/engines` · `tests/api` · `tests/ui` · `tests/test_docs_sync.py`
+`tests/golden` · `tests/property` · `tests/repo` · `tests/engines` · `tests/api` · `tests/ui` · `tests/data` · `tests/test_docs_sync.py`
+
+`tests/data` **donmuş kayıtlar**dır (ör. `ledger_v1.json`): eski biçimli verinin hâlâ aynı durumu
+ürettiğini kanıtlar (ADR-0009). Elle değiştirilmez; yeni sürüm **yeni dosya** olarak eklenir.
 
 `tests/ui` **gerçek tarayıcıda** (Playwright/Chromium) sürer: DOM iddiaları, tıklama akışı,
 konsol/sayfa hatası kontrolü. Kurulum: `pip install playwright && playwright install chromium`.

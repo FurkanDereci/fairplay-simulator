@@ -16,7 +16,8 @@ from decimal import Decimal
 from pathlib import Path
 
 from ..core.cooldown import CooldownState
-from ..core.ledger import EntryType, LedgerEntry
+from ..core.errors import UnsupportedLedgerVersion
+from ..core.ledger import LEDGER_SCHEMA_VERSION, EntryType, LedgerEntry
 from ..core.money import Money
 from ..engines.match import MatchRecord
 
@@ -142,8 +143,20 @@ class Repository:
         self._conn.execute("PRAGMA journal_mode = WAL")
         self._conn.execute("PRAGMA synchronous = NORMAL")
         self._conn.execute("PRAGMA foreign_keys = ON")
+        # Defter şeması sürümü dosyaya damgalanır: koddan **yeni** bir dosya sessizce okunmaz.
+        stored_version = self.schema_version()
+        if stored_version > LEDGER_SCHEMA_VERSION:
+            raise UnsupportedLedgerVersion(
+                f"Veritabanı defter sürümü {stored_version}, bu kod {LEDGER_SCHEMA_VERSION} — "
+                "dosya koddan yeni; kodu güncelle (ADR-0009)."
+            )
+        self._conn.execute(f"PRAGMA user_version = {LEDGER_SCHEMA_VERSION}")
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
+
+    def schema_version(self) -> int:
+        """Dosyaya damgalanmış defter şema sürümü (SQLite `user_version`)."""
+        return int(self._conn.execute("PRAGMA user_version").fetchone()[0])
 
     def backup_to(self, target: str | Path) -> Path:
         """Tutarlı yedek: **online backup API**'si (WAL'da düz dosya kopyası yırtılır).

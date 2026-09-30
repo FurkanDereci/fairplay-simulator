@@ -95,13 +95,13 @@ geri dönüşü vardır. Force-push, public repoda geçmişi geri dönüşsüz s
   olacak, diğeri ne olacak? (Vault'taki `fairplay-simulator` notu şu an ilkini işaret ediyor.)
 - **`wager/settle` kırıcı değişikliği** PR açıklamasında açıkça yazılmalı.
 
-## 7. Özellik paritesi (ölçülmüş, 2026-09-30)
+## 6. Özellik paritesi (ölçülmüş, 2026-09-30)
 
 Uç paritesi (§1) **yüzeyi** ölçer; bu bölüm **ürün davranışını** ölçer. Ölçüm: orijinalin
 `src/frontend/index.html` kimlikleri (58) ↔ echo'nunki (42), `src/` içindeki terim taraması ve
 GDD'nin vaatleri.
 
-### 7.1 echo'da olmayan, orijinalde olan
+### 6.1 echo'da olmayan, orijinalde olan
 
 | # | Özellik | Orijinalde kanıt | echo'daki durum | Durum |
 | --- | --- | --- | --- | --- |
@@ -117,7 +117,7 @@ GDD'nin vaatleri.
 > sağ kolonun tepesinde simülasyon arenası var. Doğrulama: motor testleri + gerçek tarayıcıda
 > sürülüp ekran görüntüsü alındı; arena açıkken 375/900/1440'ta taşma/kırpılma kapısı eklendi.
 
-### 7.2 İkisinde de olmayan (GDD vaadi, kodda yok — parite eksiği **değil**)
+### 6.2 İkisinde de olmayan (GDD vaadi, kodda yok — parite eksiği **değil**)
 
 - **Historical Sandbox / Time Machine** (geçmiş sezon backtest): orijinal `src/` içinde
   `sandbox|historical|time_machine|backtest` = **0**.
@@ -125,7 +125,7 @@ GDD'nin vaatleri.
   `badge` referansı **kupon fişi ve bekleyen-sayısı etiketleri**; disiplin rozeti yok.
 - **Virtual Copy Fund / sosyal lig**: GDD'de açıkça Faz 2'ye ertelenmiş.
 
-### 7.3 echo'nun önde olduğu yerler (ölçülmüş)
+### 6.3 echo'nun önde olduğu yerler (ölçülmüş)
 
 - **Kelly — orijinaldeki uygulama güvenilmez:** `slip-kelly-val` **istemci tarafında** hesaplanıyor
   ve kenar yokken **varsayılan %5 öneriyor** (`kellyFraction = edge > 0 ? ... : 0.05`) — yani
@@ -136,11 +136,65 @@ GDD'nin vaatleri.
 - **Lig filtresi**, `/api/estimate`, `/healthz`.
 - **Tasarım token'ları + `DESIGN.md`**: renk tek yerde, ham hex yok (testle bağlı).
 
-### 7.4 Eşitleme sırası
+### 6.4 Eşitleme sırası
 
 Değer/emek sırasına göre: ~~**F1 + F2** (motor olayları + arena)~~ **✅ yapıldı** →
 **F5** (küçük, oyunlaştırma hikâyesini tamamlar) → **F6** (küçük) →
 **F3** (fiş; echo'da işlev zaten satır içinde) → **F4** (factsheet; kozmetik, metrikler var).
+
+## 7. Gereksinim paritesi — orijinalin **dökümanlarından** (2026-09-30)
+
+> Özellik paritesi (§6) **ne yapıldığını**, bu bölüm **neyin istendiğini** ölçer. Kaynak: orijinalin
+> `docs/architecture/00–03`, `docs/research/01–02`, `docs/ROADMAP.md`, `docs/agents/*` (`4c34c53`).
+> Bunlar gerçek gereksinim belgeleri; **kabul ölçütü olarak** okunmalı.
+>
+> **Neden bu bölüm sonradan eklendi:** ilk turlarda yalnız GDD + ROADMAP okunmuştu; `01_gamification`
+> ve `03_verification` okunmadan geliştirme yapıldı. Eksik okumanın bedeli bu bölümün bulgularıdır.
+
+### 7.1 echo'nun karşıladığı gereksinimler
+
+| Gereksinim | Kaynak | echo'daki kanıt |
+| --- | --- | --- |
+| **Kelly'de `p` kullanıcıdan gelir** — doc: *"Given **user-estimated** or benchmark true probability p ∈ (0,1)"* | `01` §1.1 | `POST /api/estimate` + bahiste `probability`; ADR-0006. **Orijinalin kodu kendi dökümanından sapıyor** (§7.4) |
+| Risk-of-Ruin **eşiği**: tek kupon > %15 kasa → uyarı | `01` §1.2 | `risk_of_ruin_threshold = 0.15` · `ruin_risk_warning` |
+| **CLV formülü** | `01` §2 | `core/odds.clv_pct` · ADR-0005 · `[G-11]` |
+| **Cooldown** `T(n)=min(168,4^(n−1))` + **tier decay** (3 solvent gün) | `01` §3 | `core/cooldown.py` · `[G-13]` · `I6` |
+| **Unit NAV**, refill invariance, seriler arası bileşik TWR | `research/02` | `core/nav.py` · `I1` · `I4` · `[G-1/2]` |
+| **Vig/overround** arındırma, fair odds | `research/02` | `core/odds.normalize_market` · `[G-8]` |
+| **3 benchmark indeksi** (Random Walk, Favorite Heavy, Home-Advantage) | `00` Rule 3 | `engines/bots.py` (3 strateji) |
+| Poisson + Monte Carlo, çoklu pazar (1X2 / O-U / BTTS) | `00`, `research/01` | `engines/match.py` · `/api/matches/monte_carlo` |
+| **Settlement idempotentliği** (Suite 4) | `03` Suite 4 | `I3` + `AlreadySettled`; orijinalde **0** test |
+
+### 7.2 echo'nun **karşılamadığı** gereksinimler (yapılacaklar)
+
+| # | Gereksinim | Kaynak | Eksik olan |
+| --- | --- | --- | --- |
+| R1 | **Risk of Ruin formülü**: `R_ruin = ((1−Edge)/(1+Edge))^Units` **ve** "onay isteyen açık bir uyarı **modalı**" | `01` §1.2 | echo'da yalnız eşik bayrağı + toast var; **formül yok, onay kapısı yok** |
+| R2 | **Disiplin indirimi**: 3+ rozet → cooldown tavanı 168s → **72s** | `01` §3 | echo'da rozet yok (orijinalde de yok) |
+| R3 | **Suite 1**: kilit süresi **geçtikten sonra** bahis yeniden serbest olmalı | `03` Suite 1 | echo kilidi test ediyor (423), **açılmayı test etmiyor** |
+| R4 | **Suite 2**: `NAV_t × U_t = Cash_t + Exposure_t` her adımda | `03` Suite 2 | Model gereği sağlanıyor ama **kimliği doğrulayan test yok** |
+| R5 | **Suite 3**: `Σ(1/o_i) > 1` olmalı; **negatif vig / bozuk oran reddedilmeli** | `03` Suite 3 | echo **reddetmiyor, sessizce kırpıyor** (`overround = max(0, …)`) — gizlemek reddetmekten kötü |
+| R6 | **Suite 4 (uç düzeyi)**: aynı maç finalizasyonu **tekrar** işlenirse tek ödeme | `03` Suite 4 | Motor/çekirdek düzeyinde testli (`I3`), **`simulate` uç düzeyinde test yok**; ayrıca `save_match` `INSERT OR IGNORE` → ikinci çağrı **farklı skor döndürebilir** ama kayıt değişmez (tutarsızlık riski) |
+| R7 | **Asian Handicap / double-chance** pazarları | `research/01` §2.1 | MVP kapsamı dışıydı; devralmada hedef olup olmadığı **karar bekler** |
+
+### 7.3 İkisinde de olmayan, **hedef** olduğu açıkça yazılı olanlar
+
+Bunlar "eksik" değil, planlı hedef: PostgreSQL 16 + TimescaleDB + Redis + pub/sub broadcaster ve DDL
+şeması (`02`, belgenin başında HEDEF olarak etiketli) · gerçek sağlayıcı entegrasyonu (The Odds API /
+API-Football / Football-Data.org) + Redis TTL önbelleği (`research/01`) · `bet_legs` (çok bacaklı
+kupon) · dokümanın hedef DDL'inde `odds_snapshots` geçmişi · OpenTelemetry + Docker limitleri
+(`agents/devops`) · Time Machine, kopya fon (Faz 2).
+
+### 7.4 Orijinalin **kendi dökümanından saptığı** yer (ölçülmüş)
+
+- `01` §1.1 Kelly'de `p`'nin **kullanıcı tahmini** olmasını istiyor; orijinalin kodu ise istemci
+  tarafında hesaplayıp **kenar yokken varsayılan %5** öneriyor (`edge > 0 ? … : 0.05`) — yani
+  dökümanın istediği "kullanıcı tahmini" akışı **uygulanmamış**, yerine sabit bir öneri konmuş.
+- `03` Suite 4 orijinalde **0 test**; Suite 1/2 de yarım (ölçüm: yukarıdaki grep).
+
+**Sonuç:** echo, döküman gereksinimlerinin çoğunu karşılıyor ve birkaçında (Suite 4, Kelly) orijinalin
+önünde; ama **Suite 3'te geride** (bozuk oranı reddetmiyor) ve R1/R2 hiç yok. Devralma kararının
+**kabul ölçütü** bu tablo olmalı: R1–R6 kapanmadan "eşitlendi" denemez.
 
 ## 8. Açık sorular
 

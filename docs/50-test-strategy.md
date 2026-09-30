@@ -76,3 +76,16 @@ Tarayıcı yoksa testler **atlanır** (varsayılan koşu hızlı kalır).
 
 Her dilim kendi dosyasını buraya ekler; `tests/test_docs_sync.py` bu yolların **gerçekten
 var olduğunu** doğrular.
+
+## 8. Devralınan doğrulama paketleri (kabul ölçütü)
+
+Orijinalin `docs/architecture/03_verification_layer_and_test_strategy.md` belgesi **dört değişmez
+paketi** tanımlar; bunlar yeni depo için de **kabul ölçütüdür**. Kapsam durumu `docs/70` §7.2'de
+satır satır yazılı (R3–R6). Özet:
+
+| Paket | Gereksinim | echo'daki durum |
+| --- | --- | --- |
+| Suite 1 | Kilit süresi dolunca bahis yeniden serbest | Kilit test edildi, **açılma edilmedi** |
+| Suite 2 | `NAV × U = Cash + Exposure` | Model gereği sağlanıyor, **kimlik testi yok** |
+| Suite 3 | Bozuk/negatif vig'li oran **reddedilmeli** | **Kırpılıyor, reddedilmiyor** |
+| Suite 4 | Aynı finalizasyon tekrar işlenirse tek ödeme | Çekirdekte testli, **uç düzeyinde değil** |

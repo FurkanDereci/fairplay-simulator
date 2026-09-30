@@ -5,7 +5,7 @@
 >
 > Üretim: `python -m fairplay_echo.cli render-api-docs --output docs/40-api.md`
 
-Toplam **10 uç**.
+Toplam **11 uç**.
 
 | Metot | Yol | Özet |
 | --- | --- | --- |
@@ -14,6 +14,7 @@ Toplam **10 uç**.
 | POST | `/api/auth/register` | Register |
 | POST | `/api/estimate` | Estimate |
 | GET | `/api/fixtures` | Fixtures |
+| POST | `/api/matches/monte_carlo` | Monte Carlo |
 | POST | `/api/matches/simulate` | Simulate |
 | GET | `/api/portfolio` | Portfolio |
 | POST | `/api/refill` | Refill |

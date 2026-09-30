@@ -343,6 +343,94 @@ def test_nav_at_matches_aligns_with_benchmarks(world: tuple[TestClient, FixedClo
     assert float(at_matches[-1]) != 100.0
 
 
+def test_monte_carlo_from_the_catalogue(world: tuple[TestClient, FixedClock]) -> None:
+    client, _ = world
+    headers = _auth(client)
+    response = client.post(
+        "/api/matches/monte_carlo",
+        headers=headers,
+        json={"match_id": "md-01", "iterations": 2000, "seed": 7},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["source"] == "CATALOG"
+    assert body["match_title"].startswith("Arsenal")
+    assert body["odds_1x2"]["HOME"] == "1.95"
+
+    distribution = body["monte_carlo"]
+    assert distribution["iterations"] == 2000
+    total = (
+        distribution["home_win_pct"] + distribution["draw_pct"] + distribution["away_win_pct"]
+    )
+    assert total == pytest.approx(100.0, abs=0.05)
+
+
+def test_monte_carlo_accepts_hypothetical_odds_and_is_deterministic(
+    world: tuple[TestClient, FixedClock],
+) -> None:
+    client, _ = world
+    headers = _auth(client)
+    payload = {
+        "odds_1x2": {"HOME": "1.50", "DRAW": "4.00", "AWAY": "6.00"},
+        "iterations": 2000,
+        "seed": 11,
+    }
+    first = client.post("/api/matches/monte_carlo", headers=headers, json=payload)
+    second = client.post("/api/matches/monte_carlo", headers=headers, json=payload)
+
+    assert first.status_code == 200, first.text
+    assert first.json() == second.json(), "aynı seed aynı dağılımı vermeli"
+    assert first.json()["source"] == "CUSTOM"
+    assert first.json()["lambda_home"] > first.json()["lambda_away"]
+
+
+def test_monte_carlo_requires_exactly_one_odds_source(
+    world: tuple[TestClient, FixedClock],
+) -> None:
+    client, _ = world
+    headers = _auth(client)
+
+    neither = client.post("/api/matches/monte_carlo", headers=headers, json={"iterations": 100})
+    assert neither.status_code == 400
+
+    both = client.post(
+        "/api/matches/monte_carlo",
+        headers=headers,
+        json={"match_id": "md-01", "odds_1x2": {"HOME": "2.0", "DRAW": "3.0", "AWAY": "4.0"}},
+    )
+    assert both.status_code == 400
+
+    unknown = client.post(
+        "/api/matches/monte_carlo", headers=headers, json={"match_id": "yok"}
+    )
+    assert unknown.status_code == 400
+
+    bad_iterations = client.post(
+        "/api/matches/monte_carlo",
+        headers=headers,
+        json={"match_id": "md-01", "iterations": 0},
+    )
+    assert bad_iterations.status_code == 400
+
+
+def test_monte_carlo_does_not_touch_the_ledger(world: tuple[TestClient, FixedClock]) -> None:
+    """Analiz ucu: bahis açmaz, enerji harcamaz, deftere yazmaz."""
+    client, _ = world
+    headers = _auth(client)
+    before = client.get("/api/portfolio", headers=headers).json()
+
+    client.post(
+        "/api/matches/monte_carlo",
+        headers=headers,
+        json={"match_id": "md-01", "iterations": 500, "seed": 3},
+    )
+
+    after = client.get("/api/portfolio", headers=headers).json()
+    assert after["fund"] == before["fund"]
+    assert after["simulation_energy"] == before["simulation_energy"]
+    assert after["pending_wagers"] == []
+
+
 def test_root_serves_the_ui_without_mock_state(world: tuple[TestClient, FixedClock]) -> None:
     """Arayüz API'den beslenir; enerji görünür (görünmeyen kural yok sayılır dersi)."""
     client, _ = world

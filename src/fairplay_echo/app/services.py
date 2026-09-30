@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from decimal import Decimal
 
@@ -31,7 +31,7 @@ from ..core.money import BASE_NAV, ONE, ZERO, Money, dec, q, q_money, q_nav, to_
 from ..core.nav import Fund, nav_series, settled_outcomes
 from ..core.odds import NormalizedMarket, clv_pct, expected_value, kelly_fraction
 from ..engines.bots import BotStrategy, benchmark_series
-from ..engines.match import MatchRecord, simulate_match
+from ..engines.match import MatchRecord, derive_lambdas, run_monte_carlo, simulate_match
 from ..repo import Repository, UserRecord, WagerRecord
 from . import fixtures as fixture_catalog
 from .clock import Clock
@@ -410,6 +410,56 @@ class PortfolioService:
             "nav": str(q_nav(fund.nav)),
             "bankruptcy_triggered": bankruptcy,
             "twr_pct": str(fund.twr),
+        }
+
+    def monte_carlo(
+        self,
+        *,
+        user_id: str,
+        match_id: str | None,
+        odds_1x2: Mapping[str, Money] | None,
+        iterations: int,
+        seed: int | None,
+    ) -> dict[str, object]:
+        """Sonuç dağılımı analizi. Bahis oynatmaz, deftere hiçbir şey yazmaz.
+
+        İki kaynak: `match_id` (katalog oranları) **veya** ham `odds_1x2` (varsayımsal senaryo).
+        Aynı `seed` her zaman aynı dağılımı verir.
+        """
+        self._require_user(user_id)
+
+        if match_id is not None:
+            fixture = fixture_catalog.get(match_id)
+            if fixture is None:
+                raise UnknownFixture(f"Bilinmeyen maç: {match_id}")
+            odds: dict[str, Money] = dict(fixture.odds_1x2())
+            title: str | None = fixture.title
+            source = "CATALOG"
+        else:
+            odds = dict(odds_1x2 or {})
+            if not odds:
+                raise UnknownMarket("Oran verilmedi.")
+            title = None
+            source = "CUSTOM"
+
+        lambda_home, lambda_away = derive_lambdas(odds)
+        summary = run_monte_carlo(lambda_home, lambda_away, iterations, seed=seed)
+        return {
+            "source": source,
+            "match_id": match_id,
+            "match_title": title,
+            "odds_1x2": {key: str(value) for key, value in odds.items()},
+            "lambda_home": round(lambda_home, 4),
+            "lambda_away": round(lambda_away, 4),
+            "monte_carlo": {
+                "iterations": summary.iterations,
+                "home_win_pct": summary.home_win_pct,
+                "draw_pct": summary.draw_pct,
+                "away_win_pct": summary.away_win_pct,
+                "over_25_pct": summary.over_25_pct,
+                "btts_pct": summary.btts_pct,
+            },
+            "seed": seed,
         }
 
     def _apply_bankruptcy(self, user_id: str, fund: Fund) -> bool:

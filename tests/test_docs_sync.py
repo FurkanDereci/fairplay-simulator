@@ -93,6 +93,40 @@ def test_client_side_settlement_endpoint_is_gone() -> None:
     assert "/api/wager/settle" not in _read(DOCS / "40-api.md")
 
 
+def test_parity_document_matches_the_api_surface() -> None:
+    """`docs/70-parite-ve-devralma.md`'nin **echo kolonu** `docs/40-api.md` ile tutarlı olmalı.
+
+    Orijinal repo hakkındaki satırlar bu deponun testinden geçemez (provenansı belgede yazılı);
+    burada yalnız echo tarafı iddialar bağlanır ki parite belgesi kendi başına sürüklenmesin.
+    """
+    rows = re.findall(
+        r"^\| `([A-Z]+) (/[^`]*)` \| [^|]+ \| ([^|]+) \|",
+        _read(DOCS / "70-parite-ve-devralma.md"),
+        re.M,
+    )
+    assert rows, "Parite belgesinde uç tablosu bulunamadı."
+    claimed = {
+        (method, path) for method, path, echo_cell in rows if echo_cell.strip().strip("*") == "var"
+    }
+    documented = set(
+        re.findall(r"^\| (GET|POST) \| `([^`]+)` \|", _read(DOCS / "40-api.md"), re.M)
+    )
+    assert claimed == documented, f"Parite belgesi ↔ API farkı: {sorted(claimed ^ documented)}"
+
+
+def test_design_tokens_have_no_raw_hex_outside_root() -> None:
+    """`DESIGN.md` iddiası: bütün renkler `:root`'ta yaşar, bileşenlerde ham hex yok.
+
+    İddia bir kez denetlenmişti; burada **kapıya** bağlanır ki yarın sessizce kaymasın.
+    """
+    page = _read(SRC / "web" / "index.html")
+    root = re.search(r":root\s*\{(.*?)\}", page, re.S)
+    assert root is not None, "`:root` token bloğu bulunamadı."
+    outside = page.replace(root.group(1), "")
+    found = sorted(set(re.findall(r"#[0-9a-fA-F]{3,8}\b", outside)))
+    assert not found, f":root dışında ham hex var: {found}"
+
+
 def test_documented_test_paths_exist() -> None:
     listed = set(re.findall(r"`(tests/[A-Za-z0-9_/\.]+)`", _read(DOCS / "50-test-strategy.md")))
     assert listed, "docs/50-test-strategy.md'de test yolu listesi bulunamadı."

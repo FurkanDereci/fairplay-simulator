@@ -73,10 +73,12 @@ uyarı bandı çıkar.
 | Neden var, ne değil | `docs/00-vision.md` |
 | Varlıklar, durum makineleri, değişmezler (I1–I6) | `docs/10-domain-model.md` |
 | **Sözleşme** — formüller + 13 işlenmiş örnek (`[G-x]`) | `docs/20-accounting-spec.md` |
+| **Arayüz sözleşmesi** (tokenlar, nevers, bileşen kuralları) | `DESIGN.md` |
 | Mevcut vs hedef mimari + geçiş tetikleyicileri | `docs/30-architecture.md` |
 | API (OpenAPI'den üretilir) | `docs/40-api.md` |
 | Risk → test matrisi | `docs/50-test-strategy.md` |
 | İnşa sırası ve durum | `docs/ROADMAP.md` |
+| Orijinal repo ile parite + devralma planı | `docs/70-parite-ve-devralma.md` |
 | Mimari kararlar (ADR) | `docs/60-decisions/` |
 
 ## Bu deponun tek kuralı

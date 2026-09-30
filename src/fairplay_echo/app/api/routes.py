@@ -10,7 +10,7 @@ from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, status
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ...repo import UserRecord
 from ..deps import get_current_user, get_service
@@ -92,6 +92,24 @@ class EstimateRequest(BaseModel):
 class SimulateRequest(BaseModel):
     match_id: str
     seed: int | None = None
+
+
+class MonteCarloRequest(BaseModel):
+    """Monte Carlo analizi — `match_id` (katalog) **veya** ham `odds_1x2` (varsayımsal senaryo).
+
+    İkisi birlikte verilemez: oranın kaynağı belirsizleşir. Hiçbiri verilmezse 400.
+    """
+
+    match_id: str | None = None
+    odds_1x2: dict[str, Decimal] | None = None
+    iterations: int = Field(default=10_000, ge=1, le=200_000)
+    seed: int | None = None
+
+    @model_validator(mode="after")
+    def _exactly_one_source(self) -> MonteCarloRequest:
+        if (self.match_id is None) == (self.odds_1x2 is None):
+            raise ValueError("match_id veya odds_1x2'den tam olarak biri verilmeli.")
+        return self
 
 
 def _auth_payload(user: UserRecord, token: str) -> dict[str, object]:
@@ -178,3 +196,19 @@ def simulate(
     service: PortfolioService = Depends(get_service),
 ) -> dict[str, object]:
     return service.simulate_match(user_id=user.id, match_id=req.match_id, seed=req.seed)
+
+
+@router.post("/matches/monte_carlo")
+def monte_carlo(
+    req: MonteCarloRequest,
+    user: UserRecord = Depends(get_current_user),
+    service: PortfolioService = Depends(get_service),
+) -> dict[str, object]:
+    """Sonuç dağılımı analizi — bahis oynatmaz, kupon açmaz."""
+    return service.monte_carlo(
+        user_id=user.id,
+        match_id=req.match_id,
+        odds_1x2=req.odds_1x2,
+        iterations=req.iterations,
+        seed=req.seed,
+    )

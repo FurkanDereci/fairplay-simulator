@@ -399,12 +399,25 @@ class PortfolioService:
         return {
             "match_id": match_id,
             "match_title": fixture.title,
+            "home_team": fixture.home_team,
+            "away_team": fixture.away_team,
+            "home_score": result.home_score,
+            "away_score": result.away_score,
             "score": f"{result.home_score} - {result.away_score}",
             "outcomes": {
                 "1X2": result.outcome_1x2,
                 "OVER_UNDER_2.5": result.outcome_ou_25,
                 "BTTS": result.outcome_btts,
             },
+            "events": [
+                {
+                    "minute": event.minute,
+                    "team": event.team,
+                    "type": event.event_type,
+                    "description": event.description,
+                }
+                for event in result.events
+            ],
             "settled_wagers": settled,
             "cash_balance": str(q_money(fund.cash)),
             "nav": str(q_nav(fund.nav)),

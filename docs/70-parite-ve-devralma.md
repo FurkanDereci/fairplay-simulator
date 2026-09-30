@@ -95,7 +95,54 @@ geri dönüşü vardır. Force-push, public repoda geçmişi geri dönüşsüz s
   olacak, diğeri ne olacak? (Vault'taki `fairplay-simulator` notu şu an ilkini işaret ediyor.)
 - **`wager/settle` kırıcı değişikliği** PR açıklamasında açıkça yazılmalı.
 
-## 6. Açık sorular
+## 7. Özellik paritesi (ölçülmüş, 2026-09-30)
+
+Uç paritesi (§1) **yüzeyi** ölçer; bu bölüm **ürün davranışını** ölçer. Ölçüm: orijinalin
+`src/frontend/index.html` kimlikleri (58) ↔ echo'nunki (42), `src/` içindeki terim taraması ve
+GDD'nin vaatleri.
+
+### 7.1 echo'da olmayan, orijinalde olan
+
+| # | Özellik | Orijinalde kanıt | echo'daki durum | Durum |
+| --- | --- | --- | --- | --- |
+| F1 | **Maç olayları (gol/dakika zaman çizelgesi)** | `match_engine.py` `MatchEvent` + `events.sort(...)`, `app.py` cevabında `"events"` | `MatchEvent` + `_build_events`; cevapta `events` (dakika, takım, tür, **anlık skor**) | ✅ |
+| F2 | **Simülasyon arenası** (skor + pazar bazında sonuçlar paneli) | `simulation-arena`, `sim-score-display`, `sim-outcome-1x2/ou/btts` | `#sim-panel`: skor, 3 pazar sonucu, olay listesi | ✅ |
+| F3 | **Kupon fişi (slip)** — odaklı onay yüzeyi | `slip-*` (14 kimlik): maç, market, seçim, oran, fair, vig, Kelly, stake, tavan kasa, ödeme, enerji maliyeti | Satır içi form; fair/vig satırda var, "fiş" yok | ⏳ |
+| F4 | **Factsheet kartı** (paylaşılabilir fon özeti) | `factsheet-*` (9 kimlik): NAV/TWR/Sharpe/Sortino/MDD/PF/winrate/alpha-beta | Metrik kutuları var; ayrı bir özet kartı yok | ⏳ |
+| F5 | **Solvent gün serisi göstergesi** | `streak-display`, `streak-bar`, `cd-tier-display` | Alan tutuluyor (`solvent_streak`), **gösterilmiyor**; tier indirimi bağlı değil | ⏳ |
+| F6 | **Kalıcı "ruin" uyarı kutusu** | `ruin-warning-box` | Geçici uyarı toast'ı + cevapta `ruin_risk_warning` | ⏳ |
+
+> **F1/F2 kapatıldı (2026-09-30):** motor artık gol olaylarını üretiyor (gol sayısı çekildikten
+> **sonra**, böylece eski tohumların skorları değişmedi) ve cevap `events` döndürüyor; arayüzde
+> sağ kolonun tepesinde simülasyon arenası var. Doğrulama: motor testleri + gerçek tarayıcıda
+> sürülüp ekran görüntüsü alındı; arena açıkken 375/900/1440'ta taşma/kırpılma kapısı eklendi.
+
+### 7.2 İkisinde de olmayan (GDD vaadi, kodda yok — parite eksiği **değil**)
+
+- **Historical Sandbox / Time Machine** (geçmiş sezon backtest): orijinal `src/` içinde
+  `sandbox|historical|time_machine|backtest` = **0**.
+- **Disiplin rozetleri** (Positive EV Hunter, Bankroll Guardian, CLV Master): orijinaldeki 5
+  `badge` referansı **kupon fişi ve bekleyen-sayısı etiketleri**; disiplin rozeti yok.
+- **Virtual Copy Fund / sosyal lig**: GDD'de açıkça Faz 2'ye ertelenmiş.
+
+### 7.3 echo'nun önde olduğu yerler (ölçülmüş)
+
+- **Kelly — orijinaldeki uygulama güvenilmez:** `slip-kelly-val` **istemci tarafında** hesaplanıyor
+  ve kenar yokken **varsayılan %5 öneriyor** (`kellyFraction = edge > 0 ? ... : 0.05`) — yani
+  pozitif kenar olmadığında da "Kelly %5.0 (50 TL)" yazıyor. echo'da hesap **sunucuda**, `p`
+  kullanıcıdan gelir ve kenar yoksa açıkça "pozitif EV yok (Kelly %0)" der (ADR-0006).
+- **CLV — orijinalde hiç yok:** `clv|closing` = **0**. echo'da var (ADR-0005) ve ~10 referans.
+- **Gerçek tarayıcı testleri + yerleşim taşma kapısı:** orijinalde yok.
+- **Lig filtresi**, `/api/estimate`, `/healthz`.
+- **Tasarım token'ları + `DESIGN.md`**: renk tek yerde, ham hex yok (testle bağlı).
+
+### 7.4 Eşitleme sırası
+
+Değer/emek sırasına göre: ~~**F1 + F2** (motor olayları + arena)~~ **✅ yapıldı** →
+**F5** (küçük, oyunlaştırma hikâyesini tamamlar) → **F6** (küçük) →
+**F3** (fiş; echo'da işlev zaten satır içinde) → **F4** (factsheet; kozmetik, metrikler var).
+
+## 8. Açık sorular
 
 - Karşılaştırmanın **karar anı** kimin: hangi ölçüt "daha iyi" sayılacak? (Bu dosya ölçütü
   tablolaştırır; eşiği kullanıcı koyar.)

@@ -27,12 +27,23 @@ LEAGUE_AVERAGE_GOALS = 2.6
 
 
 @dataclass(frozen=True)
+class MatchEvent:
+    """Maç içi olay — dakika, takım, tür ve anlık skoru taşıyan açıklama."""
+
+    minute: int
+    team: str
+    event_type: str
+    description: str
+
+
+@dataclass(frozen=True)
 class MatchResult:
     match_id: str
     home_team: str
     away_team: str
     home_score: int
     away_score: int
+    events: tuple[MatchEvent, ...] = ()
 
     @property
     def outcome_1x2(self) -> str:
@@ -126,6 +137,39 @@ def _poisson(rng: random.Random, lam: float) -> int:
         goals += 1
 
 
+def _goal_minutes(rng: random.Random, home_goals: int, away_goals: int) -> list[tuple[int, str]]:
+    """Gol dakikalarını üretir ve sıralar. **Gol sayısı çekildikten SONRA** çağrılır ki
+    olay üretimi mevcut tohumların skorlarını değiştirmesin."""
+    slots = ("HOME",) * home_goals + ("AWAY",) * away_goals
+    timed = [(rng.randint(1, 90), side) for side in slots]
+    timed.sort(key=lambda item: item[0])
+    return timed
+
+
+def _build_events(
+    rng: random.Random, home_goals: int, away_goals: int, home_team: str, away_team: str
+) -> tuple[MatchEvent, ...]:
+    """Gol olaylarını zaman çizelgesine çevirir; açıklama anlık skoru içerir."""
+    home = away = 0
+    events: list[MatchEvent] = []
+    for minute, side in _goal_minutes(rng, home_goals, away_goals):
+        if side == "HOME":
+            home += 1
+            team = home_team
+        else:
+            away += 1
+            team = away_team
+        events.append(
+            MatchEvent(
+                minute=minute,
+                team=team,
+                event_type="GOAL",
+                description=f"{minute}. dakika — {team} golü ({home}-{away})",
+            )
+        )
+    return tuple(events)
+
+
 def simulate_match(
     match_id: str,
     home_team: str,
@@ -134,15 +178,19 @@ def simulate_match(
     *,
     seed: int | None = None,
 ) -> MatchResult:
-    """Tek maç simüle eder. Aynı `seed` → aynı skor."""
+    """Tek maç simüle eder. Aynı `seed` → aynı skor **ve aynı olay zaman çizelgesi**."""
     lambda_home, lambda_away = derive_lambdas(odds_1x2)
     rng = random.Random(seed)
+    home_score = _poisson(rng, lambda_home)
+    away_score = _poisson(rng, lambda_away)
+    events = _build_events(rng, home_score, away_score, home_team, away_team)
     return MatchResult(
         match_id=match_id,
         home_team=home_team,
         away_team=away_team,
-        home_score=_poisson(rng, lambda_home),
-        away_score=_poisson(rng, lambda_away),
+        home_score=home_score,
+        away_score=away_score,
+        events=events,
     )
 
 

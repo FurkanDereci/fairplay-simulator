@@ -20,11 +20,12 @@ MEASURE = """() => {
       .filter(el => el.scrollWidth > el.clientWidth + 1)
       .map(el => el.textContent.trim().slice(0, 40));
   const wrap = document.querySelector('.table-wrap');
+  const fund = document.getElementById('fund-tiles');
   return {
     tasma: document.body.scrollWidth - document.documentElement.clientWidth,
-    kirpilan: [...clip('th'), ...clip('.market-name'), ...clip('.market-meta'), ...clip('.tile')],
-    tileKolon: getComputedStyle(document.querySelector('.tiles'))
-        .gridTemplateColumns.split(' ').length,
+    kirpilan: [...clip('th'), ...clip('.market-name'), ...clip('.market-meta'),
+               ...clip('.tile'), ...clip('.timeline li')],
+    tileKolon: getComputedStyle(fund).gridTemplateColumns.split(' ').length,
     tabloKaydirilabilir: wrap ? wrap.scrollWidth > wrap.clientWidth + 1 : null,
   };
 }"""
@@ -50,6 +51,24 @@ def test_no_overflow_or_clipping_at_any_viewport(
             data = page.evaluate(MEASURE)
             assert data["tasma"] <= 1, f"{label} ({width}px): {data['tasma']}px yatay taşma"
             assert data["kirpilan"] == [], f"{label} ({width}px) kırpılan metin: {data['kirpilan']}"
+    finally:
+        page.close()
+
+
+def test_no_overflow_with_the_simulation_arena_visible(
+    browser: Browser, live_server: str, register
+) -> None:
+    """Arena açıldıktan sonra da taşma/kırpılma olmamalı — yeni yüzey kapı dışında kalmasın."""
+    page = _open_workspace(browser, live_server, register, "arena")
+    try:
+        page.locator("button:has-text('Simüle et')").first.click()
+        page.wait_for_selector("#sim-panel", state="visible", timeout=15000)
+        for width, label in VIEWPORTS:
+            page.set_viewport_size({"width": width, "height": 800})
+            page.wait_for_timeout(300)
+            data = page.evaluate(MEASURE)
+            assert data["tasma"] <= 1, f"arena açıkken {label}: {data['tasma']}px yatay taşma"
+            assert data["kirpilan"] == [], f"arena açıkken {label} kırpılan: {data['kirpilan']}"
     finally:
         page.close()
 

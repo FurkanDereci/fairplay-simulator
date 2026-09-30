@@ -98,6 +98,15 @@ def test_full_flow_bet_simulate_and_console_is_clean(
     assert ("WON" in table) or ("LOST" in table)
     assert "TL" in table
 
+    arena = page.locator("#sim-panel")
+    assert arena.is_visible(), "simülasyon arenası görünmedi"
+    score = page.locator("#sim-score").inner_text()
+    assert score.replace(" ", "") .count("-") == 1
+    assert page.locator("#sim-outcomes .tile").count() == 3
+    goals = page.locator("#sim-events li").count()
+    totals = [int(part) for part in score.split("-")]
+    assert goals == sum(totals) or goals == 1  # golsüz maçta "Gol olmadı." tek satır
+
     assert page.locator("#chart-legend span").count() == 4
     assert not console_errors, f"konsol hatası: {console_errors}"
     assert not page_errors, f"sayfa hatası: {page_errors}"

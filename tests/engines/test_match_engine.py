@@ -45,6 +45,29 @@ def test_lambda_favourite_gets_more() -> None:
     assert lambda_home + lambda_away == pytest.approx(2.6, abs=0.01)
 
 
+def test_match_events_match_the_scoreline() -> None:
+    """Olay sayısı gol sayısına eşit; dakikalar 1–90 arası ve sıralı."""
+    for seed in range(12):
+        result = _simulate(seed)
+        assert len(result.events) == result.home_score + result.away_score
+        minutes = [event.minute for event in result.events]
+        assert minutes == sorted(minutes)
+        assert all(1 <= minute <= 90 for minute in minutes)
+        assert all(event.event_type == "GOAL" for event in result.events)
+
+
+def test_match_events_are_deterministic_and_track_the_running_score() -> None:
+    first = _simulate(42)
+    assert first.events == _simulate(42).events
+
+    home = away = 0
+    for event in first.events:
+        home += event.team == first.home_team
+        away += event.team == first.away_team
+        assert f"({home}-{away})" in event.description
+    assert (home, away) == (first.home_score, first.away_score)
+
+
 def test_outcomes_follow_the_score() -> None:
     """Sonuç etiketleri skordan tutarlı türetilir."""
     home_win = MatchResult("m", "A", "B", 2, 1)

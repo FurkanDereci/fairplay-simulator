@@ -196,6 +196,16 @@
   .tile.hero b { font-size: 26px; font-weight: 700; }
   .group + .group { margin-top: 14px; }
 
+  /* --- simülasyon arenası --- */
+  .sim-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+              margin-bottom: 10px; }
+  .sim-score { font-size: 20px; font-weight: 700; letter-spacing: .5px; }
+  .timeline { list-style: none; margin: 12px 0 0; padding: 0; }
+  .timeline li { display: flex; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line);
+                 font-size: 13px; }
+  .timeline li:first-child { border-top: 0; }
+  .timeline .minute { color: var(--muted); min-width: 34px; text-align: right; }
+
   /* --- tablolar --- */
   .table-wrap { overflow-x: auto; contain: inline-size; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -292,9 +302,19 @@
       </div>
 
       <div>
+        <section id="sim-panel" hidden>
+          <h2>Simülasyon sonucu</h2>
+          <div class="sim-head">
+            <strong id="sim-title"></strong>
+            <span class="sim-score" id="sim-score"></span>
+          </div>
+          <div class="tiles" id="sim-outcomes"></div>
+          <ol class="timeline" id="sim-events"></ol>
+        </section>
+
         <section>
           <h2>Portföy</h2>
-          <div class="tiles">
+          <div class="tiles" id="fund-tiles">
             <div class="tile hero"><small>NAV</small><b id="t-nav">–</b></div>
             <div class="tile hero"><small>TWR</small><b id="t-twr">–</b></div>
             <div class="tile"><small>Seri</small><b id="t-series">–</b></div>
@@ -726,6 +746,50 @@ async function placeWager(body, button) {
   }
 }
 
+function renderSimulation(payload) {
+  el("sim-title").textContent = payload.match_title;
+  el("sim-score").textContent = payload.score;
+
+  const outcomes = el("sim-outcomes");
+  outcomes.innerHTML = "";
+  [
+    ["1X2", payload.outcomes["1X2"]],
+    ["Alt/Üst 2.5", payload.outcomes["OVER_UNDER_2.5"]],
+    ["Karşılıklı gol", payload.outcomes["BTTS"]],
+  ].forEach(([label, value]) => {
+    const tile = document.createElement("div");
+    tile.className = "tile";
+    const caption = document.createElement("small");
+    caption.textContent = label;
+    const result = document.createElement("b");
+    result.textContent = value;
+    tile.append(caption, result);
+    outcomes.appendChild(tile);
+  });
+
+  const list = el("sim-events");
+  list.innerHTML = "";
+  if (payload.events.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "muted";
+    empty.textContent = "Gol olmadı.";
+    list.appendChild(empty);
+  } else {
+    payload.events.forEach((event) => {
+      const item = document.createElement("li");
+      const minute = document.createElement("span");
+      minute.className = "minute";
+      minute.textContent = event.minute + "'";
+      const text = document.createElement("span");
+      text.textContent = event.description;
+      item.append(minute, text);
+      list.appendChild(item);
+    });
+  }
+
+  el("sim-panel").hidden = false;
+}
+
 async function simulateMatch(matchId, button) {
   setBusy(button, true);
   try {
@@ -735,6 +799,7 @@ async function simulateMatch(matchId, button) {
     });
     toast(payload.match_title + " → " + payload.score + " · " +
       payload.settled_wagers.length + " kupon sonuçlandı");
+    renderSimulation(payload);
     if (payload.bankruptcy_triggered) toast("İflas: hesap cooldown'a alındı.", "warn");
     await refresh();
   } catch (error) {

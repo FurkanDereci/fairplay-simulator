@@ -262,3 +262,28 @@ T(n) = min(168, 4^(n−1)) saat      # n = tier ≥ 1
 | Eşzamanlı settlement | Aynı kupon ikinci kez settle edilemez (I3, `409`) |
 | Restart ortasında `PENDING` | Defterden replay ile kupon durumu korunur (I2, S2) |
 | `stake > cash` | `400` — kısmi doldurma yok |
+
+---
+
+## 6. Öğrenme ölçütleri (ürün değeri)
+
+"Bu simülatör öğretir" yanlışlanamaz bir cümledir. Yerine kullanıcının **kendi davranışı** ölçülür;
+hepsi defterden türer, hiçbiri tavsiye değildir (kararı kullanıcı verir — ADR-0006). Eşikler
+**politika** değerleridir (`docs/90-urun-degeri.md`).
+
+| Ölçüt | Formül | Eşik |
+| --- | --- | --- |
+| Bahis sayısı | `N` = bahis anı yakalanan `WAGER_PLACED` sayısı | `N < 6` → hiçbir eğilim okunmaz |
+| Bahis oranı | `mean(stake / portföy_değeri)` (bahis **anında**) | `> %15` → `aşırı` (tam Kelly tavanı) |
+| Favori payı | oranı `< 2.00` olan bahislerin payı | `> %70` → `favori ağırlıklı` |
+| Pazar çeşitliliği | kullanılan farklı market sayısı | — (bilgi) |
+| CLV eğilimi | ilk yarı ortalaması vs ikinci yarı ortalaması | fark `≥ +1,00` → `iyileşiyor`; `≤ −1,00` → `kötüleşiyor`; arası → `yatay` |
+
+Bahis oranında **portföy değeri** (`cash + locked`) kullanılır, NAV değil: NAV birim fiyatıdır
+(100 tabanlı), bahis boyutu ise portföyün yüzdesi olarak anlamlıdır.
+
+> **[G-16] Öğrenme ölçütleri**
+> 1.000 TL portföy, 100 TL'lik 6 bahis; kapanış oranları `2,10 · 2,05 · 2,00 · 1,95 · 1,90 · 1,85`
+> **Beklenen:** `N = 6` · bahis oranı `%10,00` → `ölçülü` · favori payı `%0,00` → `dengeli`
+> CLV: ilk yarı `−2,40` · ikinci yarı `+5,31` · ortalama `1,46` → **`iyileşiyor`** (fark `+7,71`)
+> Başlık: `CLV eğilimi yukarı`

@@ -113,6 +113,31 @@ def test_full_flow_bet_simulate_and_console_is_clean(
     page.close()
 
 
+def test_repeated_bets_do_not_flood_the_toast_stack(
+    browser: Browser, live_server: str, register
+) -> None:
+    """Yığın sınırı: tekrar eden mesaj birleşir ve yığın 4'ü geçmez.
+
+    Ölçüldü (2026-09-30): 6 bahis 6 toast üretiyordu; yığın öğrenme panelini ve grafiği
+    kapatıyordu. Ekran görüntüsüyle görülmeden fark edilmemişti.
+    """
+    page = browser.new_page(viewport={"width": 1440, "height": 1100})
+    register(page, "toast")
+
+    page.locator("details.match > summary").first.click()
+    bet = page.locator("[data-role='bet']").first
+    bet.wait_for(state="visible", timeout=5000)
+    for _ in range(6):
+        bet.click()
+        page.wait_for_timeout(250)
+
+    toasts = page.locator("#toast div")
+    assert toasts.count() <= 4, f"toast yığını sınırsız büyüdü: {toasts.count()}"
+    texts = toasts.all_inner_texts()
+    assert len(texts) == len(set(texts)), f"aynı mesaj tekrar etmiş: {texts}"
+    page.close()
+
+
 def test_energy_gate_closes_the_bet_buttons(
     browser: Browser, live_server: str, register
 ) -> None:

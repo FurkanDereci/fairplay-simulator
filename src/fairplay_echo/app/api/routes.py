@@ -147,6 +147,15 @@ def portfolio(
     return service.portfolio(user_id=user.id)
 
 
+@router.get("/learning-report")
+def learning_report(
+    user: UserRecord = Depends(get_current_user),
+    service: PortfolioService = Depends(get_service),
+) -> dict[str, object]:
+    """Öğrenme ölçütleri (docs/90): kullanıcının kendi davranışı — tavsiye değil."""
+    return service.learning_report(user_id=user.id)
+
+
 @router.post("/wager", status_code=status.HTTP_201_CREATED)
 def place_wager(
     req: WagerRequest,

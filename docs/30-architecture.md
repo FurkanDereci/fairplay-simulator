@@ -34,6 +34,7 @@ core/                      SAF ALAN — framework/DB/saat/RNG import ETMEZ
   settlement.py            ödeme kuralları + kupon sonuçlandırma
   energy.py                enerji (politika katmanı)
   cooldown.py              kademeli kilit (politika katmanı)
+  learning.py              öğrenme ölçütleri (defterden türeyen davranış metrikleri)
 app/                       İNCE API KABUĞU — parse → authz → servis → kalıcılık → serialize
   api/ · services/ · repo/ · auth · deps (Clock, Config, Session)      [S4]
 engines/                   match (tohumlu Poisson/MC) · bots (tohumlu) [S5–S6]

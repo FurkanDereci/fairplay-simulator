@@ -17,6 +17,13 @@ from decimal import Decimal
 from ..core import energy as energy_mod
 from ..core.cooldown import CooldownState
 from ..core.errors import InsufficientCash, InvalidAmount
+from ..core.learning import (
+    FAVOURITE_LINE,
+    MIN_SAMPLE,
+    STAKE_RATIO_LIMIT,
+    BetInput,
+    build_learning_report,
+)
 from ..core.ledger import EntryType, LedgerEntry
 from ..core.metrics import (
     MIN_T_STATISTIC,
@@ -535,6 +542,44 @@ class PortfolioService:
         for match_id in order:
             series.append(last_nav.get(match_id, series[-1]))
         return [str(q_nav(point)) for point in series]
+
+    def learning_report(self, *, user_id: str) -> dict[str, object]:
+        """Öğrenme ölçütleri (docs/90): davranış ölçülür, **tavsiye verilmez**."""
+        self._require_user(user_id)
+        entries = self.repo.entries(user_id)
+        bets = {
+            record.wager_id: BetInput(
+                wager_id=record.wager_id,
+                market_type=record.market_type,
+                odds=record.odds,
+                closing_odds=record.closing_odds,
+            )
+            for record in self.repo.wagers_for(user_id)
+        }
+        report = build_learning_report(entries, bets)
+        return {
+            "bets": report.bets,
+            "min_sample": MIN_SAMPLE,
+            "reliable": report.reliable,
+            "market_breadth": report.market_breadth,
+            "clv": {
+                "mean_pct": report.clv_mean_pct,
+                "first_half_pct": report.clv_first_half_pct,
+                "second_half_pct": report.clv_second_half_pct,
+                "trend": report.clv_trend,
+            },
+            "stake": {
+                "mean_ratio_pct": report.mean_stake_ratio_pct,
+                "limit_pct": to_pct(STAKE_RATIO_LIMIT),
+                "verdict": report.stake_verdict,
+            },
+            "favourite": {
+                "share_pct": report.favourite_share_pct,
+                "line": str(FAVOURITE_LINE),
+                "verdict": report.favourite_verdict,
+            },
+            "headline": report.headline,
+        }
 
     def portfolio(self, *, user_id: str) -> dict[str, object]:
         user = self._require_user(user_id)

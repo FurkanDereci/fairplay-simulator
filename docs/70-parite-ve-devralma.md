@@ -28,6 +28,7 @@ adayıdır**; ayrı bir repo değildir. Bu dosyanın amacı o kararı kanaate b�
 | `POST /api/wager/settle` | var | **yok** | bilinçli kaldırıldı — bkz. §3 |
 | `GET /healthz` | yok | var | |
 | `POST /api/estimate` | yok | var | kullanıcı olasılığından EV/Kelly (ADR-0006) |
+| `GET /api/learning-report` | yok | var | öğrenme ölçütleri: davranış metrikleri, tavsiye değil (`docs/90`) |
 
 **Ölçüm:** orijinalin uçları `src/backend/app.py` içindeki `@app.*` dekoratörlerinden, echo'nunki
 `docs/40-api.md`'den (OpenAPI'den üretilir) okundu.

@@ -431,6 +431,51 @@ def test_monte_carlo_does_not_touch_the_ledger(world: tuple[TestClient, FixedClo
     assert after["pending_wagers"] == []
 
 
+def test_learning_report_refuses_to_read_a_trend_from_an_empty_log(
+    world: tuple[TestClient, FixedClock],
+) -> None:
+    """Alan 9'un kapısı: öğrenme ölçütleri ucu, örneklem kuralını kendisi de uygular."""
+    client, _ = world
+    headers = _auth(client)
+
+    payload = client.get("/api/learning-report", headers=headers).json()
+    assert payload["bets"] == 0
+    assert payload["reliable"] is False
+    assert payload["min_sample"] == 6
+    assert payload["clv"]["trend"] == "örneklem yetersiz"
+    assert "Örneklem yetersiz (0/6)" in payload["headline"]
+
+
+def test_learning_report_measures_behavior_not_advice(
+    world: tuple[TestClient, FixedClock],
+) -> None:
+    """Ölçütler davranışı sayar; tavsiye/tahmin alanı **yoktur** (ADR-0006, docs/90)."""
+    client, _ = world
+    headers = _auth(client)
+    for _ in range(6):
+        _wager(client, headers, stake="50", match_id="md-01")
+
+    payload = client.get("/api/learning-report", headers=headers).json()
+    assert payload["bets"] == 6
+    assert payload["reliable"] is True
+    assert payload["market_breadth"] == 1
+    assert payload["stake"]["verdict"] in {"ölçülü", "aşırı"}
+    assert payload["stake"]["limit_pct"] == "15.00"
+    assert payload["favourite"]["line"] == "2.00"
+    # Kapanış oranı olmadığı için CLV serisi boş: genel örneklem yeter, CLV'in kendi kapısı var.
+    assert payload["clv"]["trend"] == "örneklem yetersiz"
+    assert set(payload) == {
+        "bets",
+        "min_sample",
+        "reliable",
+        "market_breadth",
+        "clv",
+        "stake",
+        "favourite",
+        "headline",
+    }
+
+
 def test_risk_reliability_flags_a_thin_sample(world: tuple[TestClient, FixedClock]) -> None:
     """Anlamlılık kapısı (docs/20 §2.8): az işlemli portföyde risk metrikleri etiketlenir."""
     client, _ = world

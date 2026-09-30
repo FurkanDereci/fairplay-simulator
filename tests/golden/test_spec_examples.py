@@ -12,6 +12,7 @@ from decimal import Decimal as D
 from fairplay_echo.core import cooldown as cooldown_mod
 from fairplay_echo.core import energy as energy_mod
 from fairplay_echo.core import metrics, nav, odds
+from fairplay_echo.core.learning import BetInput, build_learning_report
 from fairplay_echo.core.ledger import Ledger
 from fairplay_echo.core.metrics import SettledWager
 from fairplay_echo.core.money import Money, q, q_nav, q_units
@@ -141,6 +142,71 @@ def test_g12_energy() -> None:
     assert half_hour == 5
     two_hours, _ = energy_mod.regen(0, EPOCH, EPOCH + timedelta(hours=2))
     assert two_hours == 20
+
+
+def test_g16_learning_metrics() -> None:
+    """[G-16] Öğrenme ölçütleri: CLV eğilimi, bahis oranı, favori payı."""
+    ledger = Ledger()
+    ledger.deposit(D("1000"))
+    closings = ["2.10", "2.05", "2.00", "1.95", "1.90", "1.85"]
+    for index in range(1, 7):
+        wager_id = f"b{index}"
+        ledger.place_wager(wager_id, D("100"))
+        ledger.settle_wager(wager_id, D("100"), D("100"))  # push: net 0, portföy sabit
+
+    bets = {
+        f"b{index}": BetInput(f"b{index}", "1x2", D("2.00"), D(closing))
+        for index, closing in enumerate(closings, start=1)
+    }
+    report = build_learning_report(ledger.entries, bets)
+
+    assert report.bets == 6
+    assert report.reliable is True
+    assert report.clv_first_half_pct == D("-2.40")
+    assert report.clv_second_half_pct == D("5.31")
+    assert report.clv_mean_pct == D("1.46")
+    assert report.clv_trend == "iyileşiyor"
+    assert report.mean_stake_ratio_pct == D("10.00")
+    assert report.stake_verdict == "ölçülü"
+    assert report.favourite_share_pct == D("0.00")
+    assert report.favourite_verdict == "dengeli"
+    assert report.headline == "CLV eğilimi yukarı"
+
+
+def test_g16_thin_sample_reads_no_trend() -> None:
+    """[G-16] `N < 6` iken eğilim okunmaz — alan 3'ün örneklem kuralının ikizi."""
+    ledger = Ledger()
+    ledger.deposit(D("1000"))
+    for index in range(3):
+        ledger.place_wager(f"t{index}", D("100"))
+    bets = {
+        f"t{index}": BetInput(f"t{index}", "1x2", D("2.00"), D("2.10")) for index in range(3)
+    }
+
+    report = build_learning_report(ledger.entries, bets)
+    assert report.reliable is False
+    assert report.clv_trend == "örneklem yetersiz"
+    assert report.clv_first_half_pct is None
+    assert "Örneklem yetersiz (3/6)" in report.headline
+
+
+def test_g16_headline_writes_percentages_in_turkish() -> None:
+    """[G-16] Metindeki yüzde tr-TR yazılır (virgül) ve ek uyumu bozulmaz."""
+    ledger = Ledger()
+    ledger.deposit(D("1000"))
+    for index in range(6):
+        ledger.place_wager(f"h{index}", D("166"))  # 166/1000 = %16,60 > %15
+    bets = {
+        f"h{index}": BetInput(f"h{index}", "1x2", D("1.50"), D("1.60")) for index in range(6)
+    }
+
+    report = build_learning_report(ledger.entries, bets)
+    assert report.stake_verdict == "aşırı"
+    assert report.favourite_verdict == "favori ağırlıklı"
+    assert "portföyün %16,60 seviyesinde" in report.headline
+    assert "sınır %15,00" in report.headline
+    assert "favori oranı %100,00" in report.headline
+    assert "%16.60" not in report.headline, "yüzde noktayla yazılmamalı (tr-TR)"
 
 
 def test_g15_energy_cap_rules() -> None:

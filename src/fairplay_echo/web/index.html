@@ -121,7 +121,7 @@
            z-index: 20; }
   #toast div { background: var(--card-2); border: 1px solid var(--line-strong);
                border-left: 4px solid var(--accent-soft); border-radius: 8px;
-               padding: 10px 12px; font-size: 13px; }
+               padding: 10px 12px; font-size: 13px; cursor: pointer; }
   #toast div.err { border-left-color: var(--bad); }
   #toast div.err::before { content: "Hata: "; font-weight: 600; color: var(--bad); }
   #toast div.warn { border-left-color: var(--warn); }
@@ -348,6 +348,17 @@
           </div>
         </section>
 
+        <section id="learning-panel" hidden>
+          <h2>Öğrenme <span class="muted" style="font-weight:400;font-size:12px">— yalnız kendi sayıların, tavsiye değil</span></h2>
+          <div class="tiles">
+            <div class="tile"><small>Bahis</small><b id="t-lbets">–</b></div>
+            <div class="tile"><small>Bahis oranı</small><b id="t-lstake">–</b></div>
+            <div class="tile"><small>Favori payı</small><b id="t-lfav">–</b></div>
+            <div class="tile"><small>CLV eğilimi</small><b id="t-lclv">–</b></div>
+          </div>
+          <p id="learning-note" class="muted" style="font-size:11.5px;margin:8px 0 0"></p>
+        </section>
+
         <section>
           <h2>NAV ve benchmark botları</h2>
           <canvas id="chart"></canvas>
@@ -386,14 +397,35 @@ function clearBanner() {
   el("banner").hidden = true;
 }
 
+const TOAST_MS = 6000;
+// Yığın sınırı: 6 bahis 6 toast demek değil — yığın paneli ve grafiği kapatıyordu.
+const TOAST_LIMIT = 4;
+const toastTimers = new WeakMap();
+
+function scheduleToastRemoval(node) {
+  const previous = toastTimers.get(node);
+  if (previous) clearTimeout(previous);
+  toastTimers.set(node, setTimeout(() => node.remove(), TOAST_MS));
+}
+
 function toast(message, kind = "info") {
   const box = el("toast");
+  // Aynı mesaj tekrar ederse yeni düğüm eklenmez; süresi yenilenir.
+  const duplicate = Array.from(box.children).find((node) => node.textContent === message);
+  if (duplicate) {
+    scheduleToastRemoval(duplicate);
+    return;
+  }
+
   const node = document.createElement("div");
   node.textContent = message;
   if (kind === "error") node.className = "err";
   if (kind === "warn") node.className = "warn";
+  node.title = "Kapatmak için tıkla";
+  node.addEventListener("click", () => node.remove());
   box.appendChild(node);
-  setTimeout(() => node.remove(), 6000);
+  scheduleToastRemoval(node);
+  while (box.children.length > TOAST_LIMIT) box.firstElementChild.remove();
 }
 
 async function api(path, options = {}) {
@@ -1014,6 +1046,35 @@ async function loadFixtures() {
   applyFilter();
 }
 
+function renderLearning(learning) {
+  const panel = el("learning-panel");
+  panel.hidden = learning.bets === 0;
+  setTile("t-lbets", String(learning.bets));
+  setTile(
+    "t-lstake",
+    learning.stake.mean_ratio_pct === null
+      ? "–"
+      : fmtPct(learning.stake.mean_ratio_pct) + " (" + learning.stake.verdict + ")"
+  );
+  setTile(
+    "t-lfav",
+    learning.favourite.share_pct === null
+      ? "–"
+      : fmtPct(learning.favourite.share_pct) + " (" + learning.favourite.verdict + ")"
+  );
+  setTile("t-lclv", learning.clv.trend);
+
+  // Örneklem kuralı burada da yazılı: sayı gösterilirken ne kadar güvenilir olduğu söylenir.
+  const parts = [learning.headline];
+  if (learning.clv.trend === "örneklem yetersiz") {
+    parts.push(
+      "CLV eğilimi için kapanış oranı gerekiyor (en az " + learning.min_sample + " bahis)."
+    );
+  }
+  parts.push("Pazar çeşitliliği: " + learning.market_breadth + ".");
+  el("learning-note").textContent = parts.join(" ");
+}
+
 async function refresh() {
   try {
     const portfolio = await api("/api/portfolio");
@@ -1022,6 +1083,7 @@ async function refresh() {
     renderEnergy(portfolio);
     renderWagers(portfolio);
     renderChart(portfolio);
+    renderLearning(await api("/api/learning-report"));
   } catch (error) {
     toast(error.message, "error");
   }

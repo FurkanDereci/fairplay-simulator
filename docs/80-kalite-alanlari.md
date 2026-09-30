@@ -33,15 +33,19 @@ yazmak yasak).
 | # | Alan | Karar | Kapı | Durum |
 | --- | --- | --- | --- | --- |
 | 8 | **Süreç kapıları, ADR, bağımsız inceleme** | Her mimari karar ADR; "bitti" tanımı testlerle; **yazar kendi işini onaylamaz** (farklı model, salt-okur inceleme) | `docs/60-decisions/` · docs-sync · bağımsız inceleme turu | ✅ |
-| 9 | **Kullanıcı, değişim, ürün değeri** | Ürün **eğitir**: kararı kullanıcı verir (`p`), ürün disiplin aracıdır; tavsiye/tahmin yok | — | ⏳ **kapı yok** (bilinçli boşluk; "öğrettiği gösterilebilir" nasıl ölçülür karar bekler) |
+| 9 | **Kullanıcı, değişim, ürün değeri** | Ürün **eğitir**: kararı kullanıcı verir (`p`), tavsiye/tahmin yok. "Öğretir" iddiası **iki katmana** ayrıldı — davranış ölçümü (kapı var) ve öğrenme (🅿️ insan çalışması, protokol yazılı) | `docs/90-urun-degeri.md` · `GET /api/learning-report` · `[G-16]` golden · `tests/api` örneklem testi | ✅ / 🅿️ |
 | 10 | **Mimari sınırlar, geçiş tetikleyicileri** | Tek süreç + SQLite; hedef mimari (PG/Timescale/Redis) **sayısal tetikleyiciye** bağlı | `docs/30-architecture.md` CURRENT/TARGET | ✅ (tetikleyiciler elle; test edilebilir hale getirilebilir) |
 | 11 | **Domain paketi (projeye özel matematik)** | Vig arındırma **çarpımsal** (bilinçli sınır: favori–longshot yanlılığı modellenmiyor); R_ruin formülü ve yarım-Kelly | `[G-8]`–`[G-13]` golden · planlanan ruin tablosu testi | ✅ / ⏳ (R1 açık) |
 
 ---
 
-## Boşluklar (öncelik sırasıyla)
+## Boşluklar
 
-1. **Alan 9 — ürün değeri ölçüsüz.** "Öğretiyor mu" iddiasının kapısı tanımlı değil.
+**Kapısız alan kalmadı** (2026-09-30). Tek açık kalem bilinçli ertelendi:
+
+- 🅿️ **Alan 9'un ikinci katmanı** — "bu sayıları gören kullanıcı daha iyi karar verir" iddiası.
+  Otomatik kapısı olamaz (insan çalışması); protokol `docs/90-urun-degeri.md` §4'te ön-kayıtlı,
+  **koşulmadı**.
 
 > **Kapananlar (2026-09-30):** Alan 5 (veri dayanıklılığı) — ADR-0008 + geri yükleme tatbikatı;
 > bu arada FK zorlamasının hiç açık olmadığı (yazılı ama yürürlükte olmayan kısıtlar) ortaya çıktı
@@ -50,11 +54,14 @@ yazmak yasak).
 > sürümde açık hata, donmuş `ledger_v1.json` fixture'ı, ölçülmüş snapshot tetikleyicisi.
 > Alan 1 (doğrulama mimarisi) — ADR-0010: sınır tablosu (`docs/50-test-strategy.md` §9) +
 > `tests/test_boundaries.py`; denetim enerji tavanı kuralını buldu ve `[G-15]` olarak yazıldı.
+> Alan 9 (ürün değeri) — `docs/90-urun-degeri.md`: ölçülebilir katman `GET /api/learning-report`
+> + `[G-16]`; ölçülemeyen katman protokole bağlandı.
 
 ## İlgili belgeler
 
 - `docs/50-test-strategy.md` — risk → test matrisi ve devralınan 4 doğrulama paketi (§8).
 - `docs/70-parite-ve-devralma.md` — gereksinim paritesi; R1–R7 (alan 3 ve 11'in açık maddeleri).
+- `docs/90-urun-degeri.md` — "öğrettiği" nasıl ölçülür: davranış ölçütleri + eşikler (alan 9).
 - `docs/30-architecture.md` — CURRENT/TARGET ve geçiş tetikleyicileri (alan 10).
 - `DESIGN.md` — arayüz sözleşmesi: tokenlar, "ne olmayacak"lar, doğrulama tanımı (alan 7).
 - `AGENTS.md` §9 — arayüz kalite eşiği (alan 7'nin kabul ölçütü).

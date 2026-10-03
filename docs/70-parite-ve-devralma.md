@@ -89,30 +89,36 @@ tutarlılığı için token gerekir.
 
 ## 5. Devralma planı
 
-> **Durum (2026-10-03):** parite ön koşulu kapandı — R1–R6 karşılandı (§7.2), dört kapı yeşil.
-> İçerik yayınlandı; iki geçmiş **ilgisiz** olduğu için GitHub `v2`den PR açmadı, içerik
-> **`v2-merge`** dalında `main` geçmişinin **üstüne tek commit** olarak konuldu ve **PR #1** açıldı.
-> `main`'e doğrudan yazılmadı, force-push yapılmadı.
+> **Durum (2026-10-03, kapandı):** parite ön koşulu kapandı — R1–R6 karşılandı (§7.2), dört kapı yeşil.
+> İki geçmiş **ilgisiz** olduğu için GitHub `v2`den PR açmadı; içerik **`v2-merge`** dalında `main`
+> geçmişinin **üstüne** konuldu ve **PR #1** açıldı. Karar verildi ve PR **merge edildi**:
+> **`e3ee368`** (merge commit) — `main` artık bu koddur, orijinalin commit geçmişi **ata olarak
+> korunur**. `main`'e doğrudan yazılmadı, force-push yapılmadı.
 
-Karar: bu depo daha iyi bulunursa içerik doğrudan **upstream** repoya gider. (Bu depo artık aynı adı
+Karar verildi: bu depo daha iyi bulundu ve **upstream'in yerine geçti**. (Bu depo artık aynı adı
 taşıyor: `fairplay-simulator`; "echo" çalışma adı bırakıldı.)
 
-Yol **(dal + PR)**, force-push **değil**:
+Uygulanan yol **(dal + PR)**, force-push **değil**:
 
 1. Bu depo, `origin` olarak `git@github.com:FurkanDereci/fairplay-simulator.git`'e bağlandı.
 2. İçerik **ayrı bir dalda** yayınlandı (`v2`; PR için `v2-merge`), `main`'e doğrudan yazılmadı.
 3. PR ile **diff olarak** incelendi: parite kaybı var mı, kırıcı değişiklik ne, testler ne diyor
    → **PR #1**: https://github.com/FurkanDereci/fairplay-simulator/pull/1
-4. Kabul edilirse `main`'e merge edilir; edilmezse dal silinir.
+4. ✅ `main`'e **merge edildi** (`e3ee368`); PR kapanışta `v2`/`v2-merge` dalları silinebilir.
 
 Gerekçe: orijinalin commit geçmişi korunur, karar **incelenebilir bir diff** olur (kanaat değil) ve
-geri dönüşü vardır. Force-push, public repoda geçmişi geri dönüşsüz siler.
+geri dönüşü vardır (merge geri alınabilir). Force-push, public repoda geçmişi geri dönüşsüz siler.
 
-**Devralma anında çözülecek iki şey:**
+**Devralmada uygulananlar ve kalanlar:**
 
-- **İki yerel klon:** `~/dev/fairplay_simulator_src` (upstream klonu) ve `~/dev/fairplay-simulator`
-  (bu depo). Hangisi çalışma klonu olacak, diğeri ne olacak?
-- **`wager/settle` kırıcı değişikliği** PR açıklamasında açıkça yazılmalı → yazıldı.
+- `LICENSE` upstream'den **birebir geri konuldu** (yeni ağaçta yoktu; public repo lisanssız kalmasın).
+- **Devralınan belgeler ağaçta yok, geçmişte durur:** upstream'in `docs/architecture/00–03`,
+  `docs/research/01–02`, `docs/agents/*` ve eski kod (`src/backend`, `src/frontend`,
+  `src/data_ingestion`, `tooling/`) yeni ağaçta yer almaz; hepsi **`4c34c53` ata commit'inde**
+  erişilebilir (bu belgenin §6–§7 atıfları zaten o commit'e bağlı).
+- **Kalan (2026-10-03):** iki yerel klon kararı — `~/dev/fairplay_simulator_src` (eski upstream klonu,
+  artık gereksiz) ve `~/dev/fairplay-simulator` (çalışma klonu). İkincisi esas alınır; ilki emekliye
+  ayrılır.
 
 ## 6. Özellik paritesi (ölçülmüş, 2026-09-30)
 

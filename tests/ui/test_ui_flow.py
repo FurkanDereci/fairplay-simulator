@@ -113,6 +113,31 @@ def test_full_flow_bet_simulate_and_console_is_clean(
     page.close()
 
 
+def test_unreliable_risk_metrics_carry_no_colour(
+    browser: Browser, live_server: str, register
+) -> None:
+    """Alan 3'ün arayüz ayağı: `t < 2` iken metrik etiketlenir **ve rengi susar**.
+
+    Ölçüldü (2026-10-03, kullanıcı ekran görüntüsü): "yorumlanmamalı" notu varken MDD ve Alpha
+    kırmızı kalıyordu. Renk bir yorumdur; anlamsız örneklemde yorum yasak (DESIGN.md).
+    """
+    page = browser.new_page()
+    register(page, "riskrenk")
+    page.locator("details.match > summary").first.click()
+    page.wait_for_selector("[data-role='bet']", timeout=5000)
+    page.locator("input[aria-label$='stake']").first.fill("10")
+    page.locator("[data-role='bet']").first.click()
+    page.wait_for_timeout(800)
+    page.locator("button:has-text('Simüle et')").first.click()
+    page.wait_for_timeout(1500)
+
+    assert "Örneklem yetersiz" in page.locator("#risk-note").inner_text()
+    for tile in ("t-sharpe", "t-sortino", "t-mdd", "t-beta", "t-alpha", "t-ras"):
+        klass = page.locator(f"#{tile}").get_attribute("class")
+        assert klass in (None, "", "muted"), f"{tile} anlamsızken renk taşıyor: {klass!r}"
+    page.close()
+
+
 def test_repeated_bets_do_not_flood_the_toast_stack(
     browser: Browser, live_server: str, register
 ) -> None:

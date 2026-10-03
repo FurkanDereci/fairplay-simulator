@@ -46,6 +46,11 @@ Bu dosyanın varlık sebebi: bir ajan yön verilmediğinde eğitim verisinin ort
 
 - Yeşil/kırmızı **dekor değildir**: yalnız işaretli kâr/zarar ve kupon durumu.
 - Sıfır değeri nötrdür — yeşil gösterilmez.
+- **Anlamsız metrik renk taşımaz.** `risk.reliability.sharpe_reliable` false iken risk kutuları
+  (Sharpe/Sortino/MDD/Beta/Alpha/RAS) **nötr** gösterilir: sayı kalır, kırmızı/yeşil susar. Çünkü
+  renk bir **yorum**dur ve `t < 2` iken yorum yasaktır (`docs/20` §2.8, alan 3). Ölçüldü
+  (2026-10-03, kullanıcı ekran görüntüsü): etiket "yorumlanmamalı" derken MDD ve Alpha kırmızı
+  kalıyordu — renk "ölçüm" izlenimi veriyordu.
 - Grafik serileri anlam taşımadığı için **nötr palet + çizgi deseni** kullanır (renk körü ayrımı).
   Portföy çizgisi en üstte ve daha kalın çizilir (üst üste binmede görünür kalsın).
 

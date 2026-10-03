@@ -957,13 +957,17 @@ function renderPortfolio(portfolio) {
   setTile("t-total", fmtMoney(fund.total_value));
 
   const risk = portfolio.risk;
-  setTile("t-sharpe", fmtNumber(risk.sharpe_ratio, 2));
-  setTile("t-sortino", fmtNumber(risk.sortino_ratio, 2));
+  /* Anlamlılık kapısı rengi de bağlar (DESIGN.md): t < 2 iken renk "ölçüm" izlenimi vermemeli.
+     Sayı kalır, yorum (yeşil/kırmızı/amber) susar. */
+  const reliable = risk.reliability.sharpe_reliable;
+  const verdict = (klass) => (reliable ? klass : "muted");
+  setTile("t-sharpe", fmtNumber(risk.sharpe_ratio, 2), verdict(""));
+  setTile("t-sortino", fmtNumber(risk.sortino_ratio, 2), verdict(""));
   const mdd = Number(risk.max_drawdown_pct);
-  setTile("t-mdd", fmtPct(mdd), mdd >= 15 ? "bad" : (mdd >= 5 ? "warn" : ""));
-  setTile("t-beta", fmtNumber(risk.beta, 2));
-  setTile("t-alpha", fmtSignedPct(risk.alpha), signClass(risk.alpha));
-  setTile("t-ras", fmtNumber(risk.risk_adjusted_score, 2));
+  setTile("t-mdd", fmtPct(mdd), verdict(mdd >= 15 ? "bad" : (mdd >= 5 ? "warn" : "")));
+  setTile("t-beta", fmtNumber(risk.beta, 2), verdict(""));
+  setTile("t-alpha", fmtSignedPct(risk.alpha), verdict(signClass(risk.alpha)));
+  setTile("t-ras", fmtNumber(risk.risk_adjusted_score, 2), verdict(""));
 
   const stats = risk.trade_stats;
   const reliability = risk.reliability;

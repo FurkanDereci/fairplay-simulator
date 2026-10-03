@@ -29,8 +29,9 @@ DoD = testler yeşil + `ruff`/`mypy` temiz + dokümanlar güncel + `docs-sync` g
   Kurulum root gerektirmez (`playwright install chromium`); tarayıcı yoksa testler atlanır.
 - **Tipli istemci üretimi** (OpenAPI → TS) — elle yazılmış ince istemci var.
 - **Rozetler ve solvent-gün tier indirimi** — ✅ **rozetler** (disiplin, ADR-0012) `learning-report`
-  ölçütlerinden türetiliyor ve cooldown tavanını indiriyor; **solvent-gün** tier indirimi çekirdekte
-  testli (`I6`) ama duvar saatiyle gün sınırı işleyen zamanlayıcıya bağlanmadı (F5, kapsam dışı).
+  ölçütlerinden türetiliyor ve cooldown tavanını indiriyor; ✅ **solvent-gün** sayacı artık
+  **duvar saatiyle işliyor** (`portfolio`/`wager` tick'i; `[G-20]`, ADR-0015) ve arayüzde görünüyor
+  (F5). İlk şema göçü de bu turda geldi (idempotent `ALTER TABLE`).
 - **Grafikte ortak zaman ekseni** — ✅ çözüldü: portföy NAV'ı **maç sınırlarında** örneklenir
   (`portfolio.nav_at_matches`), böylece botlarla aynı uzunlukta ve aynı eksende çizilir.
 - Sosyal kopya fon / lig (Faz 2) — ayrı ADR gerektirir.

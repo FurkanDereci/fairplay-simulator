@@ -44,6 +44,15 @@ def _auth(client: TestClient, username: str = "aytek") -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def _relogin(client: TestClient, username: str = "aytek") -> dict[str, str]:
+    """Saat ilerletildikten sonra **yeniden giriş**: token ömrü 12 saat, uzun atlamada doluyor."""
+    response = client.post(
+        "/api/auth/login", json={"username": username, "password": "gizli123"}
+    )
+    assert response.status_code == 200, response.text
+    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+
 def _wager(
     client: TestClient,
     headers: dict[str, str],
@@ -293,6 +302,59 @@ def test_cooldown_unlocks_after_expiry(world: tuple[TestClient, FixedClock]) -> 
     reopened = _wager(client, headers, stake="10")
     assert reopened.status_code == 201, reopened.text
     assert client.get("/api/portfolio", headers=headers).json()["cooldown"]["locked"] is False
+
+
+def test_solvent_days_lower_the_tier_after_a_bankruptcy(
+    world: tuple[TestClient, FixedClock],
+) -> None:
+    """F5 — iflas sonrası **3 solvent gün** tier'ı düşürür (duvar saati, tick'le işler)."""
+    client, clock = world
+    headers = _auth(client)
+
+    odds = {"HOME": D("1.95"), "DRAW": D("3.50"), "AWAY": D("4.10")}
+    preview = simulate_match("md-01", "Arsenal", "Chelsea", odds, seed=7)
+    losing_selection = "AWAY" if preview.outcome_1x2 == "HOME" else "HOME"
+    _wager(client, headers, stake="1000", selection=losing_selection, confirm_ruin=True)
+    client.post("/api/matches/simulate", headers=headers, json={"match_id": "md-01", "seed": 7})
+
+    after_bankruptcy = client.get("/api/portfolio", headers=headers).json()["cooldown"]
+    assert after_bankruptcy["tier"] == 1
+    assert (after_bankruptcy["solvent_streak"], after_bankruptcy["last_solvent_day"]) == (
+        0,
+        "2026-01-01",
+    )
+
+    clock.advance(hours=2)  # T(1) = 1 saat: kilit açılır
+    assert client.post("/api/refill", headers=headers).status_code == 200
+
+    clock.advance(hours=72)  # 3 gün, hesap solvent
+    cooldown = client.get("/api/portfolio", headers=_relogin(client)).json()["cooldown"]
+    assert cooldown["tier"] == 0, "3 solvent gün tier'ı düşürmeliydi"
+    assert cooldown["solvent_streak"] == 0
+    assert cooldown["last_solvent_day"] == "2026-01-04"
+    assert cooldown["solvent_days_to_tier"] == 3
+
+
+def test_days_spent_bankrupt_do_not_count_as_solvent_days(
+    world: tuple[TestClient, FixedClock],
+) -> None:
+    """F5 — iflasta geçen günler **yanar**: kilit sürerken geçen 3 gün tier'ı düşürmez."""
+    client, clock = world
+    headers = _auth(client)
+
+    odds = {"HOME": D("1.95"), "DRAW": D("3.50"), "AWAY": D("4.10")}
+    preview = simulate_match("md-01", "Arsenal", "Chelsea", odds, seed=7)
+    losing_selection = "AWAY" if preview.outcome_1x2 == "HOME" else "HOME"
+    _wager(client, headers, stake="1000", selection=losing_selection, confirm_ruin=True)
+    client.post("/api/matches/simulate", headers=headers, json={"match_id": "md-01", "seed": 7})
+
+    clock.advance(hours=72)  # iflas sürüyor (refill yok)
+    portfolio = client.get("/api/portfolio", headers=_relogin(client)).json()
+    assert portfolio["fund"]["bankrupt"] is True
+    cooldown = portfolio["cooldown"]
+    assert cooldown["tier"] == 1, "iflas sürerken tier düşmemeli"
+    assert cooldown["solvent_streak"] == 0, "iflasta geçen günler sayılmamalı"
+    assert cooldown["last_solvent_day"] == "2026-01-04", "imleç yine ilerlemeli (günler yandı)"
 
 
 def test_nav_identity_holds_at_the_endpoint(world: tuple[TestClient, FixedClock]) -> None:

@@ -138,6 +138,41 @@ def test_unreliable_risk_metrics_carry_no_colour(
     page.close()
 
 
+def test_solvent_day_indicator_is_visible(
+    browser: Browser, live_server: str, register
+) -> None:
+    """F5 — solvent gün göstergesi arayüzde görünür; değer sunucudan gelir (spec §4.2)."""
+    page = browser.new_page()
+    register(page, "solvent")
+    assert page.locator("#t-solvent").inner_text() == "0 / 3"
+    assert page.locator("#streak-fill").count() == 1
+    page.close()
+
+
+def test_accepted_high_stake_wager_leaves_a_persistent_box(
+    browser: Browser, live_server: str, register
+) -> None:
+    """F6 — onaylanan yüksek riskli bahis **kalıcı** kutuda kalır (toast değil), kapatılabilir."""
+    page = browser.new_page(viewport={"width": 1440, "height": 1000})
+    register(page, "ruinbox")
+    page.locator("details.match > summary").first.click()
+    page.wait_for_selector("[data-role='bet']", timeout=5000)
+    page.locator("input[aria-label$='stake']").first.fill("500")  # %50 > %15 → onay kapısı
+    page.locator("[data-role='bet']").first.click()
+    page.wait_for_selector("#ruin-dialog[open]", timeout=5000)
+    page.click("#ruin-confirm")
+    page.wait_for_selector("#ruin-box:not([hidden])", timeout=8000)
+    assert "kasadaki pay" in page.locator("#ruin-box-facts").inner_text()
+
+    page.locator("button:has-text('Simüle et')").first.click()  # yenileme kutuyu silmemeli
+    page.wait_for_timeout(1500)
+    assert page.locator("#ruin-box").is_visible()
+
+    page.click("#ruin-box-close")
+    assert not page.locator("#ruin-box").is_visible()
+    page.close()
+
+
 def test_repeated_bets_do_not_flood_the_toast_stack(
     browser: Browser, live_server: str, register
 ) -> None:

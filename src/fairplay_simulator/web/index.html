@@ -113,6 +113,15 @@
                     transition: width var(--dur) ease; }
   .energy.is-blocked .energy-bar > i { background: var(--bad); }
 
+  /* --- solvent gün serisi (F5): 3 gün → tier bir kademe düşer --- */
+  .streak-bar { height: 6px; margin-top: 6px; border-radius: 4px; background: var(--sunken);
+                border: 1px solid var(--line-strong); overflow: hidden; }
+  .streak-bar > i { display: block; height: 100%; background: var(--accent-soft);
+                    transition: width var(--dur) ease; }
+
+  /* --- kalıcı yüksek-riskli bahis kaydı (F6): toast değil, kapatılana dek durur --- */
+  #ruin-box { border-left: 4px solid var(--warn); }
+
   /* --- bildirim alanları --- */
   #banner { margin: 0 0 var(--gap); padding: 11px 14px; border-radius: 8px;
             background: var(--banner-bg); border: 1px solid var(--banner-border);
@@ -175,7 +184,7 @@
   details.match > summary strong { font-size: 14px; }
   details.match .market:first-of-type { border-top: 0; }
   .market { display: grid;
-            grid-template-columns: 116px 126px 72px minmax(140px, 1fr) 64px 74px 74px;
+            grid-template-columns: 116px 126px 72px minmax(0, 1fr) 64px 74px 74px;
             gap: 10px; align-items: center; padding: 8px 12px;
             border-top: 1px solid var(--line); }
   @media (max-width: 860px) {
@@ -195,8 +204,9 @@
                  letter-spacing: .5px; }
   .odds { font-size: 16px; font-weight: 600; }
   .meta-slot { display: flex; gap: 10px; align-items: baseline; min-width: 0; }
-  .market-meta { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden;
-                 text-overflow: ellipsis; }
+  /* Sarmaya izin verilir: ≈1181–1400px bandında kırpmak yerine satır iki-üç satıra çıkar.
+     `break-word` (harf harf değil, kelime sınırında sarar) — `anywhere` kolonu ~sıfıra indiriyordu. */
+  .market-meta { font-size: 12px; color: var(--muted); overflow-wrap: break-word; }
   .assess { grid-column: 1 / -1; margin: 2px 0 0; padding: 8px 10px; border-radius: 8px;
             background: var(--sunken); border: 1px dashed var(--line-strong); font-size: 12.5px; }
 
@@ -287,6 +297,15 @@
   </div>
 
   <div id="workspace" hidden>
+    <section id="ruin-box" hidden aria-live="polite">
+      <div class="row">
+        <strong>Yüksek riskli bahis kaydedildi</strong>
+        <span class="spacer"></span>
+        <button type="button" class="ghost" id="ruin-box-close">Kapat</button>
+      </div>
+      <p id="ruin-box-text" style="margin:8px 0 0;font-size:12.5px"></p>
+      <p id="ruin-box-facts" class="muted" style="margin:6px 0 0;font-size:12.5px"></p>
+    </section>
     <div id="workspace-grid">
       <div>
         <section>
@@ -361,6 +380,10 @@
           <div class="row" style="margin-top:14px">
             <button class="ghost" id="refill">1.000 TL refill</button>
             <span class="muted" id="cooldown-note" style="font-size:12px"></span>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <span class="muted" style="font-size:12px">Solvent gün <b id="t-solvent">–</b></span>
+            <div class="streak-bar" style="width:90px"><i id="streak-fill" style="width:0"></i></div>
           </div>
         </section>
 
@@ -523,6 +546,7 @@ function endSession(message) {
   state.token = null;
   state.portfolio = null;
   state.built = false;
+  el("ruin-box").hidden = true;
   showChrome(false);
   showBanner(message + " Çıkış yapıldı; eski portföy değerleri gösterilmiyor.");
 }
@@ -841,6 +865,18 @@ function confirmRuin(ruin) {
   });
 }
 
+/* F6: yüksek riskli bahis kaydı — toast **geçicidir**, bu kutu kapatılana dek durur (upstream
+   `ruin-warning-box` paritesi). Yalnız sunucunun gönderdiği sayılar gösterilir. */
+function showRuinBox(ruin) {
+  el("ruin-box-text").textContent = ruin.message || "";
+  const parts = ["stake " + fmtMoney(ruin.stake), "kasadaki pay " + fmtPct(ruin.pct_of_cash)];
+  if (ruin.risk_of_ruin_pct !== null && ruin.risk_of_ruin_pct !== undefined) {
+    parts.push("iflas riski " + fmtPct(ruin.risk_of_ruin_pct));
+  }
+  el("ruin-box-facts").textContent = parts.join(" · ");
+  el("ruin-box").hidden = false;
+}
+
 async function placeWager(body, button) {
   if (state.portfolio && !state.portfolio.can_wager) {
     toast("Enerji yetersiz (" + state.portfolio.simulation_energy + "/" +
@@ -850,6 +886,7 @@ async function placeWager(body, button) {
   setBusy(button, true);
   try {
     let payload;
+    let acceptedRuin = null;
     try {
       payload = await sendWager(body);
     } catch (error) {
@@ -858,9 +895,11 @@ async function placeWager(body, button) {
         toast("Yüksek riskli bahis onaylanmadı; gönderilmedi.", "warn");
         return;
       }
+      acceptedRuin = error.body.ruin;
       payload = await sendWager(Object.assign({}, body, { confirm_ruin: true }));
     }
     noteWagerSuccess(payload);
+    if (acceptedRuin) showRuinBox(acceptedRuin);
     await refresh();
   } catch (error) {
     toast(error.message, "error");
@@ -984,11 +1023,16 @@ function renderPortfolio(portfolio) {
       " Profit factor " +
       (reliability.profit_factor_defined ? "tanımlı." : "hiç kayıp olmadığı için tanımsız.");
 
-  el("cooldown-note").textContent = portfolio.cooldown.locked
-    ? "Cooldown aktif (tier " + portfolio.cooldown.tier + " · tavan " +
-      portfolio.cooldown.max_hours + " saat)"
-    : "Cooldown tavanı " + portfolio.cooldown.max_hours + " saat" +
+  const cd = portfolio.cooldown;
+  el("cooldown-note").textContent = cd.locked
+    ? "Cooldown aktif (tier " + cd.tier + " · tavan " + cd.max_hours + " saat)"
+    : "Cooldown tavanı " + cd.max_hours + " saat" +
       (fund.bankrupt ? " · fon iflas etti, refill yeni seri açar" : "");
+
+  // F5: solvent gün serisi — 3 gün tier'ı bir kademe düşürür; iflasta geçen günler yanar.
+  const perTier = Math.max(1, cd.solvent_days_per_tier);
+  setTile("t-solvent", cd.solvent_streak + " / " + perTier);
+  el("streak-fill").style.width = Math.round((cd.solvent_streak / perTier) * 100) + "%";
 
   // Disiplin rozetleri: ölçütlerden türetilir; üçü birden cooldown tavanını indirir.
   const badges = portfolio.badges || [];
@@ -1213,6 +1257,9 @@ function init() {
   el("register").addEventListener("click", () => authenticate("/api/auth/register"));
   el("logout").addEventListener("click", logout);
   el("refill").addEventListener("click", refill);
+  el("ruin-box-close").addEventListener("click", () => {
+    el("ruin-box").hidden = true;
+  });
   window.addEventListener("resize", () => {
     if (state.portfolio) renderChart(state.portfolio);
   });

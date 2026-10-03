@@ -134,13 +134,21 @@ GDD'nin vaatleri.
 | F2 | **Simülasyon arenası** (skor + pazar bazında sonuçlar paneli) | `simulation-arena`, `sim-score-display`, `sim-outcome-1x2/ou/btts` | `#sim-panel`: skor, 3 pazar sonucu, olay listesi | ✅ |
 | F3 | **Kupon fişi (slip)** — odaklı onay yüzeyi | `slip-*` (14 kimlik): maç, market, seçim, oran, fair, vig, Kelly, stake, tavan kasa, ödeme, enerji maliyeti | Satır içi form; fair/vig satırda var, "fiş" yok | ⏳ |
 | F4 | **Factsheet kartı** (paylaşılabilir fon özeti) | `factsheet-*` (9 kimlik): NAV/TWR/Sharpe/Sortino/MDD/PF/winrate/alpha-beta | Metrik kutuları var; ayrı bir özet kartı yok | ⏳ |
-| F5 | **Solvent gün serisi göstergesi** | `streak-display`, `streak-bar`, `cd-tier-display` | Alan tutuluyor (`solvent_streak`), **gösterilmiyor**; tier indirimi bağlı değil | ⏳ |
-| F6 | **Kalıcı "ruin" uyarı kutusu** | `ruin-warning-box` | Geçici uyarı toast'ı + cevapta `ruin_risk_warning` | ⏳ |
+| F5 | **Solvent gün serisi göstergesi** | `streak-display`, `streak-bar`, `cd-tier-display` | `t-solvent` + `.streak-bar`; **sayaç gerçekten işliyor** (duvar saati, `portfolio`/`wager` tick'i) | ✅ |
+| F6 | **Kalıcı "ruin" uyarı kutusu** | `ruin-warning-box` | `#ruin-box`: onaylanan yüksek riskli bahis **kapatılana dek** görünür (toast'a ek, kalıcı yüzey) | ✅ |
 
 > **F1/F2 kapatıldı (2026-09-30):** motor artık gol olaylarını üretiyor (gol sayısı çekildikten
 > **sonra**, böylece eski tohumların skorları değişmedi) ve cevap `events` döndürüyor; arayüzde
 > sağ kolonun tepesinde simülasyon arenası var. Doğrulama: motor testleri + gerçek tarayıcıda
 > sürülüp ekran görüntüsü alındı; arena açıkken 375/900/1440'ta taşma/kırpılma kapısı eklendi.
+
+> **F5/F6 kapatıldı (2026-10-03).** **F5** yalnız gösterge değildi: `register_solvent_day` çekirdekte
+> tanımlı ve `I6` ile testliydi ama **hiçbir yerden çağrılmıyordu** — yani uygulamada tier **hiç
+> düşmüyordu**. Gün sınırı artık işleniyor (`portfolio`/`wager` tick'i, `last_solvent_day` imleci,
+> iflasta geçen günler yanar) ve arayüzde `t-solvent` + `.streak-bar` gösteriliyor (`[G-20]`,
+> ADR-0015). İlk şema göçü de bu turda geldi (idempotent `ALTER TABLE`). **F6** kalıcı `#ruin-box`
+> ile karşılandı. Doğrulama: `tests/ui` (gösterge + kalıcı kutu, gerçek tarayıcı) + API testleri +
+> yeni golden; dört kapı yeşil.
 
 ### 6.2 İkisinde de olmayan (GDD vaadi, kodda yok — parite eksiği **değil**)
 
@@ -163,8 +171,8 @@ GDD'nin vaatleri.
 
 ### 6.4 Eşitleme sırası
 
-Değer/emek sırasına göre: ~~**F1 + F2** (motor olayları + arena)~~ **✅ yapıldı** →
-**F5** (küçük, oyunlaştırma hikâyesini tamamlar) → **F6** (küçük) →
+Değer/emek sırasına göre: ~~**F1 + F2** (motor olayları + arena)~~ **✅** →
+~~**F5** (küçük, oyunlaştırma hikâyesini tamamlar)~~ **✅** → ~~**F6** (küçük)~~ **✅** →
 **F3** (fiş; bu depoda işlev zaten satır içinde) → **F4** (factsheet; kozmetik, metrikler var).
 
 ## 7. Gereksinim paritesi — orijinalin **dökümanlarından** (2026-09-30)

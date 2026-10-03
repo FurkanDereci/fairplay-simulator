@@ -1,8 +1,14 @@
-"""Yerleşim regresyonu: yatay taşma ve metin kırpılması — "arayüz işi görmeden bitmez".
+"""Yerleşim regresyonu: taşma, kırpılma ve **üst üste binme** — "arayüz işi görmeden bitmez".
 
 Neden var: 375px'de **96px yatay taşma** ve kırpılan metinler vardı; 80 yeşil test bunların
 hiçbirini görmedi. Kusur ancak sayfa render edilip `scrollWidth` ölçülünce çıktı. Bu dosya o
 sınıfı kapıya çevirir: taşma ve kırpılma artık sessizce geri gelemez.
+
+**2026-10-03 eki — taşma ölçümü yetmiyor.** 7 kolonlu `.market` ızgarası ~1181–1330px arasında
+kendi kolonuna sığmayıp **komşu kolonun üzerine** biniyordu: `body.scrollWidth` değişmediği için
+"taşma yok" sanılıyordu, ama "Bahis" düğmesi portföy kutularının **altında** kalıyor, yani
+**tıklanamıyordu**. İkinci ölçüm bu yüzden eklendi: düğmenin merkezinde `elementFromPoint` ile
+**kendisi** bulunmalı.
 
 Tarayıcı yoksa atlanır (bkz. `conftest.py`).
 """
@@ -11,22 +17,34 @@ from __future__ import annotations
 
 from playwright.sync_api import Browser, Page
 
-VIEWPORTS = ((375, "mobil"), (900, "tablet"), (1440, "masaustu"))
+#: 1200: ızgara taşmasının görüldüğü bant (1181–1330) — taşma ölçümünün kör noktası.
+VIEWPORTS = ((375, "mobil"), (900, "tablet"), (1200, "dizustu-esik"), (1440, "masaustu"))
 
 # Taşma = gövde içeriğinin pencereyi aşması. Kırpılma = içeriğin kabından taşması
-# (`scrollWidth > clientWidth`). İkisi de görsel kusurun sayısal imzasıdır.
+# (`scrollWidth > clientWidth`). Üst üste binme = düğmenin merkezinde başka bir öğe olması.
 MEASURE = """() => {
   const clip = (sel) => [...document.querySelectorAll(sel)]
       .filter(el => el.scrollWidth > el.clientWidth + 1)
       .map(el => el.textContent.trim().slice(0, 40));
   const wrap = document.querySelector('.table-wrap');
   const fund = document.getElementById('fund-tiles');
+  const btn = document.querySelector("[data-role='bet']");
+  let engel = null;
+  if (btn) {
+    btn.scrollIntoView({block: 'center'});
+    const r = btn.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    if (!(hit === btn || btn.contains(hit))) {
+      engel = hit ? String(hit.className || hit.tagName).slice(0, 40) : 'yok';
+    }
+  }
   return {
     tasma: document.body.scrollWidth - document.documentElement.clientWidth,
     kirpilan: [...clip('th'), ...clip('.market-name'), ...clip('.market-meta'),
                ...clip('.tile'), ...clip('.timeline li')],
     tileKolon: getComputedStyle(fund).gridTemplateColumns.split(' ').length,
     tabloKaydirilabilir: wrap ? wrap.scrollWidth > wrap.clientWidth + 1 : null,
+    engel,
   };
 }"""
 
@@ -51,6 +69,7 @@ def test_no_overflow_or_clipping_at_any_viewport(
             data = page.evaluate(MEASURE)
             assert data["tasma"] <= 1, f"{label} ({width}px): {data['tasma']}px yatay taşma"
             assert data["kirpilan"] == [], f"{label} ({width}px) kırpılan metin: {data['kirpilan']}"
+            assert data["engel"] is None, f"{label} ({width}px) düğme örtülü: {data['engel']}"
     finally:
         page.close()
 
@@ -69,6 +88,7 @@ def test_no_overflow_with_the_simulation_arena_visible(
             data = page.evaluate(MEASURE)
             assert data["tasma"] <= 1, f"arena açıkken {label}: {data['tasma']}px yatay taşma"
             assert data["kirpilan"] == [], f"arena açıkken {label} kırpılan: {data['kirpilan']}"
+            assert data["engel"] is None, f"arena açıkken {label}: düğme örtülü ({data['engel']})"
     finally:
         page.close()
 

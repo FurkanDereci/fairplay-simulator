@@ -299,6 +299,22 @@ görünmez, tier 5'te görünür.
 > Varsayılan tavanla: `T(5)=168` (indirim yok)
 > Üç rozetin tamamı → indirim; iki rozet → indirim yok
 
+**Solvent gün sayacı.** Tier indirimi **duvar saatiyle** işler ama gün sınırı yalnız **etkileşim
+anında** gözlenir (her `portfolio`/`wager` çağrısı bir "tick"tir): imleçten (`last_solvent_day`)
+bugüne geçen her **tam gün sınırı** bir gün sayılır. Hesap **solventse** (`V > 0`) günler birikir;
+**iflastaysa** (`V = 0`) o günler **yanar** — imleç ilerler, ileriye taşınmaz. İlk gözlem yalnız
+imleci kurar (geçmiş gün uydurulmaz) ve tek tick'te en fazla `MAX_ACCRUAL_DAYS = 30` gün işlenir.
+
+> **Sınır (bilinçli).** Sayaç "iyi niyetli" bir ölçümdür: solvency **tick anında** okunur, gün
+> içinde olup biten iflas/refill görülmez. Bu yüzden bir tick'te birden çok gün birikmişse hesabın
+> o pencerede hiç iflas etmediği varsayılır.
+
+> **[G-20] Solvent gün ve tier indirimi**
+> `tier = 2`, imleç 3 gün geride, hesap solvent → **Beklenen:** `solvent_streak = 0`, `tier = 1`
+> Aynı durumda imleç 2 gün geride → **Beklenen:** `solvent_streak = 2`, `tier = 2` (henüz düşmedi)
+> Hesap iflasta (`V = 0`) ve imleç 3 gün geride → **Beklenen:** `solvent_streak = 0`, `tier = 2`
+> (günler yandı), imleç yine bugüne ilerledi
+
 ---
 
 ## 5. Kenar durumlar (sözleşmeye bağlı)

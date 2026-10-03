@@ -6,7 +6,7 @@ Her test bir `[G-x]` kimliği taşır; `tests/test_docs_sync.py` bu kimliklerin 
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal as D
 
 import pytest
@@ -268,6 +268,30 @@ def test_g18_discipline_discount() -> None:
         D("72"),
     ]
     assert cooldown_mod.cooldown_hours(5) == D("168")  # indirimsiz varsayılan
+
+
+def test_g20_solvent_days_decay_the_tier() -> None:
+    """[G-20] 3 solvent gün tier'ı düşürür; iflasta geçen günler **yanar**."""
+    solvent = cooldown_mod.CooldownState(tier=2, last_solvent_day=date(2026, 1, 1))
+    assert solvent.accrue_solvent_days(date(2026, 1, 4), solvent=True) == 3
+    assert (solvent.solvent_streak, solvent.tier) == (0, 1)
+
+    partial = cooldown_mod.CooldownState(tier=2, last_solvent_day=date(2026, 1, 1))
+    assert partial.accrue_solvent_days(date(2026, 1, 3), solvent=True) == 2
+    assert (partial.solvent_streak, partial.tier) == (2, 2)
+
+    bankrupt = cooldown_mod.CooldownState(tier=2, last_solvent_day=date(2026, 1, 1))
+    assert bankrupt.accrue_solvent_days(date(2026, 1, 4), solvent=False) == 0
+    assert (bankrupt.solvent_streak, bankrupt.tier) == (0, 2)
+    assert bankrupt.last_solvent_day == date(2026, 1, 4)  # imleç yine ilerledi
+
+
+def test_g20_first_tick_only_sets_the_cursor() -> None:
+    """[G-20] İmleç `None` iken gün uydurulmaz: ilk tick yalnız imleci kurar."""
+    state = cooldown_mod.CooldownState()
+    assert state.accrue_solvent_days(date(2026, 1, 4), solvent=True) == 0
+    assert state.solvent_streak == 0
+    assert state.last_solvent_day == date(2026, 1, 4)
 
 
 def test_g18_badges_are_derived_from_measured_metrics() -> None:

@@ -34,6 +34,7 @@ tutmazsa build kırılır. Bu, "formül değişti ama doküman kaldı" durumunu 
 | G-17 | Risk of Ruin (formül + kenar yoksa %100) |
 | G-18 | Disiplin rozetleri · cooldown indirimi |
 | G-19 | Oran temizliği: bozuk/negatif vig reddi |
+| G-20 | Solvent gün ve tier indirimi (iflasta geçen günler yanar) |
 
 ## 3. Doküman ↔ kod senkronu (`tests/test_docs_sync.py`)
 
@@ -126,5 +127,9 @@ gösterir (ADR-0010). Testler: `tests/test_boundaries.py` (+ `[G-15]` golden).
 | Cooldown indirimi: 3 rozet tavanı 72'ye çeker | `test_i6_discipline_discount_caps_the_cooldown` |
 | Oran: `Σ(1/O) ≤ 1` (negatif vig) ve `O ≤ 1` reddedilir | `test_g19_odds_sanitation_rejects_corrupt_feeds` |
 | Finalizasyon: tekrar çağrı aynı skoru döndürür, ikinci ödeme yok | `test_repeated_simulation_returns_the_same_score_and_pays_once` |
+| Solvent gün: imleç kurulmamışken gün uydurulmaz | `test_g20_first_tick_only_sets_the_cursor` |
+| Solvent gün: iflasta geçen günler **yanar** (imleç yine ilerler) | `test_days_spent_bankrupt_do_not_count_as_solvent_days` |
+| Göç: eski şemalı dosyaya kolon eklenir | `test_existing_db_gets_the_solvent_day_column` |
+| Yerleşim: taşma **yetmez**, örtüşme de ölçülür (`elementFromPoint`) | `test_no_overflow_or_clipping_at_any_viewport` |
 
 Tablodaki adlar **uydurulamaz**: `tests/test_docs_sync.py` her adın gerçekten var olduğunu doğrular.

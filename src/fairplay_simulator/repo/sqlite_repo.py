@@ -11,7 +11,7 @@ import sqlite3
 import uuid
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -65,10 +65,11 @@ CREATE TABLE IF NOT EXISTS energy_state (
 );
 
 CREATE TABLE IF NOT EXISTS cooldown_state (
-    user_id        TEXT PRIMARY KEY REFERENCES users(id),
-    tier           INTEGER NOT NULL,
-    solvent_streak INTEGER NOT NULL,
-    locked_until   TEXT
+    user_id         TEXT PRIMARY KEY REFERENCES users(id),
+    tier            INTEGER NOT NULL,
+    solvent_streak  INTEGER NOT NULL,
+    locked_until    TEXT,
+    last_solvent_day TEXT
 );
 
 CREATE TABLE IF NOT EXISTS matches (
@@ -105,6 +106,16 @@ def _parse_dt(value: str | None) -> datetime | None:
         return None
     parsed = datetime.fromisoformat(value)
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def _parse_day(value: str | None) -> date | None:
+    """`YYYY-MM-DD` metnini güne çevirir; bozuk/eski değer `None` sayılır (imleç kurulur)."""
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
 
 
 @dataclass(frozen=True)
@@ -152,7 +163,21 @@ class Repository:
             )
         self._conn.execute(f"PRAGMA user_version = {LEDGER_SCHEMA_VERSION}")
         self._conn.executescript(_SCHEMA)
+        self._migrate()
         self._conn.commit()
+
+    def _migrate(self) -> None:
+        """Var olan dosyaları günceller — **idempotent** tek adımlık göçler.
+
+        `CREATE TABLE IF NOT EXISTS` var olan tabloya yeni kolon eklemez; bu yüzden kolonlar
+        açıkça denetlenir. Göç bir kez uygulanır, tekrar çağrılması zararsızdır (ADR-0015).
+        """
+        columns = {
+            row["name"]
+            for row in self._conn.execute("PRAGMA table_info(cooldown_state)").fetchall()
+        }
+        if "last_solvent_day" not in columns:
+            self._conn.execute("ALTER TABLE cooldown_state ADD COLUMN last_solvent_day TEXT")
 
     def schema_version(self) -> int:
         """Dosyaya damgalanmış defter şema sürümü (SQLite `user_version`)."""
@@ -366,7 +391,8 @@ class Repository:
 
     def cooldown(self, user_id: str) -> CooldownState:
         row = self._conn.execute(
-            "SELECT tier, solvent_streak, locked_until FROM cooldown_state WHERE user_id = ?",
+            "SELECT tier, solvent_streak, locked_until, last_solvent_day FROM cooldown_state"
+            " WHERE user_id = ?",
             (user_id,),
         ).fetchone()
         if row is None:
@@ -375,15 +401,18 @@ class Repository:
             tier=int(row["tier"]),
             solvent_streak=int(row["solvent_streak"]),
             locked_until=_parse_dt(row["locked_until"]),
+            last_solvent_day=_parse_day(row["last_solvent_day"]),
         )
 
     def save_cooldown(self, user_id: str, state: CooldownState) -> None:
         locked = _iso(state.locked_until) if state.locked_until is not None else None
+        day = state.last_solvent_day.isoformat() if state.last_solvent_day else None
         self._conn.execute(
-            "INSERT INTO cooldown_state (user_id, tier, solvent_streak, locked_until)"
-            " VALUES (?, ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET tier = excluded.tier,"
-            " solvent_streak = excluded.solvent_streak, locked_until = excluded.locked_until",
-            (user_id, state.tier, state.solvent_streak, locked),
+            "INSERT INTO cooldown_state (user_id, tier, solvent_streak, locked_until,"
+            " last_solvent_day) VALUES (?, ?, ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET"
+            " tier = excluded.tier, solvent_streak = excluded.solvent_streak,"
+            " locked_until = excluded.locked_until, last_solvent_day = excluded.last_solvent_day",
+            (user_id, state.tier, state.solvent_streak, locked, day),
         )
         self._conn.commit()
 

@@ -65,6 +65,11 @@ Bu dosyanın varlık sebebi: bir ajan yön verilmediğinde eğitim verisinin ort
 ## Bileşen kuralları
 
 - `.market` 7 kolonlu ızgaradır; **≤860px'de 2 kolona** düşer. Giriş genişlikleri sabittir (60 / 78px).
+  Metin kolonu `minmax(0, 1fr)`, `.market-meta` **sarar** (`overflow-wrap: break-word`) — kırpmaz.
+  **Ölçüm (2026-10-03):** bu satır 7 kolonda ancak ≈1400px üstünde tek satıra sığar; 1181–1400
+  bandında meta 2–4 satıra çıkar. Bu bant **eskiden kusurluydu** (sabit 140px kolon komşu kolona
+  taşıyor, "Bahis" düğmesi örtülüyor, `scrollWidth` bunu göstermiyordu) — bkz. `tests/ui`
+  `elementFromPoint` kapısı.
 - `details.match > summary` **sarabilir** (`flex-wrap`) — dar ekranda başlık + meta + düğme taşmasın.
 - `.table-wrap` yatay kaydırılır; `contain: inline-size` tablonun **sayfayı genişletmesini** önler.
 - `.tile` ızgarası masaüstünde 3, **≤520px'de 2 kolon**; hero metrik yazısı ≤520px'de 22px.
@@ -78,16 +83,18 @@ Bu dosyanın varlık sebebi: bir ajan yön verilmediğinde eğitim verisinin ort
 ## Doğrulama — "arayüz işi görmeden bitmez"
 
 Kod yazan ajan, işinin ekranda nasıl durduğunu kendi metninden çıkaramaz. Render edip bakmak zorunludur:
-375 / 900 / 1440 genişliklerinde **yatay taşma yok** (`body.scrollWidth == innerWidth`),
-**kırpılan metin yok** (`scrollWidth > clientWidth` taraması), **konsol hatası yok**.
+375 / 900 / **1200** / 1440 genişliklerinde **yatay taşma yok** (`body.scrollWidth == innerWidth`),
+**kırpılan metin yok** (`scrollWidth > clientWidth` taraması), **örtüşme yok** (etkileşimli öğenin
+merkezinde `elementFromPoint` **kendisini** döndürmeli), **konsol hatası yok**.
 
 ```bash
 .venv/bin/python -m pytest tests/ui -q   # akış (gerçek tarayıcı) + yerleşim regresyonu
 ```
 
-`tests/ui/test_layout_overflow.py` bu ölçümleri **kapıya** çevirir: 375 / 900 / 1440'te taşma ve
-kırpılma varsa kırmızıya düşer. 2026-09-30'da düzeltme geri alınarak testin **önce kırmızı**
-olduğu kanıtlandı.
+`tests/ui/test_layout_overflow.py` bu ölçümleri **kapıya** çevirir: dört genişlikte taşma,
+kırpılma **ve örtüşme** varsa kırmızıya düşer. 2026-09-30'da taşma düzeltmesi geri alınarak testin
+**önce kırmızı** olduğu kanıtlandı; 2026-10-03'te örtüşme ölçümü eklendi (o gün 1200px'de Bahis
+düğmesi portföy kutularının altında kalıyordu ve taşma ölçümü bunu **göremiyordu**).
 
 ## Token kapsamı
 

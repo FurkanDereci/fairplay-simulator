@@ -15,7 +15,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from ..core import energy as energy_mod
-from ..core.cooldown import MAX_COOLDOWN_HOURS, CooldownState
+from ..core.cooldown import MAX_COOLDOWN_HOURS, SOLVENT_DAYS_PER_TIER, CooldownState
 from ..core.errors import InsufficientCash, InvalidAmount
 from ..core.learning import (
     DISCOUNTED_MAX_COOLDOWN_HOURS,
@@ -165,6 +165,18 @@ class PortfolioService:
         state = self.repo.cooldown(user_id)
         if state.unlock_if_expired(self.clock.now()):
             self.repo.save_cooldown(user_id, state)
+        return state
+
+    def _cooldown_with_solvent_days(self, user_id: str, fund: Fund) -> CooldownState:
+        """Duvar saati gün sınırını işler ve cooldown durumunu döner (spec §4.2).
+
+        Gün sınırı yalnız **etkileşim anında** gözlenir: her çağrı bir "tick"tir. Hesap solventse
+        geçen günler birikir (3 gün → tier bir kademe düşer); iflastaysa geçen günler **yanar**
+        (ileriye taşınmaz) — bu, sayacın iyi niyetli bir ölçümü olduğunun sınırıdır.
+        """
+        state = self._cooldown(user_id)
+        state.accrue_solvent_days(self.clock.now().date(), solvent=fund.total_value > ZERO)
+        self.repo.save_cooldown(user_id, state)
         return state
 
     def _bet_inputs(self, user_id: str) -> dict[str, BetInput]:
@@ -339,13 +351,14 @@ class PortfolioService:
 
         # Sıra bilinçli: reddedilecek bir istek **hiçbir yan etki** bırakmaz. Önce bütün
         # doğrulamalar ve ruin kapısı, en sonda enerji harcaması ve defter kaydı yapılır.
-        cooldown = self._cooldown(user_id)
+        # Defter okuması yan etkisizdir; solvent-gün tick'i için kilit denetiminden önce alınır.
+        fund, _ = self._fund(user_id)
+        cooldown = self._cooldown_with_solvent_days(user_id, fund)
         if cooldown.is_locked(now):
             raise LockedOut(f"Hesap iflas cooldown'ında (tier {cooldown.tier}).")
 
         fixture, market, odds = self._market_selection(match_id, market_type, selection)
 
-        fund, _ = self._fund(user_id)
         if stake <= ZERO:
             raise InvalidAmount("Bahis tutarı pozitif olmalı.")
         if stake > fund.cash:
@@ -697,7 +710,7 @@ class PortfolioService:
         reliable = is_statistically_reliable(t_statistic)
         energy, last_update = self._energy(user_id)
         self.repo.save_energy(user_id, energy, last_update)
-        cooldown = self._cooldown(user_id)
+        cooldown = self._cooldown_with_solvent_days(user_id, fund)
         badges = self._badges(user_id)
         cap_hours = self._cooldown_cap_hours(badges)
 
@@ -759,6 +772,12 @@ class PortfolioService:
                     cooldown.locked_until.isoformat() if cooldown.locked_until else None
                 ),
                 "max_hours": str(cap_hours),
+                "solvent_streak": cooldown.solvent_streak,
+                "solvent_days_per_tier": SOLVENT_DAYS_PER_TIER,
+                "solvent_days_to_tier": max(0, SOLVENT_DAYS_PER_TIER - cooldown.solvent_streak),
+                "last_solvent_day": (
+                    cooldown.last_solvent_day.isoformat() if cooldown.last_solvent_day else None
+                ),
             },
             "nav_history": [str(point) for point in series],
             "nav_at_matches": self._nav_at_matches(user_id, entries),

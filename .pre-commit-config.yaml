@@ -19,3 +19,11 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      # AGENTS.md §10: commit'e araç ortak yazarı eklenmez (GitHub bunu katkı listesine işler).
+      - id: no-bot-coauthor
+        name: commit mesajinda arac ortak yazari yok
+        entry: >-
+          bash -c 'if grep -q "Co-authored-by: CommandCodeBot" "$1"; then echo "AGENTS.md madde
+          10: commit mesajindan Co-authored-by: CommandCodeBot satirini kaldir."; exit 1; fi' --
+        language: system
+        stages: [commit-msg]

@@ -62,3 +62,11 @@ Arayüz değişiklikleri şu eşikleri geçmeden "bitti" sayılmaz:
 - **Sayı biçimi:** para `tr-TR` (virgül ondalık); **oranlar bahisçi konvansiyonu olarak nokta kalır**
   (bilinçli istisna).
 - **İnceleme:** arayüz işi, yazarın kendi onayıyla kapanmaz; bağımsız bir alt ajana inceletilir (ADR-0007).
+
+## 10. Commit kimliği
+- Commit mesajlarına **araç/otomatik ortak yazar eklenmez.** `Co-authored-by:` trailer'ı (özellikle
+  `CommandCodeBot`) yazılmaz: GitHub bu satırı commit'e **ortak yazar** olarak işler ve katkı
+  listesinde araç görünür. Katkı listesinde yalnız **gerçek insan yazarlar** bulunur.
+- Gerekçe: bu depo herkese açık yayınlanır; katkı grafiği kimin işi olduğunu göstermelidir.
+- **Kapı:** `.pre-commit-config.yaml` → `no-bot-coauthor` (`commit-msg` aşaması). Kural yazılı
+  kalmaz, ölçülür; `pre-commit install` ile yerel kancaya bağlanır.

@@ -3,7 +3,7 @@
 - **Durum:** Kabul edildi
 - **Tarih:** 2026-10-03
 - **Bağlam:** Orijinalin `docs/architecture/03_verification...md` Suite 3'ü *"Reject negative vig or
-  corrupted odds arrays"* diyor. Ölçüm (`docs/70` §7.2, R5): echo bozuk oranı **reddetmiyor**,
+  corrupted odds arrays"* diyor. Ölçüm (`docs/70` §7.2, R5): bu depo bozuk oranı **reddetmiyor**,
   `normalize_market` içindeki `overround = max(0, total − 1)` ile **kırpıyor**. Kırpmak, veriyi
   gizlemek demektir; gizlemek kabul etmekten kötüdür.
 

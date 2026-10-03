@@ -12,11 +12,11 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from decimal import Decimal as D
 
-from fairplay_echo.core import cooldown as cooldown_mod
-from fairplay_echo.core import energy as energy_mod
-from fairplay_echo.core import metrics as metrics_mod
-from fairplay_echo.core import money as money_mod
-from fairplay_echo.core import odds as odds_mod
+from fairplay_simulator.core import cooldown as cooldown_mod
+from fairplay_simulator.core import energy as energy_mod
+from fairplay_simulator.core import metrics as metrics_mod
+from fairplay_simulator.core import money as money_mod
+from fairplay_simulator.core import odds as odds_mod
 
 T0 = datetime(2026, 1, 1, 12, 0, 0)
 

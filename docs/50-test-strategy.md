@@ -89,7 +89,7 @@ Orijinalin `docs/architecture/03_verification_layer_and_test_strategy.md` belges
 paketi** tanımlar; bunlar yeni depo için de **kabul ölçütüdür**. Kapsam durumu `docs/70` §7.2'de
 satır satır yazılı (R3–R6). Özet:
 
-| Paket | Gereksinim | echo'daki durum |
+| Paket | Gereksinim | bu depodaki durum |
 | --- | --- | --- |
 | Suite 1 | Kilit süresi dolunca bahis yeniden serbest | ✅ `test_cooldown_unlocks_after_expiry` (uç düzeyi, enjekte saat) |
 | Suite 2 | `NAV × U = Cash + Exposure` | ✅ `test_i2_nav_times_units_equals_value` (property) + `test_nav_identity_holds_at_the_endpoint` |

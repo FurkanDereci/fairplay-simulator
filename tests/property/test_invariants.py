@@ -13,12 +13,12 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from fairplay_echo.core import cooldown as cooldown_mod
-from fairplay_echo.core import energy as energy_mod
-from fairplay_echo.core.errors import AlreadySettled
-from fairplay_echo.core.ledger import EntryType, Ledger, LedgerEntry
-from fairplay_echo.core.money import BASE_NAV, ZERO, Money, q_money
-from fairplay_echo.core.nav import Fund
+from fairplay_simulator.core import cooldown as cooldown_mod
+from fairplay_simulator.core import energy as energy_mod
+from fairplay_simulator.core.errors import AlreadySettled
+from fairplay_simulator.core.ledger import EntryType, Ledger, LedgerEntry
+from fairplay_simulator.core.money import BASE_NAV, ZERO, Money, q_money
+from fairplay_simulator.core.nav import Fund
 
 EPOCH = datetime(2026, 1, 1, tzinfo=timezone.utc)
 _SETTINGS = settings(max_examples=60, deadline=None, suppress_health_check=[HealthCheck.too_slow])

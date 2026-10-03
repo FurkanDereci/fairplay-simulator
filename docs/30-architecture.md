@@ -9,7 +9,7 @@
 
 **S1–S7 tamam** (S8 hariç). Çalışan sistem: `core/` saf çekirdek · `repo/` SQLite · `engines/` maç
 motoru + benchmark botları · `app/` FastAPI kabuğu (servis + router) · `web/` tek sayfa arayüz.
-Sunucu: `python -m fairplay_echo.cli serve`; şema/doküman: `export-openapi` · `render-api-docs`.
+Sunucu: `python -m fairplay_simulator.cli serve`; şema/doküman: `export-openapi` · `render-api-docs`.
 Testler: golden · property · repo · engines · api · **ui (gerçek tarayıcı)** · docs-sync — kapılar yeşil.
 Kapılar: `ruff check .` · `mypy --strict` · `pytest -q`. Ölçülen ortam: Python 3.10.12.
 

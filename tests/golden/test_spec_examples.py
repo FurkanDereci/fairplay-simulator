@@ -11,11 +11,11 @@ from decimal import Decimal as D
 
 import pytest
 
-from fairplay_echo.core import cooldown as cooldown_mod
-from fairplay_echo.core import energy as energy_mod
-from fairplay_echo.core import metrics, nav, odds
-from fairplay_echo.core.errors import InvalidOdds
-from fairplay_echo.core.learning import (
+from fairplay_simulator.core import cooldown as cooldown_mod
+from fairplay_simulator.core import energy as energy_mod
+from fairplay_simulator.core import metrics, nav, odds
+from fairplay_simulator.core.errors import InvalidOdds
+from fairplay_simulator.core.learning import (
     BADGE_CLV_MASTER,
     BADGE_MARKET_BREADTH,
     BADGE_STAKE_DISCIPLINE,
@@ -24,9 +24,9 @@ from fairplay_echo.core.learning import (
     earned_badges,
     earns_discipline_discount,
 )
-from fairplay_echo.core.ledger import Ledger
-from fairplay_echo.core.metrics import SettledWager
-from fairplay_echo.core.money import Money, q, q_nav, q_units
+from fairplay_simulator.core.ledger import Ledger
+from fairplay_simulator.core.metrics import SettledWager
+from fairplay_simulator.core.money import Money, q, q_nav, q_units
 
 EPOCH = datetime(2026, 1, 1, tzinfo=timezone.utc)
 

@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FairPlay Echo</title>
+<style>
+  /* Belirteçler — "Financial Dashboard" koyu paleti (ui-ux-pro-max).
+     Kural: yeşil/kırmızı YALNIZ kâr/zarar anlamında; eylem rengi ayrı (mavi).
+     Grafik serileri anlam taşımadığı için nötr palet + çizgi deseni kullanır.
+     Font: yerel Fira yok, ağdan font çekilmez → sistem yığını + tabular-nums. */
+  :root {
+    --bg: #020617;
+    --sunken: #060a16;
+    --card: #10162b;
+    --card-2: #161d36;
+    --line: #2b3550;
+    --line-strong: #46527a;
+    --fg: #f8fafc;
+    --muted: #94a3b8;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --accent-soft: #3b82f6;
+    --good: #22c55e;
+    --warn: #f59e0b;
+    --bad: #ef4444;
+    --on-accent: #ffffff;
+    --opacity-disabled: .45;
+    --zebra: #ffffff08;
+    --code-bg: #00000066;
+    --banner-bg: #2a1417;
+    --banner-border: #7f1d1d;
+    --banner-fg: #fecaca;
+    /* Grafik serileri: nötr palet; desen (dash) ile ayrışır, renk tek başına anlam taşımaz. */
+    --series-nav: #60a5fa;
+    --series-random: #f59e0b;
+    --series-favorite: #a78bfa;
+    --series-home: #94a3b8;
+    --chart-line: #2b3550;
+    --chart-grid: #46527a;
+    --chart-axis: #94a3b8;
+    --radius: 10px;
+    --gap: 12px;
+    --dur: 180ms;
+  }
+  * { box-sizing: border-box; }
+  /* `hidden` özniteliği UA stilinden gelir; `display` kuralı olan her element onu EZER. */
+  [hidden] { display: none !important; }
+  html { color-scheme: dark; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+  h1 { font-size: 15px; margin: 0; letter-spacing: .2px; }
+  h1 small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+  h2 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .9px;
+    color: var(--muted); margin: 0 0 10px; font-weight: 600;
+  }
+  header {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 12px 20px; background: var(--card); border-bottom: 1px solid var(--line-strong);
+    position: sticky; top: 0; z-index: 5;
+  }
+  .wrap { max-width: 1560px; margin: 0 auto; padding: var(--gap) 20px 48px; }
+  #workspace-grid {
+    display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    gap: var(--gap); align-items: start;
+  }
+  @media (max-width: 1180px) { #workspace-grid { grid-template-columns: 1fr; } }
+  /* Tek kolona düşünce ızgara öğesinin `min-width: auto` kalması içeriğin kolonu şişirip
+     yatay taşma üretmesine yol açıyordu (375px'de 96px taşma ölçüldü). Zinciri baştan sıfırla. */
+  #workspace-grid > div,
+  #fixtures, details.match, .market { min-width: 0; }
+  section { background: var(--card); border: 1px solid var(--line-strong); border-radius: var(--radius);
+            padding: 14px 16px; margin-bottom: var(--gap); min-width: 0; }
+  fieldset { border: 0; margin: 0; padding: 0; }
+
+  /* --- kontroller --- */
+  button {
+    font: inherit; cursor: pointer; border-radius: 8px; padding: 7px 12px;
+    background: var(--accent); color: var(--on-accent); border: 1px solid transparent;
+    transition: background var(--dur) ease, border-color var(--dur) ease, opacity var(--dur) ease;
+  }
+  button:hover:not(:disabled) { background: var(--accent-hover); }
+  button.ghost { background: transparent; border-color: var(--line-strong); color: var(--fg); }
+  button.ghost:hover:not(:disabled) { background: var(--card-2); border-color: var(--accent-soft); }
+  button:disabled { opacity: var(--opacity-disabled); cursor: not-allowed; }
+  button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible,
+  .chip:focus-visible { outline: 2px solid var(--accent-soft); outline-offset: 2px; }
+  input, select {
+    font: inherit; background: var(--sunken); color: var(--fg);
+    border: 1px solid var(--line-strong); border-radius: 8px; padding: 7px 9px;
+  }
+  label { color: var(--muted); font-size: 12px; }
+  .field { display: grid; gap: 4px; }
+  .num { text-align: right; }
+  .muted { color: var(--muted); }
+  .good { color: var(--good); }
+  .bad { color: var(--bad); }
+  .warn { color: var(--warn); }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .spacer { flex: 1; }
+  .pill { border: 1px solid var(--line-strong); border-radius: 999px; padding: 3px 10px; font-size: 12px; }
+  .pill.badge { background: var(--card-2); border-color: var(--accent-soft); }
+
+  /* --- enerji --- */
+  .energy { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .energy-bar { width: 120px; height: 8px; border-radius: 5px; background: var(--sunken);
+                border: 1px solid var(--line-strong); overflow: hidden; }
+  .energy-bar > i { display: block; height: 100%; background: var(--warn);
+                    transition: width var(--dur) ease; }
+  .energy.is-blocked .energy-bar > i { background: var(--bad); }
+
+  /* --- bildirim alanları --- */
+  #banner { margin: 0 0 var(--gap); padding: 11px 14px; border-radius: 8px;
+            background: var(--banner-bg); border: 1px solid var(--banner-border);
+            color: var(--banner-fg); font-size: 13px; }
+  #banner code, .hint code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  #toast { position: fixed; right: 18px; bottom: 18px; display: grid; gap: 8px; max-width: 380px;
+           z-index: 20; }
+  #toast div { background: var(--card-2); border: 1px solid var(--line-strong);
+               border-left: 4px solid var(--accent-soft); border-radius: 8px;
+               padding: 10px 12px; font-size: 13px; cursor: pointer; }
+  #toast div.err { border-left-color: var(--bad); }
+  #toast div.err::before { content: "Hata: "; font-weight: 600; color: var(--bad); }
+  #toast div.warn { border-left-color: var(--warn); }
+  #toast div.warn::before { content: "Uyarı: "; font-weight: 600; color: var(--warn); }
+
+  /* --- yüksek risk onayı (modal) --- */
+  dialog {
+    background: var(--card); color: var(--fg); border: 1px solid var(--line-strong);
+    border-radius: var(--radius); padding: 16px 18px; width: calc(100% - 32px);
+    max-width: 420px;
+  }
+  dialog::backdrop { background: rgb(0 0 0 / .55); }
+  dialog h3 { margin: 0 0 8px; font-size: 15px; }
+  .facts { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; margin: 10px 0 0;
+           font-size: 13px; }
+  .facts dt { color: var(--muted); }
+  .facts dd { margin: 0; text-align: right; font-weight: 600; }
+
+  /* --- giriş --- */
+  #auth-screen { max-width: 460px; margin: 8vh auto 0; }
+  .hint { color: var(--muted); font-size: 13px; margin: 12px 0 0; }
+  #auth-error { color: var(--bad); font-size: 13px; margin: 12px 0 0; }
+
+  /* --- fikstürler --- */
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .chip { font: inherit; cursor: pointer; background: transparent; color: var(--muted);
+          border: 1px solid var(--line-strong); border-radius: 999px; padding: 4px 11px; font-size: 12px;
+          transition: all var(--dur) ease; }
+  .chip:hover { color: var(--fg); border-color: var(--accent-soft); }
+  .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent);
+                               color: var(--on-accent); }
+  details.match { border: 1px solid var(--line-strong); border-radius: var(--radius);
+                  margin-bottom: 8px; background: var(--card); }
+  details.match > summary {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer;
+    background: var(--card-2); border-radius: var(--radius) var(--radius) 0 0; list-style: none;
+    flex-wrap: wrap;   /* dar ekranda başlık + meta + düğme tek satıra sığmayınca taşmasın */
+  }
+  details.match > summary::-webkit-details-marker { display: none; }
+  /* Açılır olduğunu gösteren işaret — CSS üçgeni, emoji değil. */
+  details.match > summary::before {
+    content: ""; flex: 0 0 auto; width: 0; height: 0;
+    border-left: 5px solid var(--muted);
+    border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+    transition: transform var(--dur) ease;
+  }
+  details.match[open] > summary::before { transform: rotate(90deg); }
+  details.match[open] > summary { border-bottom: 1px solid var(--line-strong);
+                                  border-radius: var(--radius) var(--radius) 0 0; }
+  details.match > summary strong { font-size: 14px; }
+  details.match .market:first-of-type { border-top: 0; }
+  .market { display: grid;
+            grid-template-columns: 116px 126px 72px minmax(140px, 1fr) 64px 74px 74px;
+            gap: 10px; align-items: center; padding: 8px 12px;
+            border-top: 1px solid var(--line); }
+  @media (max-width: 860px) {
+    .market { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    /* 7 kolonlu tablo dar ekranda sıkışıp başlıkları kırpmasın: doğal genişlikte kalsın ve
+       .table-wrap içinde yatay kaydırılsın (contain, tablonun sayfayı genişletmesini önler). */
+    table { min-width: 420px; table-layout: auto; }
+    .market-name { white-space: normal; }
+  }
+  @media (max-width: 520px) {
+    /* Üç kutu sığmayınca büyük NAV/TWR değerleri kutudan taşıyordu.
+       (Temel .tiles kuralı bu bloğun altında olduğu için özgüllük yükseltildi.) */
+    section .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .tiles .tile.hero b { font-size: 22px; }
+  }
+  .market-name { font-size: 11.5px; color: var(--muted); text-transform: uppercase;
+                 letter-spacing: .5px; }
+  .odds { font-size: 16px; font-weight: 600; }
+  .meta-slot { display: flex; gap: 10px; align-items: baseline; min-width: 0; }
+  .market-meta { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden;
+                 text-overflow: ellipsis; }
+  .assess { grid-column: 1 / -1; margin: 2px 0 0; padding: 8px 10px; border-radius: 8px;
+            background: var(--sunken); border: 1px dashed var(--line-strong); font-size: 12.5px; }
+
+  /* --- metrikler --- */
+  .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .tile { background: var(--card-2); border: 1px solid var(--line); border-radius: 8px;
+          padding: 8px 10px; }
+  .tile small { display: block; color: var(--muted); font-size: 10.5px; text-transform: uppercase;
+                letter-spacing: .6px; }
+  .tile b { font-size: 16px; font-weight: 600; }
+  .tile.hero b { font-size: 26px; font-weight: 700; }
+  .group + .group { margin-top: 14px; }
+
+  /* --- simülasyon arenası --- */
+  .sim-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+              margin-bottom: 10px; }
+  .sim-score { font-size: 20px; font-weight: 700; letter-spacing: .5px; }
+  .timeline { list-style: none; margin: 12px 0 0; padding: 0; }
+  .timeline li { display: flex; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line);
+                 font-size: 13px; }
+  .timeline li:first-child { border-top: 0; }
+  .timeline .minute { color: var(--muted); min-width: 34px; text-align: right; }
+
+  /* --- tablolar --- */
+  .table-wrap { overflow-x: auto; contain: inline-size; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+  tbody tr:nth-child(even) { background: var(--zebra); }
+  th { color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px;
+       font-weight: 600; border-bottom: 1px solid var(--line-strong); }
+  tr:last-child td { border-bottom: 0; }
+
+  canvas { width: 100%; height: 210px; background: var(--sunken); border: 1px solid var(--line-strong);
+           border-radius: 8px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted);
+            margin-top: 8px; }
+  .dot { display: inline-block; width: 14px; height: 3px; border-radius: 2px; margin-right: 6px;
+         vertical-align: middle; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>FairPlay Echo<small>eğitici portföy simülatörü</small></h1>
+  <div class="spacer"></div>
+  <div class="energy" id="energy-wrap" hidden>
+    <span class="muted">Enerji</span>
+    <b id="energy-display">–</b>
+    <div class="energy-bar"><i id="energy-fill" style="width:0"></i></div>
+    <span class="muted" id="energy-hint"></span>
+  </div>
+  <span class="pill" id="user-pill" hidden></span>
+  <button class="ghost" id="logout" hidden>Çıkış</button>
+</header>
+
+<div class="wrap">
+  <div id="banner" hidden role="alert"></div>
+
+  <div id="auth-screen">
+    <section>
+      <h2>Giriş / Kayıt</h2>
+      <form id="auth-form" novalidate>
+        <div class="row">
+          <div class="field">
+            <label for="username">Kullanıcı adı</label>
+            <input type="text" id="username" autocomplete="username" required />
+          </div>
+          <div class="field">
+            <label for="password">Parola</label>
+            <input type="password" id="password" autocomplete="current-password" required />
+          </div>
+          <div class="field">
+            <label for="email">E-posta (kayıt için)</label>
+            <input type="text" id="email" autocomplete="email" />
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button type="submit" id="login">Giriş</button>
+          <button type="button" class="ghost" id="register">Kayıt ol</button>
+        </div>
+        <p id="auth-error" role="alert" hidden></p>
+      </form>
+      <p class="hint">Kayıt 1.000 TL sanal bakiye verir. Gerçek para yoktur; tüm bakiyeler eğiticidir.</p>
+    </section>
+  </div>
+
+  <div id="workspace" hidden>
+    <div id="workspace-grid">
+      <div>
+        <section>
+          <h2>Fikstürler</h2>
+          <div class="chips" id="league-chips" role="group" aria-label="Lig filtresi"></div>
+          <div class="row" style="margin-bottom:10px">
+            <label for="seed">Simülasyon tohumu</label>
+            <input type="text" id="seed" value="5" style="width:70px" />
+            <span class="muted" style="font-size:12px">Aynı tohum → aynı skor</span>
+          </div>
+          <div id="fixtures"><p class="muted">Yükleniyor…</p></div>
+          <p id="fixtures-empty" class="muted" hidden>Bu ligde maç yok.</p>
+        </section>
+
+        <section>
+          <h2>Kuponlar</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Maç</th><th>Seçim</th><th class="num">Oran</th><th class="num">Stake</th>
+                    <th>Durum</th><th class="num">Net</th><th class="num">CLV</th></tr>
+              </thead>
+              <tbody id="wagers-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <div>
+        <section id="sim-panel" hidden>
+          <h2>Simülasyon sonucu</h2>
+          <div class="sim-head">
+            <strong id="sim-title"></strong>
+            <span class="sim-score" id="sim-score"></span>
+          </div>
+          <div class="tiles" id="sim-outcomes"></div>
+          <ol class="timeline" id="sim-events"></ol>
+        </section>
+
+        <section>
+          <h2>Portföy</h2>
+          <div class="tiles" id="fund-tiles">
+            <div class="tile hero"><small>NAV</small><b id="t-nav">–</b></div>
+            <div class="tile hero"><small>TWR</small><b id="t-twr">–</b></div>
+            <div class="tile"><small>Seri</small><b id="t-series">–</b></div>
+          </div>
+          <div class="group">
+            <div class="tiles">
+              <div class="tile"><small>Kasa</small><b id="t-cash">–</b></div>
+              <div class="tile"><small>Kilitli</small><b id="t-locked">–</b></div>
+              <div class="tile"><small>Toplam</small><b id="t-total">–</b></div>
+            </div>
+          </div>
+          <h2 style="margin-top:16px">Risk</h2>
+          <div class="tiles">
+            <div class="tile"><small>Sharpe</small><b id="t-sharpe">–</b></div>
+            <div class="tile"><small>Sortino</small><b id="t-sortino">–</b></div>
+            <div class="tile"><small>MDD</small><b id="t-mdd">–</b></div>
+            <div class="tile"><small>Beta</small><b id="t-beta">–</b></div>
+            <div class="tile"><small>Alpha</small><b id="t-alpha">–</b></div>
+            <div class="tile"><small>RAS</small><b id="t-ras">–</b></div>
+          </div>
+          <p id="risk-note" class="muted" style="font-size:11.5px;margin:8px 0 0"></p>
+          <h2 style="margin-top:16px">İşlemler</h2>
+          <div class="tiles">
+            <div class="tile"><small>Adet</small><b id="t-trades">–</b></div>
+            <div class="tile"><small>Kazanma</small><b id="t-wins">–</b></div>
+            <div class="tile"><small>Profit factor</small><b id="t-pf">–</b></div>
+          </div>
+          <div class="row" id="badge-row" hidden aria-label="Disiplin rozetleri"
+               title="Üç rozetin tamamı cooldown tavanını 72 saate indirir"></div>
+          <div class="row" style="margin-top:14px">
+            <button class="ghost" id="refill">1.000 TL refill</button>
+            <span class="muted" id="cooldown-note" style="font-size:12px"></span>
+          </div>
+        </section>
+
+        <section id="learning-panel" hidden>
+          <h2>Öğrenme <span class="muted" style="font-weight:400;font-size:12px">— yalnız kendi sayıların, tavsiye değil</span></h2>
+          <div class="tiles">
+            <div class="tile"><small>Bahis</small><b id="t-lbets">–</b></div>
+            <div class="tile"><small>Bahis oranı</small><b id="t-lstake">–</b></div>
+            <div class="tile"><small>Favori payı</small><b id="t-lfav">–</b></div>
+            <div class="tile"><small>CLV eğilimi</small><b id="t-lclv">–</b></div>
+          </div>
+          <p id="learning-note" class="muted" style="font-size:11.5px;margin:8px 0 0"></p>
+        </section>
+
+        <section>
+          <h2>NAV ve benchmark botları</h2>
+          <canvas id="chart"></canvas>
+          <p class="muted" style="font-size:11.5px;margin:6px 0 0">
+            Portföy NAV'ı maç sınırlarında örneklenir; botlarla aynı zaman ekseninde karşılaştırılır.
+          </p>
+          <div class="legend" id="chart-legend"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+
+<dialog id="ruin-dialog" aria-labelledby="ruin-title">
+  <h3 id="ruin-title">Yüksek riskli bahis — onay ister</h3>
+  <p id="ruin-body" class="muted" style="margin:0;font-size:13px"></p>
+  <dl class="facts" id="ruin-facts"></dl>
+  <p id="ruin-hint" class="muted" style="font-size:11.5px;margin:10px 0 0"></p>
+  <div class="row" style="margin-top:14px;justify-content:flex-end">
+    <button type="button" class="ghost" id="ruin-cancel">Vazgeç</button>
+    <button type="button" id="ruin-confirm">Onayla ve oyna</button>
+  </div>
+</dialog>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+
+const state = { token: null, portfolio: null, fixtures: [], league: null, built: false };
+
+const SERVED = location.protocol === "http:" || location.protocol === "https:";
+const API_BASE = SERVED ? "" : "http://127.0.0.1:8000";
+
+const el = (id) => document.getElementById(id);
+
+/* Tek kaynak `:root`. Grafik renkleri de oradan okunur; ham hex burada tekrarlanmaz. */
+const token = (name) =>
+  getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+function showBanner(html) {
+  el("banner").innerHTML = html;
+  el("banner").hidden = false;
+}
+
+function clearBanner() {
+  el("banner").hidden = true;
+}
+
+const TOAST_MS = 6000;
+// Yığın sınırı: 6 bahis 6 toast demek değil — yığın paneli ve grafiği kapatıyordu.
+const TOAST_LIMIT = 4;
+const toastTimers = new WeakMap();
+
+function scheduleToastRemoval(node) {
+  const previous = toastTimers.get(node);
+  if (previous) clearTimeout(previous);
+  toastTimers.set(node, setTimeout(() => node.remove(), TOAST_MS));
+}
+
+function toast(message, kind = "info") {
+  const box = el("toast");
+  // Aynı mesaj tekrar ederse yeni düğüm eklenmez; süresi yenilenir.
+  const duplicate = Array.from(box.children).find((node) => node.textContent === message);
+  if (duplicate) {
+    scheduleToastRemoval(duplicate);
+    return;
+  }
+
+  const node = document.createElement("div");
+  node.textContent = message;
+  if (kind === "error") node.className = "err";
+  if (kind === "warn") node.className = "warn";
+  node.title = "Kapatmak için tıkla";
+  node.addEventListener("click", () => node.remove());
+  box.appendChild(node);
+  scheduleToastRemoval(node);
+  while (box.children.length > TOAST_LIMIT) box.firstElementChild.remove();
+}
+
+async function api(path, options = {}) {
+  const headers = Object.assign({ "Content-Type": "application/json" }, options.headers || {});
+  if (state.token) headers.Authorization = "Bearer " + state.token;
+
+  let response;
+  try {
+    response = await fetch(API_BASE + path, Object.assign({}, options, { headers }));
+  } catch (error) {
+    showBanner("API'ye ulaşılamadı: <code>" + (API_BASE || location.origin) + "</code>. " +
+      "Sunucuyu <code>fairplay-echo serve</code> ile başlat, sonra tarayıcıda " +
+      "<code>http://127.0.0.1:8000</code> adresini aç.");
+    throw new Error("API'ye ulaşılamadı");
+  }
+
+  const text = await response.text();
+  const body = text ? JSON.parse(text) : {};
+  if (!response.ok) {
+    if (response.status === 401 && state.token) {
+      endSession("Oturum geçersiz ya da süresi doldu; yeniden giriş yap.");
+    }
+    const detail = typeof body.detail === "string"
+      ? body.detail
+      : "İstek reddedildi (" + response.status + ")";
+    /* Hata gövdesi kaybolmasın: ruin kapısı (409) yapısal `ruin` verisini burada taşır. */
+    const problem = new Error(detail);
+    problem.status = response.status;
+    problem.body = body;
+    throw problem;
+  }
+  return body;
+}
+
+/* --- biçimlendirme: tek yer, tek kural --- */
+function fmtNumber(value, digits = 2) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "–";
+  return n.toLocaleString("tr-TR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+const fmtMoney = (value) => fmtNumber(value, 2) + " TL";
+const fmtSignedPct = (value) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "–";
+  return (n >= 0 ? "+" : "") + fmtNumber(n, 2) + "%";
+};
+const fmtPct = (value) => (Number.isFinite(Number(value)) ? fmtNumber(value, 2) + "%" : "–");
+const signClass = (value) => {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n === 0) return "";
+  return n > 0 ? "good" : "bad";
+};
+const setTile = (id, text, klass = "") => {
+  el(id).textContent = text;
+  el(id).className = klass;
+};
+
+/* --- oturum --- */
+function showChrome(visible) {
+  el("workspace").hidden = !visible;
+  el("auth-screen").hidden = visible;
+  ["energy-wrap", "user-pill", "logout"].forEach((id) => {
+    el(id).hidden = !visible;
+  });
+}
+
+function endSession(message) {
+  state.token = null;
+  state.portfolio = null;
+  state.built = false;
+  showChrome(false);
+  showBanner(message + " Çıkış yapıldı; eski portföy değerleri gösterilmiyor.");
+}
+
+function authProblem(kind) {
+  const username = el("username").value.trim();
+  const password = el("password").value;
+  const email = el("email").value.trim();
+  if (username.length < 3) return "Kullanıcı adı en az 3 karakter olmalı.";
+  if (password.length < 6) return "Parola en az 6 karakter olmalı.";
+  if (kind === "register" && email.length < 3) return "Kayıt için e-posta gerekli.";
+  return null;
+}
+
+function showAuthError(message) {
+  const node = el("auth-error");
+  node.textContent = message || "";
+  node.hidden = !message;
+}
+
+async function authenticate(path) {
+  const isRegister = path.endsWith("register");
+  const problem = authProblem(isRegister ? "register" : "login");
+  if (problem) {
+    showAuthError(problem);
+    return;
+  }
+  showAuthError("");
+  const body = { username: el("username").value.trim(), password: el("password").value };
+  if (isRegister) body.email = el("email").value.trim();
+  try {
+    const payload = await api(path, { method: "POST", body: JSON.stringify(body) });
+    state.token = payload.access_token;
+    el("user-pill").textContent = payload.user.username;
+    clearBanner();
+    showChrome(true);
+    await loadFixtures();
+    await refresh();
+  } catch (error) {
+    showAuthError(error.message);
+  }
+}
+
+function logout() {
+  state.token = null;
+  location.reload();
+}
+
+/* --- fikstürler --- */
+function setBusy(button, busy) {
+  button.disabled = busy;
+  button.setAttribute("aria-busy", String(busy));
+}
+
+/* Enerji kapısının tek sahibi burasıdır: istek bitince butonu körlemesine açmayız,
+   yoksa `refresh()`in kapattığı "Bahis" butonu geri açılır (enerji 0 iken bahis açık kalır). */
+function releaseButton(button) {
+  button.removeAttribute("aria-busy");
+  button.disabled = Boolean(
+    button.dataset.role === "bet" && state.portfolio && !state.portfolio.can_wager
+  );
+}
+
+function renderChips() {
+  const chips = el("league-chips");
+  const leagues = [...new Set(state.fixtures.map((f) => f.league))];
+  chips.innerHTML = "";
+  [null, ...leagues].forEach((league) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip";
+    chip.textContent = league === null ? "Tümü" : league;
+    chip.setAttribute("aria-pressed", String(state.league === league));
+    chip.addEventListener("click", () => {
+      state.league = league;
+      [...chips.children].forEach((node, index) => {
+        const value = index === 0 ? null : leagues[index - 1];
+        node.setAttribute("aria-pressed", String(value === league));
+      });
+      applyFilter();
+    });
+    chips.appendChild(chip);
+  });
+}
+
+function applyFilter() {
+  document.querySelectorAll("details.match").forEach((card) => {
+    card.hidden = state.league !== null && card.dataset.league !== state.league;
+  });
+  const visible = [...document.querySelectorAll("details.match")].filter((card) => !card.hidden);
+  el("fixtures-empty").hidden = visible.length > 0;
+}
+
+function marketRow(fixture, marketType, market) {
+  const row = document.createElement("div");
+  row.className = "market";
+
+  const name = document.createElement("div");
+  name.className = "market-name";
+  name.textContent = marketType;
+
+  const select = document.createElement("select");
+  select.setAttribute("aria-label", fixture.match_id + " " + marketType + " seçimi");
+  Object.keys(market.outcomes).forEach((key) => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = key;
+    select.appendChild(option);
+  });
+
+  const odds = document.createElement("div");
+  odds.className = "num odds";
+
+  const metaSlot = document.createElement("div");
+  metaSlot.className = "meta-slot";
+  const meta = document.createElement("span");
+  meta.className = "market-meta";
+  metaSlot.appendChild(meta);
+
+  const probability = document.createElement("input");
+  probability.type = "text";
+  probability.setAttribute("aria-label", marketType + " için tahminin (yüzde)");
+  probability.placeholder = "p %";
+  probability.title = "Kendi olasılık tahminin (%); yazarken EV ve Kelly otomatik hesaplanır";
+  probability.style.width = "60px";
+
+  const stake = document.createElement("input");
+  stake.type = "text";
+  stake.value = "100";
+  stake.setAttribute("aria-label", marketType + " stake");
+  stake.style.width = "78px";
+
+  const actions = document.createElement("div");
+  actions.className = "row";
+  const betButton = document.createElement("button");
+  betButton.type = "button";
+  betButton.dataset.role = "bet";
+  betButton.textContent = "Bahis";
+  actions.append(betButton);
+
+  const result = document.createElement("p");
+  result.className = "assess";
+  result.setAttribute("aria-live", "polite");
+  result.hidden = true;
+
+  let requestSeq = 0;
+  let timer = null;
+
+  function sync() {
+    const selection = select.value;
+    odds.textContent = market.outcomes[selection] || "–";
+    const fair = market.fair_odds[selection];
+    meta.textContent = (fair ? "fair " + fair : "fair –") +
+      (market.margin_pct ? " · vig " + fmtPct(market.margin_pct) : "");
+    requestSeq += 1;
+    if (timer) clearTimeout(timer);
+    result.hidden = true;
+  }
+
+  function currentProbability() {
+    const percent = Number(probability.value.replace(",", "."));
+    return percent > 0 && percent < 100 ? percent : null;
+  }
+
+  async function assess() {
+    const percent = currentProbability();
+    if (percent === null) {
+      result.hidden = true;
+      return;
+    }
+    const ticket = ++requestSeq;
+    const selection = select.value;
+    try {
+      const data = await api("/api/estimate", {
+        method: "POST",
+        body: JSON.stringify({
+          match_id: fixture.match_id,
+          market_type: marketType,
+          selection: selection,
+          probability: (percent / 100).toFixed(4),
+        }),
+      });
+      if (ticket !== requestSeq) return;
+      const positive = data.verdict === "POZITIF";
+      result.innerHTML = "";
+      const strong = document.createElement("b");
+      strong.className = positive ? "good" : "bad";
+      strong.textContent = "EV " + fmtSignedPct(data.ev_pct);
+      result.appendChild(strong);
+      result.appendChild(document.createTextNode(
+        (positive
+          ? " · Kelly %" + fmtNumber(Number(data.kelly_fraction) * 100, 2) +
+            " · önerilen stake " + fmtMoney(data.suggested_stake)
+          : " · pozitif EV yok (Kelly %0)") +
+        " · piyasa fair %" + fmtNumber(Number(data.fair_prob) * 100, 1)
+      ));
+      result.hidden = false;
+    } catch (error) {
+      if (ticket !== requestSeq) return;
+      result.textContent = error.message;
+      result.hidden = false;
+    }
+  }
+
+  select.addEventListener("change", sync);
+  probability.addEventListener("input", () => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(assess, 420);
+  });
+  betButton.addEventListener("click", async () => {
+    const percent = currentProbability();
+    const body = {
+      match_id: fixture.match_id,
+      market_type: marketType,
+      selection: select.value,
+      stake: stake.value,
+    };
+    if (percent !== null) body.probability = (percent / 100).toFixed(4);
+    await placeWager(body, betButton);
+  });
+
+  sync();
+  row.append(name, select, odds, metaSlot, probability, stake, actions, result);
+  return row;
+}
+
+function buildFixtures() {
+  const host = el("fixtures");
+  host.innerHTML = "";
+  state.fixtures.forEach((fixture) => {
+    const card = document.createElement("details");
+    card.className = "match";
+    card.dataset.league = fixture.league;
+
+    const summary = document.createElement("summary");
+    const title = document.createElement("strong");
+    title.textContent = fixture.home_team + " – " + fixture.away_team;
+    const meta = document.createElement("span");
+    meta.className = "market-meta";
+    meta.textContent = fixture.league + " · " + fixture.match_id + " · " +
+      Object.keys(fixture.markets).length + " market";
+    const spacer = document.createElement("span");
+    spacer.className = "spacer";
+    const simulate = document.createElement("button");
+    simulate.type = "button";
+    simulate.className = "ghost";
+    simulate.textContent = "Simüle et";
+    simulate.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      simulateMatch(fixture.match_id, simulate);
+    });
+    summary.append(title, meta, spacer, simulate);
+    card.appendChild(summary);
+
+    Object.entries(fixture.markets).forEach(([marketType, market]) => {
+      card.appendChild(marketRow(fixture, marketType, market));
+    });
+    host.appendChild(card);
+  });
+  state.built = true;
+}
+
+/* --- eylemler --- */
+function noteWagerSuccess(payload) {
+  toast("Bahis alındı: " + payload.selection + " @ " + payload.odds +
+    " · olası ödeme " + fmtMoney(payload.potential_payout));
+  if (payload.ruin_risk_warning) toast(payload.warning_message, "warn");
+  if (payload.assessment && payload.assessment.verdict === "NEGATIF") {
+    toast(payload.assessment.note, "warn");
+  }
+}
+
+function sendWager(body) {
+  return api("/api/wager", { method: "POST", body: JSON.stringify(body) });
+}
+
+/* Kasa eşiğini aşan bahis: sunucu 409 + `ruin` döner, burada onay alınır (spec §3.4).
+   Eşik ve formül sunucuda; burada yalnız gösterilir ve kullanıcının kararı toplanır. */
+function confirmRuin(ruin) {
+  const dialog = el("ruin-dialog");
+  el("ruin-body").textContent = ruin.message || "";
+
+  const facts = el("ruin-facts");
+  facts.innerHTML = "";
+  const rows = [
+    ["Stake", fmtMoney(ruin.stake)],
+    ["Kasa", fmtMoney(ruin.cash)],
+    ["Kasadaki pay", fmtPct(ruin.pct_of_cash)],
+    ["Eşik", fmtPct(ruin.threshold_pct)],
+  ];
+  const numeric = ruin.risk_of_ruin_pct !== null && ruin.risk_of_ruin_pct !== undefined;
+  if (numeric) {
+    rows.push(["İflas riski (R_ruin)", fmtPct(ruin.risk_of_ruin_pct)]);
+    rows.push(["Kenar (Edge)", fmtPct(Number(ruin.edge) * 100)]);
+    rows.push(["Birim (Units)", fmtNumber(ruin.units, 2)]);
+  }
+  rows.forEach(([label, value]) => {
+    const dt = document.createElement("dt");
+    dt.textContent = label;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    facts.append(dt, dd);
+  });
+  el("ruin-hint").textContent = numeric
+    ? "İflas riski, kenarına ve kaç birimlik kasan olduğuna göre hesaplanır."
+    : "Tahminini (p %) girersen iflas riski oranı da hesaplanır; sayı uydurulmaz.";
+
+  return new Promise((resolve) => {
+    dialog.addEventListener("close", () => resolve(dialog.returnValue === "confirm"), {
+      once: true,
+    });
+    el("ruin-cancel").onclick = () => dialog.close("cancel");
+    el("ruin-confirm").onclick = () => dialog.close("confirm");
+    dialog.showModal();
+  });
+}
+
+async function placeWager(body, button) {
+  if (state.portfolio && !state.portfolio.can_wager) {
+    toast("Enerji yetersiz (" + state.portfolio.simulation_energy + "/" +
+      state.portfolio.energy_max + "). Bahis gönderilmedi.", "warn");
+    return;
+  }
+  setBusy(button, true);
+  try {
+    let payload;
+    try {
+      payload = await sendWager(body);
+    } catch (error) {
+      if (error.status !== 409 || !error.body || !error.body.ruin) throw error;
+      if (!(await confirmRuin(error.body.ruin))) {
+        toast("Yüksek riskli bahis onaylanmadı; gönderilmedi.", "warn");
+        return;
+      }
+      payload = await sendWager(Object.assign({}, body, { confirm_ruin: true }));
+    }
+    noteWagerSuccess(payload);
+    await refresh();
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    releaseButton(button);
+  }
+}
+
+function renderSimulation(payload) {
+  el("sim-title").textContent = payload.match_title;
+  el("sim-score").textContent = payload.score;
+
+  const outcomes = el("sim-outcomes");
+  outcomes.innerHTML = "";
+  [
+    ["1X2", payload.outcomes["1X2"]],
+    ["Alt/Üst 2.5", payload.outcomes["OVER_UNDER_2.5"]],
+    ["Karşılıklı gol", payload.outcomes["BTTS"]],
+  ].forEach(([label, value]) => {
+    const tile = document.createElement("div");
+    tile.className = "tile";
+    const caption = document.createElement("small");
+    caption.textContent = label;
+    const result = document.createElement("b");
+    result.textContent = value;
+    tile.append(caption, result);
+    outcomes.appendChild(tile);
+  });
+
+  const list = el("sim-events");
+  list.innerHTML = "";
+  if (payload.events.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "muted";
+    empty.textContent = "Gol olmadı.";
+    list.appendChild(empty);
+  } else {
+    payload.events.forEach((event) => {
+      const item = document.createElement("li");
+      const minute = document.createElement("span");
+      minute.className = "minute";
+      minute.textContent = event.minute + "'";
+      const text = document.createElement("span");
+      text.textContent = event.description;
+      item.append(minute, text);
+      list.appendChild(item);
+    });
+  }
+
+  el("sim-panel").hidden = false;
+}
+
+async function simulateMatch(matchId, button) {
+  setBusy(button, true);
+  try {
+    const payload = await api("/api/matches/simulate", {
+      method: "POST",
+      body: JSON.stringify({ match_id: matchId, seed: Number(el("seed").value) }),
+    });
+    toast(payload.match_title + " → " + payload.score + " · " +
+      payload.settled_wagers.length + " kupon sonuçlandı");
+    renderSimulation(payload);
+    if (payload.bankruptcy_triggered) toast("İflas: hesap cooldown'a alındı.", "warn");
+    await refresh();
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    releaseButton(button);
+  }
+}
+
+async function refill() {
+  const button = el("refill");
+  setBusy(button, true);
+  try {
+    const payload = await api("/api/refill", { method: "POST" });
+    toast("Refill alındı. NAV değişmedi: " + fmtNumber(payload.nav, 2));
+    await refresh();
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    releaseButton(button);
+  }
+}
+
+/* --- portföy --- */
+function renderPortfolio(portfolio) {
+  const fund = portfolio.fund;
+  setTile("t-nav", fmtNumber(fund.nav, 2));
+  setTile("t-twr", fmtSignedPct(fund.twr_pct), signClass(fund.twr_pct));
+  setTile("t-series", String(fund.series_id));
+  setTile("t-cash", fmtMoney(fund.cash));
+  setTile("t-locked", fmtMoney(fund.locked));
+  setTile("t-total", fmtMoney(fund.total_value));
+
+  const risk = portfolio.risk;
+  /* Anlamlılık kapısı rengi de bağlar (DESIGN.md): t < 2 iken renk "ölçüm" izlenimi vermemeli.
+     Sayı kalır, yorum (yeşil/kırmızı/amber) susar. */
+  const reliable = risk.reliability.sharpe_reliable;
+  const verdict = (klass) => (reliable ? klass : "muted");
+  setTile("t-sharpe", fmtNumber(risk.sharpe_ratio, 2), verdict(""));
+  setTile("t-sortino", fmtNumber(risk.sortino_ratio, 2), verdict(""));
+  const mdd = Number(risk.max_drawdown_pct);
+  setTile("t-mdd", fmtPct(mdd), verdict(mdd >= 15 ? "bad" : (mdd >= 5 ? "warn" : "")));
+  setTile("t-beta", fmtNumber(risk.beta, 2), verdict(""));
+  setTile("t-alpha", fmtSignedPct(risk.alpha), verdict(signClass(risk.alpha)));
+  setTile("t-ras", fmtNumber(risk.risk_adjusted_score, 2), verdict(""));
+
+  const stats = risk.trade_stats;
+  const reliability = risk.reliability;
+  setTile("t-trades", String(stats.total_trades));
+  setTile("t-wins", fmtPct(stats.win_rate_pct));
+  setTile(
+    "t-pf",
+    reliability.profit_factor_defined ? fmtNumber(stats.profit_factor, 2) : "tanımsız"
+  );
+  // Anlamlılık kapısı: yetersiz örneklemde çıplak sayı "ölçüm" gibi okunmasın.
+  el("risk-note").textContent = reliability.sharpe_reliable
+    ? ""
+    : reliability.note +
+      " Profit factor " +
+      (reliability.profit_factor_defined ? "tanımlı." : "hiç kayıp olmadığı için tanımsız.");
+
+  el("cooldown-note").textContent = portfolio.cooldown.locked
+    ? "Cooldown aktif (tier " + portfolio.cooldown.tier + " · tavan " +
+      portfolio.cooldown.max_hours + " saat)"
+    : "Cooldown tavanı " + portfolio.cooldown.max_hours + " saat" +
+      (fund.bankrupt ? " · fon iflas etti, refill yeni seri açar" : "");
+
+  // Disiplin rozetleri: ölçütlerden türetilir; üçü birden cooldown tavanını indirir.
+  const badges = portfolio.badges || [];
+  const badgeRow = el("badge-row");
+  badgeRow.hidden = badges.length === 0;
+  badgeRow.innerHTML = "";
+  badges.forEach((name) => {
+    const chip = document.createElement("span");
+    chip.className = "pill badge";
+    chip.textContent = name;
+    badgeRow.appendChild(chip);
+  });
+}
+
+function renderEnergy(portfolio) {
+  const energy = portfolio.simulation_energy;
+  const max = portfolio.energy_max;
+  const display = el("energy-display");
+  display.textContent = energy + " / " + max;
+  display.className = portfolio.can_wager ? "" : "bad";
+  el("energy-fill").style.width = Math.round((energy / max) * 100) + "%";
+  el("energy-wrap").className = "energy" + (portfolio.can_wager ? "" : " is-blocked");
+  el("energy-hint").textContent = "her bahis " + portfolio.energy_per_wager +
+    (portfolio.can_wager ? "" : " · bahis kapalı");
+  document.querySelectorAll('[data-role="bet"]').forEach((button) => {
+    button.disabled = !portfolio.can_wager;
+  });
+}
+
+function renderWagers(portfolio) {
+  const rows = portfolio.pending_wagers
+    .map((w) => Object.assign({}, w, { kind: "BEKLİYOR" }))
+    .concat(portfolio.settled_wagers.map((w) => Object.assign({}, w, { kind: w.status })));
+  const body = el("wagers-body");
+  body.innerHTML = "";
+  if (rows.length === 0) {
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 7;
+    td.className = "muted";
+    td.textContent = "Henüz kupon yok.";
+    tr.appendChild(td);
+    body.appendChild(tr);
+    return;
+  }
+  rows.forEach((w) => {
+    const net = w.net === undefined || w.net === null || !Number.isFinite(Number(w.net))
+      ? null : Number(w.net);
+    const clv = w.clv_pct === undefined || w.clv_pct === null || !Number.isFinite(Number(w.clv_pct))
+      ? null : Number(w.clv_pct);
+    const tr = document.createElement("tr");
+    const cells = [
+      [w.match_title, ""],
+      [w.selection, ""],
+      [w.odds, "num"],
+      [fmtMoney(w.stake), "num"],
+      [w.kind, w.kind === "WON" ? "good" : (w.kind === "LOST" ? "bad" : "muted")],
+      [net === null ? "–" : (net >= 0 ? "+" : "") + fmtMoney(net), "num " +
+        (net === null ? "" : (net >= 0 ? "good" : "bad"))],
+      [clv === null ? "–" : fmtSignedPct(clv), "num " + (clv === null ? "muted" : signClass(clv))],
+    ];
+    cells.forEach(([text, klass]) => {
+      const td = document.createElement("td");
+      td.className = klass;
+      td.textContent = String(text);
+      tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+}
+
+/* Grafik serileri: token renk + çizgi deseni (renk körü ayrımı için) */
+const SERIES = [
+  { key: "nav_at_matches", color: token("--series-nav"), dash: [], label: "Portföy" },
+  { key: "RANDOM_WALK", color: token("--series-random"), dash: [6, 4], label: "Rastgele" },
+  { key: "FAVORITE_HEAVY", color: token("--series-favorite"), dash: [2, 3], label: "Favori" },
+  { key: "HOME_ADVANTAGE", color: token("--series-home"), dash: [10, 4], label: "Ev sahibi" },
+];
+
+function renderChart(portfolio) {
+  const plotted = SERIES.map((series) => ({
+    key: series.key,
+    color: series.color,
+    dash: series.dash,
+    label: series.label,
+    points: series.key === "nav_at_matches"
+      ? (portfolio.nav_at_matches || []).map(Number)
+      : (portfolio.benchmarks.series[series.key] || []).map(Number),
+  }));
+  /* Portföy en ÜSTTE çizilir: seriler üst üste bindiğinde kullanıcının kendi eğrisi görünür kalsın. */
+  const drawOrder = [
+    ...plotted.filter((series) => series.key !== "nav_at_matches"),
+    ...plotted.filter((series) => series.key === "nav_at_matches"),
+  ];
+
+  const canvas = el("chart");
+  const ratio = window.devicePixelRatio || 1;
+  const cssWidth = canvas.clientWidth || 720;
+  const cssHeight = 210;
+  canvas.width = Math.round(cssWidth * ratio);
+  canvas.height = Math.round(cssHeight * ratio);
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+  const all = plotted.flatMap((series) => series.points);
+  if (all.length === 0) return;
+
+  const maxLength = Math.max(...plotted.map((series) => series.points.length));
+  const min = Math.min(90, ...all);
+  const max = Math.max(110, ...all);
+  const pad = { left: 42, right: 12, top: 10, bottom: 20 };
+  const width = cssWidth - pad.left - pad.right;
+  const height = cssHeight - pad.top - pad.bottom;
+  const yOf = (value) => pad.top + height - ((value - min) / (max - min)) * height;
+  const xOf = (index) => pad.left + (maxLength <= 1 ? 0 : (index / (maxLength - 1)) * width);
+
+  ctx.font = "10px system-ui";
+  [min, 100, max].forEach((value) => {
+    const y = yOf(value);
+    ctx.strokeStyle = value === 100 ? token("--chart-grid") : token("--chart-line");
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(cssWidth - pad.right, y);
+    ctx.stroke();
+    ctx.fillStyle = token("--chart-axis");
+    ctx.fillText(value.toFixed(0), 8, y + 3);
+  });
+
+  drawOrder.forEach((series) => {
+    if (series.points.length < 2) return;
+    ctx.strokeStyle = series.color;
+    ctx.lineWidth = series.key === "nav_at_matches" ? 2.4 : 1.8;
+    ctx.setLineDash(series.dash);
+    ctx.beginPath();
+    series.points.forEach((value, index) => {
+      index === 0 ? ctx.moveTo(xOf(index), yOf(value)) : ctx.lineTo(xOf(index), yOf(value));
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+  });
+
+  el("chart-legend").innerHTML = plotted.map((series) => {
+    const last = series.points.length ? series.points[series.points.length - 1] : null;
+    const dash = series.dash.length
+      ? "background:repeating-linear-gradient(90deg," + series.color + " 0 4px,transparent 4px 7px)"
+      : "background:" + series.color;
+    return "<span><i class='dot' style='" + dash + "'></i>" + series.label +
+      (last === null ? "" : " · " + fmtNumber(last, 1)) + "</span>";
+  }).join("");
+}
+
+/* --- döngü --- */
+async function loadFixtures() {
+  if (state.built) {
+    applyFilter();
+    return;
+  }
+  const payload = await api("/api/fixtures");
+  state.fixtures = payload.fixtures;
+  renderChips();
+  buildFixtures();
+  applyFilter();
+}
+
+function renderLearning(learning) {
+  const panel = el("learning-panel");
+  panel.hidden = learning.bets === 0;
+  setTile("t-lbets", String(learning.bets));
+  setTile(
+    "t-lstake",
+    learning.stake.mean_ratio_pct === null
+      ? "–"
+      : fmtPct(learning.stake.mean_ratio_pct) + " (" + learning.stake.verdict + ")"
+  );
+  setTile(
+    "t-lfav",
+    learning.favourite.share_pct === null
+      ? "–"
+      : fmtPct(learning.favourite.share_pct) + " (" + learning.favourite.verdict + ")"
+  );
+  setTile("t-lclv", learning.clv.trend);
+
+  // Örneklem kuralı burada da yazılı: sayı gösterilirken ne kadar güvenilir olduğu söylenir.
+  const parts = [learning.headline];
+  if (learning.clv.trend === "örneklem yetersiz") {
+    parts.push(
+      "CLV eğilimi için kapanış oranı gerekiyor (en az " + learning.min_sample + " bahis)."
+    );
+  }
+  parts.push("Pazar çeşitliliği: " + learning.market_breadth + ".");
+  el("learning-note").textContent = parts.join(" ");
+}
+
+async function refresh() {
+  try {
+    const portfolio = await api("/api/portfolio");
+    state.portfolio = portfolio;
+    renderPortfolio(portfolio);
+    renderEnergy(portfolio);
+    renderWagers(portfolio);
+    renderChart(portfolio);
+    renderLearning(await api("/api/learning-report"));
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+function init() {
+  showChrome(false);
+  if (!SERVED) {
+    showBanner("Bu sayfa doğrudan dosyadan açıldı (<code>file://</code>). API'ye <code>" + API_BASE +
+      "</code> üzerinden bağlanılıyor — sunucu çalışmıyorsa <code>fairplay-echo serve</code> ile " +
+      "başlat. En temizi sayfayı doğrudan <code>http://127.0.0.1:8000</code> adresinden açmaktır.");
+  }
+
+  const authForm = el("auth-form");
+  authForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    authenticate("/api/auth/login");
+  });
+  el("register").addEventListener("click", () => authenticate("/api/auth/register"));
+  el("logout").addEventListener("click", logout);
+  el("refill").addEventListener("click", refill);
+  window.addEventListener("resize", () => {
+    if (state.portfolio) renderChart(state.portfolio);
+  });
+}
+
+init();
+</script>
+</body>
+</html>

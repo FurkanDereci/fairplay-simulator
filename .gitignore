@@ -1,54 +1,23 @@
 # Python
 __pycache__/
 *.py[cod]
-*.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual Environments
-venv/
-env/
-ENV/
 .venv/
+venv/
+build/
+dist/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+.coverage
+htmlcov/
 
-# Environment Variables & Secrets
+# Yerel veri / sır
 .env
-.env.*
-!.env.example
-
-# Databases
 *.db
-*.sqlite
-*.sqlite3
 
-# Logs & Temp
-*.log
-temp/
-tmp/
-subagents/
-
-# IDE & Editors
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
+# Windows/OneDrive kabuğu (bu sınıf bir kez repoya sızdı — bir daha sızmasın)
 *:Zone.Identifier
+Thumbs.db
+desktop.ini

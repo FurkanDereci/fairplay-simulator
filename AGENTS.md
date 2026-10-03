@@ -1,34 +1,72 @@
-# FairPlay Simulator - Workspace Agent Rules & Guidelines
+# Bu Depoda Ajan Kuralları
 
-Bu dosya FairPlay Simulator projesinde çalışan tüm AI geliştirici ve uzman alt ajanlar (Gatekeeper, Data Math, UI/UX, PM vb.) için bağlayıcı proje kurallarını içerir.
+Bu depo, "sözleşme-önce" yöntemiyle inşa edilir. Aşağıdaki kurallar bağlayıcıdır.
 
----
+## 1. Sözleşme-önce
+- Bir davranış kodlanmadan önce **`docs/20-accounting-spec.md`**'te tarif edilmiş olmalı.
+- Spec'teki işlenmiş örnekler (`[G-x]`) koda geçtiğinde **golden test** olur; sayı birebir tutmalıdır.
 
-## 1. Genel Geliştirme & İletişim İlkeleri
-- **Varsayım Yapma:** Emin olunmayan konularda asla kendi kendine varsayımda bulunma; kullanıcıya açıkça sor.
-- **Doğrudan ve Net Ol:** Fikir uyuşmazlığında veya teknik olarak zayıf bir yaklaşımda lafı dolandırmadan doğrudan açıkla.
-- **Gereksiz Övgüden Kaçın:** Yanıtlarda gereksiz övgü ve laf kalabalığı yapma; doğrudan teknik çözüme ve eyleme odaklan.
-- **GIPS Fon Muhasebesi Bütünlüğü:** Tüm portföy metriklerinde (Unit NAV, TWR, Sharpe, Sortino, MDD) matematiksel ve finansal kurumsal standartlara sadık kal.
+## 2. Tek uygulama (SSOT)
+- Para/politika matematiği **yalnız `core/` içinde** yaşar. API katmanı (`app/`) hesap yapmaz;
+  parse → yetki → servis → kalıcılık → serileştirme yapar.
+- Bir kuralı ikinci kez yazmak yasaktır. Aynı sonucu iki yerde gördüysen, biri silinir.
 
----
+## 3. Saf çekirdek
+- `core/` hiçbir framework, DB, saat veya RNG **import etmez**. Zaman ve rastgelelik **enjekte edilir**
+  (`Clock`, tohumlu `random.Random`). Çekirdek saf fonksiyonlar ve veri sınıflarından oluşur.
 
-## 2. Frontend & Vanilla JS SPA Güvenlik Kuralları (Önemli Dersler)
+## 4. Doküman yalan söylemez
+- `40-api.md` elle yazılmaz; OpenAPI'den üretilir.
+- `30-architecture.md` iki bölümlüdür: **CURRENT** (var olan) ve **TARGET** (hedef + geçiş tetikleyicisi).
+  Bir şeyi hedef diye yazıp var gibi göstermek yasaktır.
+- `tests/test_docs_sync.py` yeşil değilse iş bitmemiştir.
 
-### 2.1. Obje Anahtarları ve Sözdizimi (Object Literals & Dot Notation)
-- **Nokta İçeren Anahtarlar:** İçinde nokta veya özel karakter barındıran obje anahtarları (`"OVER_2.5"`, `"UNDER_2.5"`, vb.) **mutlaka tırnak içinde tanımlanmalı** (`{ "OVER_2.5": 1.85 }`) ve erişirken **köşeli parantez kullanılmalıdır** (`outcomes["OVER_2.5"]`).
-- **Asla Yapma:** `outcomes.OVER_2.5` veya `{ OVER_2.5: 1.85 }` yazma! JavaScript motoru bunu parse hatası (`SyntaxError`) veya `TypeError: Cannot read properties of undefined (reading '5')` olarak değerlendirip tüm `<script>` bloğunun çalışmasını durdurur.
+## 5. Doğrulama standardı (her değişiklikte)
+1. `pytest -q` — tümü geçer.
+2. `mypy` — tip hatası yok. (Ayarlar `pyproject.toml`'da: `strict = true`,
+   `files = ["src/fairplay_simulator"]`, `mypy_path = "src"`. Yol vermek gerekmez; `core app` kökte yok.)
+3. `ruff check .` — lint temiz.
+4. `docs-sync` geçer (iddialar gerçekle uyuşur).
 
-### 2.2. Global Window Fonksiyon Bağlantıları (Window Bindings)
-- `window.<fonksiyonAdı> = <fonksiyonAdı>;` bağlaması yapmadan önce, o fonksiyonun script içinde **kesinlikle tanımlanmış olduğunu** doğrula.
-- Tanımsız bir fonksiyonu `window` nesnesine atamaya çalışmak `Uncaught ReferenceError` oluşturur ve altındaki tüm fonksiyon tanımları ile `init()` yaşam döngüsünü tamamen öldürür.
+## 6. Para ve zaman disiplini
+- Para: `Decimal`. İstatistik: `float`. Yuvarlama yalnız sınırlarda ve tek bir politikayla
+  (`core/money.py`).
+- Zaman: `datetime.now()` doğrudan çağrılmaz; enjekte edilen saat kullanılır.
 
-### 2.3. Hata İzolasyonu (Error Boundaries) & Yaşam Döngüsü
-- `init()` gibi açılış fonksiyonlarında Chart.js veya harici kütüphane çağrılarını `try-catch` ve `typeof Chart !== "undefined"` ile koru. Bir bileşenin gecikmesi veya hata vermesi diğer bileşenlerin (fikstürler, kimlik doğrulama, bakiye) yüklenmesini engellememelidir.
-- Eski veya geçersiz oturum verileri (`localStorage` token'ları) backend tarafından 401/403/404 ile reddedildiğinde otomatik temizlenmeli ve temiz bir oturum başlatılmalıdır.
+## 7. Güven sınırı
+- **Sunucu otoritedir.** İstemci bir maç sonucunu veya settlement'ı bildirmez; sonuç maç
+  motorundan/ingest kaydından gelir.
+- Para hareket ettiren uçlar **idempotent** olmalıdır.
 
----
+## 8. Sade tut
+- Gereksiz mühendislikten kaçın: rate limiting, mikroservis, önbellek katmanı vb. ölçülü bir
+  tetikleyici olmadan eklenmez.
+- Ürün depoları temiz kalır: ajan araçları, üretilmiş raporlar, editör/OS artıkları commit edilmez
+  (gerekçe: ADR-0007).
 
-## 3. Kod Değişikliği Doğrulama Standardı (Verification Checklist)
-Her frontend veya backend değişikliğinden sonra:
-1. `python -m unittest discover tests -v` çalıştırılmalı ve tüm testlerin geçtiği doğrulanmalıdır.
-2. `src/frontend/index.html` içinde tanımlanmamış değişken, tırnaksız noktalı obje anahtarı veya asılı kalmış debug logları taranmalıdır.
+## 9. Arayüz kalite eşiği (UI/UX)
+
+Arayüz değişiklikleri şu eşikleri geçmeden "bitti" sayılmaz:
+
+- **Kontrast:** gövde metni ≥ 4,5:1; ikincil metin de ≥ 4,5:1; anlam taşıyan kenarlık/ikon ≥ 3:1.
+  Koyu tema için ayrı ölçülür (aydınlık tema değerlerinin çalıştığı varsayılmaz).
+- **Renk tek başına anlam taşımaz.** Kâr/zarar renkleri (yeşil/kırmızı) yalnız bu anlamda kullanılır;
+  eylem rengi ayrıdır — yoksa "yeşil buton" ile "kâr" karışır.
+- **Durumlar tasarlanır:** yükleniyor / boş / hata. Sessiz başarısızlık yasak: kullanıcı göremiyorsa o
+  kural yoktur (bkz. `enerji-mekanigi-ve-gorunurluk` dersi).
+- **Klavye:** her etkileşim klavyeyle erişilebilir; `:focus-visible` görünür; form alanlarının
+  `label`/`for` eşleşmesi veya `aria-label`ı vardır; aç/kapa düğmeleri `aria-pressed` bildirir.
+- **Hareket:** `prefers-reduced-motion` saygı görür; geçişler 150–300 ms.
+- **Simge:** yapısal simge olarak emoji kullanılmaz; arka plan görseli yerine vektör tercih edilir.
+- **Belirteç:** renkler/boşluklar CSS değişkeniyle yönetilir; ekrana özel gömülü hex yazılmaz.
+- **Sayı biçimi:** para `tr-TR` (virgül ondalık); **oranlar bahisçi konvansiyonu olarak nokta kalır**
+  (bilinçli istisna).
+- **İnceleme:** arayüz işi, yazarın kendi onayıyla kapanmaz; bağımsız bir alt ajana inceletilir (ADR-0007).
+
+## 10. Commit kimliği
+- Commit mesajlarına **araç/otomatik ortak yazar eklenmez.** `Co-authored-by:` trailer'ı (özellikle
+  `CommandCodeBot`) yazılmaz: GitHub bu satırı commit'e **ortak yazar** olarak işler ve katkı
+  listesinde araç görünür. Katkı listesinde yalnız **gerçek insan yazarlar** bulunur.
+- Gerekçe: bu depo herkese açık yayınlanır; katkı grafiği kimin işi olduğunu göstermelidir.
+- **Kapı:** `.pre-commit-config.yaml` → `no-bot-coauthor` (`commit-msg` aşaması). Kural yazılı
+  kalmaz, ölçülür; `pre-commit install` ile yerel kancaya bağlanır.

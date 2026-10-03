@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "seq": 1,
+      "entry_type": "DEPOSIT",
+      "amount": "1000",
+      "stake": "0",
+      "wager_id": null
+    },
+    {
+      "seq": 2,
+      "entry_type": "WAGER_PLACED",
+      "amount": "100",
+      "stake": "0",
+      "wager_id": "w1"
+    },
+    {
+      "seq": 3,
+      "entry_type": "WAGER_SETTLED",
+      "amount": "250",
+      "stake": "100",
+      "wager_id": "w1"
+    },
+    {
+      "seq": 4,
+      "entry_type": "REFILL",
+      "amount": "1000",
+      "stake": "0",
+      "wager_id": null
+    }
+  ]
+}

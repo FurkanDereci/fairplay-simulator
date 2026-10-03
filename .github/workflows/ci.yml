@@ -17,6 +17,9 @@ jobs:
       - name: Bağımlılıklar
         run: python -m pip install -e ".[dev]"
 
+      - name: Tarayıcı (UI testleri için)
+        run: python -m playwright install --with-deps chromium
+
       - name: Lint
         run: ruff check .
 

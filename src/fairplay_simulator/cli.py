@@ -52,7 +52,7 @@ def _cmd_replay(args: argparse.Namespace) -> int:
 
 
 def _cmd_version(_args: argparse.Namespace) -> int:
-    print(f"fairplay-echo {__version__}")
+    print(f"fairplay-simulator {__version__}")
     return 0
 
 
@@ -60,7 +60,7 @@ def _app_module() -> ModuleType:
     """Web yığınını yalnız gerektiğinde yükler; CLI'nin geri kalanı hafif kalır."""
     import importlib
 
-    return importlib.import_module("fairplay_echo.app.main")
+    return importlib.import_module("fairplay_simulator.app.main")
 
 
 def _docs_only_app(db_path: str) -> Any:
@@ -68,7 +68,7 @@ def _docs_only_app(db_path: str) -> Any:
     import importlib
 
     app_module = _app_module()
-    config_module = importlib.import_module("fairplay_echo.app.config")
+    config_module = importlib.import_module("fairplay_simulator.app.config")
     settings = config_module.Settings(jwt_secret="openapi-render-only-secret")
     return app_module.create_app(db_path=db_path, settings=settings)
 
@@ -108,7 +108,7 @@ def render_api_docs(spec: dict[str, object]) -> str:
         "> **Bu dosya elle yazılmaz.** OpenAPI şemasından üretilir; şema uygulamadan türetildiği",
         "> için belge ile kod arasında sapma oluşamaz (P11).",
         ">",
-        "> Üretim: `python -m fairplay_echo.cli render-api-docs --output docs/40-api.md`",
+        "> Üretim: `python -m fairplay_simulator.cli render-api-docs --output docs/40-api.md`",
         "",
         f"Toplam **{len(rows)} uç**.",
         "",
@@ -132,7 +132,7 @@ def _cmd_render_api_docs(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="fairplay-echo", description="FairPlay Echo")
+    parser = argparse.ArgumentParser(prog="fairplay-simulator", description="FairPlay Simulator")
     sub = parser.add_subparsers(dest="command", required=True)
 
     replay = sub.add_parser("replay", help="Bir kullanıcının defterini oynat ve durumu bas")

@@ -14,16 +14,16 @@ from pathlib import Path
 
 import pytest
 
-from fairplay_echo.core.errors import UnsupportedLedgerVersion
-from fairplay_echo.core.ledger import (
+from fairplay_simulator.core.errors import UnsupportedLedgerVersion
+from fairplay_simulator.core.ledger import (
     LEDGER_SCHEMA_VERSION,
     Ledger,
     decode_ledger,
     encode_ledger,
 )
-from fairplay_echo.core.money import q_nav, q_units
-from fairplay_echo.core.nav import Fund
-from fairplay_echo.repo import Repository
+from fairplay_simulator.core.money import q_nav, q_units
+from fairplay_simulator.core.nav import Fund
+from fairplay_simulator.repo import Repository
 
 FIXTURE = Path(__file__).resolve().parents[1] / "data" / "ledger_v1.json"
 

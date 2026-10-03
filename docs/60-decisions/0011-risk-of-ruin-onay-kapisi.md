@@ -5,7 +5,7 @@
 - **Bağlam:** Orijinalin `docs/architecture/01_gamification_...md` §1.2 belgesi, tek kupon kasanın
   %15'ini aşarsa **Risk of Ruin** hesaplanmasını ve *"explicit warning modal requiring user
   confirmation"* gösterilmesini istiyor. Devralınan kodda bu, istemci tarafında hesaplanan bir
-  sayı + `won: bool` sınıfı güven açıklarıyla birlikte yaşıyordu. Echo'da ise yalnız
+  sayı + `won: bool` sınıfı güven açıklarıyla birlikte yaşıyordu. bu depoda ise yalnız
   `ruin_risk_warning: bool` bayrağı ve bir toast vardı: **formül yok, onay kapısı yok**
   (`docs/70` §7.2, R1).
 

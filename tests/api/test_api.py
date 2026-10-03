@@ -10,13 +10,13 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from fairplay_echo.app.clock import FixedClock
-from fairplay_echo.app.config import Settings
-from fairplay_echo.app.fixtures import CATALOG, closing_odds
-from fairplay_echo.app.main import create_app
-from fairplay_echo.core.money import q_nav
-from fairplay_echo.core.odds import clv_pct
-from fairplay_echo.engines.match import MARKET_1X2, simulate_match
+from fairplay_simulator.app.clock import FixedClock
+from fairplay_simulator.app.config import Settings
+from fairplay_simulator.app.fixtures import CATALOG, closing_odds
+from fairplay_simulator.app.main import create_app
+from fairplay_simulator.core.money import q_nav
+from fairplay_simulator.core.odds import clv_pct
+from fairplay_simulator.engines.match import MARKET_1X2, simulate_match
 
 EPOCH = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
 SECRET = "test-secret-that-is-long-enough-for-hs256"
@@ -747,7 +747,7 @@ def test_ui_market_row_appends_the_selection_control() -> None:
     satırının `row.append(...)` çağrısı seçim kontrolünü içermek zorunda. Gerçek DOM testi
     (tarayıcı/headless harness) S7'nin kalan işi olarak `docs/ROADMAP.md`'de duruyor.
     """
-    page = (ROOT / "src" / "fairplay_echo" / "web" / "index.html").read_text(encoding="utf-8")
+    page = (ROOT / "src" / "fairplay_simulator" / "web" / "index.html").read_text(encoding="utf-8")
     assert re.search(r"row\.append\([^)]*\bselect\b[^)]*\)", page), (
         "market satırı `select` öğesini DOM'a eklemiyor — seçim yapılamaz."
     )

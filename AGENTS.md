@@ -70,3 +70,11 @@ Arayüz değişiklikleri şu eşikleri geçmeden "bitti" sayılmaz:
 - Gerekçe: bu depo herkese açık yayınlanır; katkı grafiği kimin işi olduğunu göstermelidir.
 - **Kapı:** `.pre-commit-config.yaml` → `no-bot-coauthor` (`commit-msg` aşaması). Kural yazılı
   kalmaz, ölçülür; `pre-commit install` ile yerel kancaya bağlanır.
+
+## 11. Dil: README ve commit'ler İngilizce
+- **`README.md` ve commit mesajları İngilizce** yazılır. Depo public; GitHub'da ilk okunan iki
+  yüzey bunlar (commit listesi + README).
+- **Geri kalan her şey Türkçe kalır:** `docs/`, `DESIGN.md`, `AGENTS.md`, kod yorumları, arayüz
+  metinleri, test adları ve docstring'ler. Bu **bilinçli bir ayrımdır**, tutarsızlık değil;
+  gerekçe §11'in ilk maddesinde.
+- Commit başlığı emir kipi ve kısa; gövde "ne değişti + niye" der (mevcut alışkanlık korunur).

@@ -1,92 +1,96 @@
 # FairPlay Simulator
 
-Sıfırdan çizilmiş FairPlay: gerçek para içermeyen, eğitici futbol tahmin/**portföy** simülatörü.
-Kupon bir fon pozisyonu gibi ele alınır — birim NAV, vig arındırma, Kelly, Sharpe/Sortino/MDD,
-CLV ve iflasta kademeli bekleme kilidi.
+A simulated, non-gambling football prediction/**portfolio** trainer. A bet is treated like a fund
+position — unit NAV, vig removal, Kelly, Sharpe/Sortino/MDD, CLV and an escalating cooldown lock
+after bankruptcy.
 
-**İlkeler:** sözleşme-önce · tek uygulama (SSOT) · saf çekirdek · event-sourced defter ·
-para `Decimal` / istatistik `float` · **sunucu-otoriteli settlement** · determinizm ·
-doküman yalan söylemez.
+**Principles:** contract-first · single implementation (SSOT) · pure core · event-sourced ledger ·
+`Decimal` for money / `float` for statistics · **server-authoritative settlement** · determinism ·
+documents never lie.
 
-## Kurulum
+> **Language note.** The README and commit messages are English; the rest of the repository
+> (documents, code comments, UI) is Turkish on purpose — see `AGENTS.md` §11.
+
+## Install
 
 ```bash
-python3 -m venv .venv          # veya: python3 -m virtualenv .venv
+python3 -m venv .venv          # or: python3 -m virtualenv .venv
 .venv/bin/pip install -e ".[dev]"
 ```
 
-## Çalıştırma
+## Run
 
 ```bash
 .venv/bin/fairplay-simulator serve --db fairplay.db --port 8000
-# arayüz: http://127.0.0.1:8000  (kayıt ol → 1.000 TL sanal bakiye)
+# UI: http://127.0.0.1:8000  (sign up → 1.000 TL virtual balance)
 ```
 
-Aynı ikili `replay`, `export-openapi`, `render-api-docs` ve `version` alt komutlarını da taşır.
+The same binary also exposes the `replay`, `export-openapi`, `render-api-docs` and `version`
+subcommands.
 
-## Nasıl test edilir
+## How to test
 
-**1. Otomatik testler** — golden · property · repo · engines · api · ui · docs-sync:
+**1. Automated suite** — golden · property · repo · engines · api · ui · docs-sync:
 
 ```bash
-.venv/bin/pytest                # tümü geçmeli
+.venv/bin/pytest                # everything must pass
 ```
 
-**2. Kalite kapıları:**
+**2. Quality gates:**
 
 ```bash
 .venv/bin/ruff check .          # lint
-.venv/bin/mypy                  # tip (strict)
+.venv/bin/mypy                  # types (strict)
 ```
 
-**3. Elle, tarayıcıdan** — `fairplay-simulator serve` ile aç; kayıt ol, bahis yap (enerji başlıkta
-görünür), "Simüle" ile maçı sonuçlandır, NAV ve benchmark eğrilerini izle. Kasanın %15'ini aşan bir
-stake girersen **onay modalı** çıkar (risk kapısı); 6+ bahis sonrası `learning-report` ölçütlerinden
-**disiplin rozetleri** görünür.
+**3. Manually, in a browser** — start it with `fairplay-simulator serve`; sign up, place a wager
+(energy is visible in the header), settle the match with "Simüle et", watch the NAV and benchmark
+curves. A stake above 15% of your cash triggers a **confirmation modal** (the risk gate); after six
+or more wagers, **discipline badges** appear from the `learning-report` metrics.
 
-> `pip install -e ".[dev]"` yapılmadıysa komut yerine
-> `PYTHONPATH=src .venv/bin/python -m fairplay_simulator.cli <komut>` kullan.
+> If you skipped `pip install -e ".[dev]"`, run
+> `PYTHONPATH=src .venv/bin/python -m fairplay_simulator.cli <command>` instead.
 
-### Arayüz açılmıyorsa
+### If the UI does not open
 
-Sayfayı **sunucudan** aç: `http://127.0.0.1:8000`. HTML dosyasını çift tıklayıp açarsan adres
-`file://` olur ve istekler `file:///api/...` biçiminde çözülemez. Yine de dosyadan açmak istersen:
-sayfa API'ye `http://127.0.0.1:8000` üzerinden bağlanır (CORS'ta `null` kökeni izinlidir) — yani
-sunucu 8000 portunda çalışıyorsa dosyadan açmak da çalışır. Ulaşamazsa sayfa üstünde kırmızı bir
-uyarı bandı çıkar.
+Open the page **through the server**: `http://127.0.0.1:8000`. Double-clicking the HTML file makes
+the address `file://`, and requests cannot resolve as `file:///api/...`. If you still want to open it
+as a file: the page connects to the API at `http://127.0.0.1:8000` (CORS allows the `null` origin),
+so it works as long as the server is running on port 8000. When it cannot reach the API, a red banner
+appears at the top of the page.
 
-## Faydalı komutlar
+## Useful commands
 
 ```bash
-# Bir kullanıcının defterini oynat ve durumu bas (I2: replay durumu birebir üretir)
+# Replay one user's ledger and print the projected state (I2: replay reproduces state exactly)
 .venv/bin/fairplay-simulator replay aytek --db fairplay.db
 
-# API dokümanını OpenAPI'den yeniden üret (elle yazılmaz)
+# Regenerate the API reference from OpenAPI (never written by hand)
 .venv/bin/fairplay-simulator render-api-docs --output docs/40-api.md
 
-# OpenAPI şeması
+# The OpenAPI schema
 .venv/bin/fairplay-simulator export-openapi | head -40
 ```
 
-## Nereden bakılır
+## Where to look
 
-| Ne | Dosya |
+| What | File |
 | --- | --- |
-| Neden var, ne değil | `docs/00-vision.md` |
-| Varlıklar, durum makineleri, değişmezler (I1–I6) | `docs/10-domain-model.md` |
-| **Sözleşme** — formüller + işlenmiş örnekler (`[G-x]`) | `docs/20-accounting-spec.md` |
-| **Arayüz sözleşmesi** (tokenlar, nevers, bileşen kuralları) | `DESIGN.md` |
-| Mevcut vs hedef mimari + geçiş tetikleyicileri | `docs/30-architecture.md` |
-| API (OpenAPI'den üretilir) | `docs/40-api.md` |
-| Risk → test matrisi | `docs/50-test-strategy.md` |
-| İnşa sırası ve durum | `docs/ROADMAP.md` |
-| **Kalite alanları — karar ve kapı indeksi** | `docs/80-kalite-alanlari.md` |
-| Ürün değeri: "öğrettiği" nasıl ölçülür | `docs/90-urun-degeri.md` |
-| Orijinal repo ile parite + devralma planı | `docs/70-parite-ve-devralma.md` |
-| Mimari kararlar (ADR) | `docs/60-decisions/` |
+| Why this exists, and what it is not | `docs/00-vision.md` |
+| Entities, state machines, invariants (I1–I6) | `docs/10-domain-model.md` |
+| **The contract** — formulas plus worked examples (`[G-x]`) | `docs/20-accounting-spec.md` |
+| **UI contract** (tokens, nevers, component rules) | `DESIGN.md` |
+| Current vs target architecture and migration triggers | `docs/30-architecture.md` |
+| API (generated from OpenAPI) | `docs/40-api.md` |
+| Risk → test matrix | `docs/50-test-strategy.md` |
+| Build order and status | `docs/ROADMAP.md` |
+| **Quality areas — decision and gate index** | `docs/80-kalite-alanlari.md` |
+| Product value: how "it teaches" is measured | `docs/90-urun-degeri.md` |
+| Parity with the original repo and takeover plan | `docs/70-parite-ve-devralma.md` |
+| Architecture decisions (ADRs) | `docs/60-decisions/` |
 
-## Bu deponun tek kuralı
+## The one rule of this repo
 
-**Hiçbir döküman yalan söylemez.** Her olgusal iddia ya üretilir (`40-api.md` ← OpenAPI) ya da bir
-testle bağlanır (`tests/test_docs_sync.py`: spec örnekleri ↔ golden testler, belgedeki uç listesi ↔
-OpenAPI şeması, belgedeki test yolları ↔ gerçek dosyalar).
+**No document lies.** Every factual claim is either generated (`40-api.md` ← OpenAPI) or bound to a
+test (`tests/test_docs_sync.py`: spec examples ↔ golden tests, documented endpoints ↔ OpenAPI schema,
+documented test paths ↔ real files).

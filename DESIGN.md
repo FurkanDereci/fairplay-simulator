@@ -71,6 +71,16 @@ Bu dosyanın varlık sebebi: bir ajan yön verilmediğinde eğitim verisinin ort
   taşıyor, "Bahis" düğmesi örtülüyor, `scrollWidth` bunu göstermiyordu) — bkz. `tests/ui`
   `elementFromPoint` kapısı.
 - `details.match > summary` **sarabilir** (`flex-wrap`) — dar ekranda başlık + meta + düğme taşmasın.
+- `.market` satırının alanları `.market-head` ipucuyla **adlandırılır**: "çıplak 100" ve "p %"
+  tek başına okunmuyordu. İpucu **tek satırdır, ızgaraya hizalanmaz**: 1181–1400 bandında `1fr`
+  kolonu ~2px'e indiği için hizalı bir başlık o kolonda **harf harf** dizilirdi (ölçüldü
+  2026-10-03). ≤860px'de ipucu gizlenir; erişilebilir ad kontrollerin `aria-label`'ında kalır.
+- Kullanıcıya görünen metinde **ham enum yaşamaz** (`HOME`, `BTTS_YES`, `OVER_UNDER_2.5`):
+  `MARKET_LABELS`/`SELECTION_LABELS` çevirir, API'ye giden `value` ham enum kalır. Kupon durumu
+  (`WON`/`LOST`/`BEKLİYOR`) testlerle sabitlendiği için ekranda kod olarak kalır — anlamı `title`'da
+  yazılır (aynı kural: kısaltma sabit, açıklama erişilebilir).
+- Süre ve ölçek **okunur birime** çevrilir: `168 saat` yerine `7 gün (168 saat)` (`fmtHours`) —
+  sayı kaybolmaz, ölçek eklenir. Kademe/tier farkı `title` ile açıklanır, sunucu sayısı uydurulmaz.
 - `.table-wrap` yatay kaydırılır; `contain: inline-size` tablonun **sayfayı genişletmesini** önler.
 - `.tile` ızgarası masaüstünde 3, **≤520px'de 2 kolon**; hero metrik yazısı ≤520px'de 22px.
 - `[hidden] { display: none !important }` şart: `display` kuralı olan her element `hidden` özniteliğini ezer.

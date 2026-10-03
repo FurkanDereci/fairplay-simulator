@@ -127,11 +127,18 @@
             background: var(--banner-bg); border: 1px solid var(--banner-border);
             color: var(--banner-fg); font-size: 13px; }
   #banner code, .hint code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
-  #toast { position: fixed; right: 18px; bottom: 18px; display: grid; gap: 8px; max-width: 380px;
-           z-index: 20; }
+  #toast { position: fixed; right: 18px; bottom: 18px; display: grid; gap: 8px;
+           max-width: min(380px, calc(100vw - 36px)); z-index: 20; }
+  /* Flex: `::before` ("Hata: ") de bir öğe olduğu için ızgara olsaydı hücreleri kaydırırdı. */
   #toast div { background: var(--card-2); border: 1px solid var(--line-strong);
                border-left: 4px solid var(--accent-soft); border-radius: 8px;
-               padding: 10px 12px; font-size: 13px; cursor: pointer; }
+               padding: 10px 12px; font-size: 13px; cursor: pointer;
+               display: flex; align-items: baseline; gap: 10px; }
+  #toast div > span { flex: 1; min-width: 0; overflow-wrap: break-word; }
+  /* Klavyeyle kapatılabilir çıkış: eskiden yalnız tıklama vardı (fare şarttı). */
+  #toast .toast-close { flex: 0 0 auto; background: transparent; color: var(--muted);
+                        border-color: var(--line-strong); padding: 1px 8px; font-size: 11.5px; }
+  #toast .toast-close:hover:not(:disabled) { background: var(--card); color: var(--fg); }
   #toast div.err { border-left-color: var(--bad); }
   #toast div.err::before { content: "Hata: "; font-weight: 600; color: var(--bad); }
   #toast div.warn { border-left-color: var(--warn); }
@@ -151,7 +158,28 @@
   .facts dd { margin: 0; text-align: right; font-weight: 600; }
 
   /* --- giriş --- */
-  #auth-screen { max-width: 460px; margin: 8vh auto 0; }
+  /* Giriş ekranı: form tek başına bir boşlukta duruyordu (ölçüldü 2026-10-03) — ekranın
+     ortasına alındı ve yanına ürünün ne olduğunu söyleyen bir panel kondu. Değer önerisi
+     formun üstünde değil yanında: kullanıcı "ne kazanacağım"ı görüp karar verir. */
+  #auth-screen { display: grid; place-items: center; min-height: calc(100dvh - 140px); padding: 24px 0; }
+  .auth-card {
+    display: grid; grid-template-columns: 1.05fr .95fr; width: min(900px, 100%);
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+  }
+  .auth-pitch { background: var(--sunken); padding: 30px 28px; border-right: 1px solid var(--line); }
+  .auth-panel { padding: 30px 28px; display: grid; align-content: start; gap: 12px; }
+  .eyebrow { margin: 0; color: var(--muted); font-size: 11px; letter-spacing: .09em; }
+  .auth-title { margin: 8px 0 0; font-size: 22px; line-height: 1.3; letter-spacing: -.01em; text-transform: none; }
+  .auth-list { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 9px; font-size: 13px; color: var(--muted); }
+  /* `flex`, `grid` DEĞİL: ızgarada satır içi `<b>` ayrı bir hücre olup 14px'lik ok kolonuna
+     düşüyordu — "1.000 TL" dört satıra kırılıyordu (ölçüldü 2026-10-03, giriş ekranı karesi). */
+  .auth-list li { display: flex; gap: 9px; align-items: baseline; }
+  .auth-list li::before { content: "→"; flex: 0 0 auto; color: var(--accent-soft); font-size: 12px; }
+  .auth-list b { color: var(--fg); }
+  @media (max-width: 820px) {
+    .auth-card { grid-template-columns: 1fr; }
+    .auth-pitch { border-right: 0; border-bottom: 1px solid var(--line); }
+  }
   .hint { color: var(--muted); font-size: 13px; margin: 12px 0 0; }
   #auth-error { color: var(--bad); font-size: 13px; margin: 12px 0 0; }
 
@@ -164,7 +192,9 @@
   .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent);
                                color: var(--on-accent); }
   details.match { border: 1px solid var(--line-strong); border-radius: var(--radius);
-                  margin-bottom: 8px; background: var(--card); }
+                  margin-bottom: 8px; background: var(--card);
+                  /* Kolon genişlikleri TEK yerde: satır ve kolon adları aynı ızgarayı paylaşır. */
+                  --market-cols: 116px 126px 72px minmax(0, 1fr) 64px 74px 74px; }
   details.match > summary {
     display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer;
     background: var(--card-2); border-radius: var(--radius) var(--radius) 0 0; list-style: none;
@@ -182,13 +212,18 @@
   details.match[open] > summary { border-bottom: 1px solid var(--line-strong);
                                   border-radius: var(--radius) var(--radius) 0 0; }
   details.match > summary strong { font-size: 14px; }
-  details.match .market:first-of-type { border-top: 0; }
-  .market { display: grid;
-            grid-template-columns: 116px 126px 72px minmax(0, 1fr) 64px 74px 74px;
+  details.match .market-head + .market { border-top: 0; }
+  /* Kolon adları — "100" ne, "p %" ne, "fair · vig" ne: satırın başında söylenir.
+     Izgara DEĞİL: 1181–1400 bandında 1fr kolonu ~2px'e iniyor; hizalı başlık o kolonda
+     harf harf dizilirdi. Tek satır ipucu her genişlikte okunur kalır (≤860px'de gizlenir). */
+  .market-head { padding: 0 12px 8px; color: var(--muted); font-size: 10.5px;
+                 text-transform: uppercase; letter-spacing: .6px; }
+  .market { display: grid; grid-template-columns: var(--market-cols);
             gap: 10px; align-items: center; padding: 8px 12px;
             border-top: 1px solid var(--line); }
   @media (max-width: 860px) {
-    .market { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    details.match { --market-cols: repeat(2, minmax(0, 1fr)); }
+    .market-head { display: none; }
     /* 7 kolonlu tablo dar ekranda sıkışıp başlıkları kırpmasın: doğal genişlikte kalsın ve
        .table-wrap içinde yatay kaydırılsın (contain, tablonun sayfayı genişletmesini önler). */
     table { min-width: 420px; table-layout: auto; }
@@ -253,7 +288,7 @@
 </head>
 <body>
 <header>
-  <h1>FairPlay Simulator<small>eğitici portföy simülatörü</small></h1>
+  <h1>FairPlay<small>eğitici portföy simülatörü</small></h1>
   <div class="spacer"></div>
   <div class="energy" id="energy-wrap" hidden>
     <span class="muted">Enerji</span>
@@ -269,10 +304,20 @@
   <div id="banner" hidden role="alert"></div>
 
   <div id="auth-screen">
-    <section>
-      <h2>Giriş / Kayıt</h2>
-      <form id="auth-form" novalidate>
-        <div class="row">
+    <div class="auth-card">
+      <section class="auth-pitch">
+        <p class="eyebrow">EĞİTİCİ SİMÜLATÖR</p>
+        <h2 class="auth-title">Kararlarını gerçek para olmadan dene.</h2>
+        <ul class="auth-list">
+          <li><b>1.000 TL</b> sanal bakiye ile başla</li>
+          <li>Gerçek para yok; kaybetsen de bir şey olmaz</li>
+          <li>Her bahis deftere işlenir — sonucunu ölç, geçmişini gör</li>
+        </ul>
+      </section>
+
+      <section class="auth-panel">
+        <h2>Giriş / Kayıt</h2>
+        <form id="auth-form" novalidate>
           <div class="field">
             <label for="username">Kullanıcı adı</label>
             <input type="text" id="username" autocomplete="username" required />
@@ -282,18 +327,18 @@
             <input type="password" id="password" autocomplete="current-password" required />
           </div>
           <div class="field">
-            <label for="email">E-posta (kayıt için)</label>
-            <input type="text" id="email" autocomplete="email" />
+            <label for="email">E-posta <span class="muted">— yalnızca kayıt için, girişte gerekmez</span></label>
+            <input type="email" id="email" autocomplete="email" />
           </div>
-        </div>
-        <div class="row" style="margin-top:12px">
-          <button type="submit" id="login">Giriş</button>
-          <button type="button" class="ghost" id="register">Kayıt ol</button>
-        </div>
-        <p id="auth-error" role="alert" hidden></p>
-      </form>
-      <p class="hint">Kayıt 1.000 TL sanal bakiye verir. Gerçek para yoktur; tüm bakiyeler eğiticidir.</p>
-    </section>
+          <div class="row" style="margin-top:12px">
+            <button type="submit" id="login">Giriş yap</button>
+            <button type="button" class="ghost" id="register">Hesap oluştur</button>
+          </div>
+          <p id="auth-error" role="alert" hidden></p>
+        </form>
+        <p class="hint">Hesap oluşturursan 1.000 TL sanal bakiye yüklenir. Gerçek para yoktur; tüm bakiyeler eğiticidir.</p>
+      </section>
+    </div>
   </div>
 
   <div id="workspace" hidden>
@@ -317,7 +362,7 @@
             <span class="muted" style="font-size:12px">Aynı tohum → aynı skor</span>
           </div>
           <div id="fixtures"><p class="muted">Yükleniyor…</p></div>
-          <p id="fixtures-empty" class="muted" hidden>Bu ligde maç yok.</p>
+          <p id="fixtures-empty" class="muted" hidden>Bu ligde maç yok — “Tümü” seçerek tüm fikstürleri görebilirsin.</p>
         </section>
 
         <section>
@@ -325,8 +370,9 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th>Maç</th><th>Seçim</th><th class="num">Oran</th><th class="num">Stake</th>
-                    <th>Durum</th><th class="num">Net</th><th class="num">CLV</th></tr>
+                <tr><th>Maç</th><th>Seçim</th><th class="num">Oran</th><th class="num">Bahis tutarı</th>
+                    <th>Durum</th><th class="num">Net</th>
+                    <th class="num" title="Kapanış oranı değeri — aldığın oranın maç kapanışındaki orana göre farkı">CLV</th></tr>
               </thead>
               <tbody id="wagers-body"></tbody>
             </table>
@@ -348,9 +394,9 @@
         <section>
           <h2>Portföy</h2>
           <div class="tiles" id="fund-tiles">
-            <div class="tile hero"><small>NAV</small><b id="t-nav">–</b></div>
-            <div class="tile hero"><small>TWR</small><b id="t-twr">–</b></div>
-            <div class="tile"><small>Seri</small><b id="t-series">–</b></div>
+            <div class="tile hero"><small title="Birim pay değeri — kasanın bir paya düşen değeri">NAV</small><b id="t-nav">–</b></div>
+            <div class="tile hero"><small title="Zaman ağırlıklı getiri — para giriş/çıkışının etkisi arındırılmış">TWR</small><b id="t-twr">–</b></div>
+            <div class="tile"><small title="İflastan sonra bakiye eklenince yeni seri başlar; seri no bu yüzden artar">Fon serisi</small><b id="t-series">–</b></div>
           </div>
           <div class="group">
             <div class="tiles">
@@ -361,28 +407,30 @@
           </div>
           <h2 style="margin-top:16px">Risk</h2>
           <div class="tiles">
-            <div class="tile"><small>Sharpe</small><b id="t-sharpe">–</b></div>
-            <div class="tile"><small>Sortino</small><b id="t-sortino">–</b></div>
-            <div class="tile"><small>MDD</small><b id="t-mdd">–</b></div>
-            <div class="tile"><small>Beta</small><b id="t-beta">–</b></div>
-            <div class="tile"><small>Alpha</small><b id="t-alpha">–</b></div>
-            <div class="tile"><small>RAS</small><b id="t-ras">–</b></div>
+            <div class="tile"><small title="Getirinin oynaklığa bölümü — risk başına kazanç">Sharpe</small><b id="t-sharpe">–</b></div>
+            <div class="tile"><small title="Yalnız aşağı yönlü oynaklığa göre risk başına kazanç">Sortino</small><b id="t-sortino">–</b></div>
+            <div class="tile"><small title="En büyük düşüş — tepeden dibe en derin gerileme">MDD</small><b id="t-mdd">–</b></div>
+            <div class="tile"><small title="Piyasaya göre oynaklık — 1 = piyasa kadar oynak">Beta</small><b id="t-beta">–</b></div>
+            <div class="tile"><small title="Piyasanın üstünde kalan getiri — betanın beklediğinden fazlası">Alpha</small><b id="t-alpha">–</b></div>
+            <div class="tile"><small title="Riske göre düzeltilmiş puan">RAS</small><b id="t-ras">–</b></div>
           </div>
           <p id="risk-note" class="muted" style="font-size:11.5px;margin:8px 0 0"></p>
           <h2 style="margin-top:16px">İşlemler</h2>
           <div class="tiles">
             <div class="tile"><small>Adet</small><b id="t-trades">–</b></div>
             <div class="tile"><small>Kazanma</small><b id="t-wins">–</b></div>
-            <div class="tile"><small>Profit factor</small><b id="t-pf">–</b></div>
+            <div class="tile"><small>Kâr faktörü</small><b id="t-pf">–</b></div>
           </div>
-          <div class="row" id="badge-row" hidden aria-label="Disiplin rozetleri"
-               title="Üç rozetin tamamı cooldown tavanını 72 saate indirir"></div>
+          <div class="row" id="badge-row" hidden role="group" aria-label="Disiplin rozetleri"
+               title="Üç rozetin tamamı bekleme sınırını 72 saate indirir"></div>
           <div class="row" style="margin-top:14px">
-            <button class="ghost" id="refill">1.000 TL refill</button>
-            <span class="muted" id="cooldown-note" style="font-size:12px"></span>
+            <button class="ghost" id="refill">1.000 TL bakiye ekle</button>
+            <span class="muted" id="cooldown-note" style="font-size:12px"
+                  title="Kademe her iflasta bir artar ve bekleme süresini 4 katına çıkarır; tavanı aşamaz. 3 solvent gün bir kademe düşürür."></span>
           </div>
           <div class="row" style="margin-top:8px">
-            <span class="muted" style="font-size:12px">Solvent gün <b id="t-solvent">–</b></span>
+            <span class="muted" style="font-size:12px"
+                  title="Üst üste solvent geçen gün sayısı. 3 güne ulaşınca kademe bir düşer; iflas edilen günler yanar.">Solvent gün <b id="t-solvent">–</b></span>
             <div class="streak-bar" style="width:90px"><i id="streak-fill" style="width:0"></i></div>
           </div>
         </section>
@@ -399,10 +447,11 @@
         </section>
 
         <section>
-          <h2>NAV ve benchmark botları</h2>
+          <h2>NAV ve kıyas botları</h2>
           <canvas id="chart"></canvas>
           <p class="muted" style="font-size:11.5px;margin:6px 0 0">
-            Portföy NAV'ı maç sınırlarında örneklenir; botlarla aynı zaman ekseninde karşılaştırılır.
+            Dikey eksen NAV'dır ve 100'den başlar. Portföyün maç sınırlarında örneklenir;
+            kıyas botları aynı zaman ekseninde kesikli çizgiyle gösterilir.
           </p>
           <div class="legend" id="chart-legend"></div>
         </section>
@@ -438,6 +487,33 @@ const el = (id) => document.getElementById(id);
 const token = (name) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
+/* API sözlüğü ↔ kullanıcı dili. Sunucuya giden `value`/`selection` ham enum kalır (sözleşme);
+   ekranda yalnız Türkçe adı görünür — "OVER_UNDER_2.5" bir kullanıcı metni değildir. */
+const MARKET_LABELS = {
+  "1X2": "1X2",
+  "OVER_UNDER_2.5": "Alt/Üst 2.5",
+  BTTS: "Karşılıklı gol",
+};
+const SELECTION_LABELS = {
+  HOME: "1 (ev sahibi)",
+  DRAW: "X (beraberlik)",
+  AWAY: "2 (deplasman)",
+  "OVER_2.5": "2.5 üst",
+  "UNDER_2.5": "2.5 alt",
+  BTTS_YES: "Var",
+  BTTS_NO: "Yok",
+};
+// Tanımadığı anahtarı gizlemeyiz: ham adıyla gösterilir (sessiz boşluk olmasın).
+const marketLabel = (key) => MARKET_LABELS[key] || key;
+const selectionLabel = (key) => SELECTION_LABELS[key] || key;
+
+/* Kupon durumu kodu sözleşmedendir (WON/LOST/BEKLİYOR); ekranda kod kalır, anlamı `title`'da. */
+const WAGER_KIND_TITLES = {
+  BEKLİYOR: "Kupon açık — maç simüle edilince sonuçlanır",
+  WON: "Kupon kazandı",
+  LOST: "Kupon kaybetti",
+};
+
 function showBanner(html) {
   el("banner").innerHTML = html;
   el("banner").hidden = false;
@@ -448,6 +524,8 @@ function clearBanner() {
 }
 
 const TOAST_MS = 6000;
+// Hata/uyarı mesajı "ne oldu + ne yapmalı" der; 6 saniyede kaçmasın (okunmadan kaybolmasın).
+const TOAST_MS_ALERT = 12000;
 // Yığın sınırı: 6 bahis 6 toast demek değil — yığın paneli ve grafiği kapatıyordu.
 const TOAST_LIMIT = 4;
 const toastTimers = new WeakMap();
@@ -455,24 +533,42 @@ const toastTimers = new WeakMap();
 function scheduleToastRemoval(node) {
   const previous = toastTimers.get(node);
   if (previous) clearTimeout(previous);
-  toastTimers.set(node, setTimeout(() => node.remove(), TOAST_MS));
+  const kind = node.classList.contains("err") || node.classList.contains("warn");
+  toastTimers.set(node, setTimeout(() => node.remove(), kind ? TOAST_MS_ALERT : TOAST_MS));
 }
 
 function toast(message, kind = "info") {
   const box = el("toast");
-  // Aynı mesaj tekrar ederse yeni düğüm eklenmez; süresi yenilenir.
-  const duplicate = Array.from(box.children).find((node) => node.textContent === message);
+  // Aynı mesaj tekrar ederse yeni düğüm eklenmez; süresi yenilenir. (Karşılaştırma metni
+  // `dataset`te durur; düğümdeki "Kapat" düğmesi eşitliği bozmasın.)
+  const duplicate = Array.from(box.children).find((node) => node.dataset.message === message);
   if (duplicate) {
     scheduleToastRemoval(duplicate);
     return;
   }
 
   const node = document.createElement("div");
-  node.textContent = message;
+  node.dataset.message = message;
   if (kind === "error") node.className = "err";
   if (kind === "warn") node.className = "warn";
+
+  const text = document.createElement("span");
+  text.textContent = message;
+  // Kapatmak için tıklama yeterliydi; klavye kullanıcısı için gerçek bir düğme şart.
+  const close = document.createElement("button");
+  close.type = "button";
+  close.className = "toast-close";
+  close.textContent = "Kapat";
+  close.setAttribute("aria-label", "Bildirimi kapat");
+  close.addEventListener("click", () => node.remove());
+  node.append(text, close);
   node.title = "Kapatmak için tıkla";
-  node.addEventListener("click", () => node.remove());
+  node.addEventListener("click", (event) => {
+    if (event.target !== close) node.remove();
+  });
+
+  // Hata/uyarı bekleyemez: canlı bölge o an "assertive" olur, bilgi mesajı kibar kalır.
+  box.setAttribute("aria-live", kind === "error" || kind === "warn" ? "assertive" : "polite");
   box.appendChild(node);
   scheduleToastRemoval(node);
   while (box.children.length > TOAST_LIMIT) box.firstElementChild.remove();
@@ -523,6 +619,14 @@ const fmtSignedPct = (value) => {
   return (n >= 0 ? "+" : "") + fmtNumber(n, 2) + "%";
 };
 const fmtPct = (value) => (Number.isFinite(Number(value)) ? fmtNumber(value, 2) + "%" : "–");
+/* "168 saat" tek başına ölçek vermiyor: 24'ün katıysa gün karşılığını da yaz. */
+const fmtHours = (value) => {
+  const hours = Number(value);
+  if (!Number.isFinite(hours)) return "–";
+  return hours >= 24 && hours % 24 === 0
+    ? hours / 24 + " gün (" + hours + " saat)"
+    : hours + " saat";
+};
 const signClass = (value) => {
   const n = Number(value);
   if (!Number.isFinite(n) || n === 0) return "";
@@ -551,32 +655,54 @@ function endSession(message) {
   showBanner(message + " Çıkış yapıldı; eski portföy değerleri gösterilmiyor.");
 }
 
+/* Doğrulama mesajı hangi ALANA ait olduğunu da söyler: hata metni `aria-describedby` ile o
+   alana bağlanır ve odak oraya gider — ekran okuyucu "hangi alan, ne olmalı"yı birlikte okur. */
+const AUTH_FIELDS = ["username", "password", "email"];
+
 function authProblem(kind) {
   const username = el("username").value.trim();
   const password = el("password").value;
   const email = el("email").value.trim();
-  if (username.length < 3) return "Kullanıcı adı en az 3 karakter olmalı.";
-  if (password.length < 6) return "Parola en az 6 karakter olmalı.";
-  if (kind === "register" && email.length < 3) return "Kayıt için e-posta gerekli.";
+  if (username.length < 3) {
+    return { field: "username", message: "Kullanıcı adı en az 3 karakter olmalı." };
+  }
+  if (password.length < 6) {
+    return { field: "password", message: "Parola en az 6 karakter olmalı." };
+  }
+  if (kind === "register" && email.length < 3) {
+    return { field: "email", message: "Kayıt için e-posta gerekli." };
+  }
   return null;
 }
 
-function showAuthError(message) {
+function showAuthError(message, field = null) {
   const node = el("auth-error");
   node.textContent = message || "";
   node.hidden = !message;
+  AUTH_FIELDS.forEach((id) => {
+    const input = el(id);
+    input.removeAttribute("aria-invalid");
+    input.removeAttribute("aria-describedby");
+  });
+  if (!message) return;
+  const target = field && AUTH_FIELDS.includes(field) ? field : null;
+  const input = el(target || "username");
+  input.setAttribute("aria-describedby", "auth-error");
+  if (target) input.setAttribute("aria-invalid", "true");
+  input.focus();
 }
 
-async function authenticate(path) {
+async function authenticate(path, button) {
   const isRegister = path.endsWith("register");
   const problem = authProblem(isRegister ? "register" : "login");
   if (problem) {
-    showAuthError(problem);
+    showAuthError(problem.message, problem.field);
     return;
   }
   showAuthError("");
   const body = { username: el("username").value.trim(), password: el("password").value };
   if (isRegister) body.email = el("email").value.trim();
+  setBusy(button, true);
   try {
     const payload = await api(path, { method: "POST", body: JSON.stringify(body) });
     state.token = payload.access_token;
@@ -586,7 +712,11 @@ async function authenticate(path) {
     await loadFixtures();
     await refresh();
   } catch (error) {
-    showAuthError(error.message);
+    /* Sunucu da Türkçe ve gerekçeli konuşur ("Bu kullanıcı adı alınmış.") — metni olduğu gibi
+       gösteririz; ama ham olduğu için alanı işaretleyip odağı ona veririz. */
+    showAuthError(error.message, "username");
+  } finally {
+    releaseButton(button);
   }
 }
 
@@ -646,14 +776,16 @@ function marketRow(fixture, marketType, market) {
 
   const name = document.createElement("div");
   name.className = "market-name";
-  name.textContent = marketType;
+  name.textContent = marketLabel(marketType);
+  name.title = marketType;
 
   const select = document.createElement("select");
-  select.setAttribute("aria-label", fixture.match_id + " " + marketType + " seçimi");
+  select.setAttribute("aria-label",
+    fixture.match_id + " " + marketLabel(marketType) + " seçimi");
   Object.keys(market.outcomes).forEach((key) => {
     const option = document.createElement("option");
-    option.value = key;
-    option.textContent = key;
+    option.value = key;                      // API'ye ham enum gider
+    option.textContent = selectionLabel(key); // ekranda Türkçe adı görünür
     select.appendChild(option);
   });
 
@@ -668,7 +800,7 @@ function marketRow(fixture, marketType, market) {
 
   const probability = document.createElement("input");
   probability.type = "text";
-  probability.setAttribute("aria-label", marketType + " için tahminin (yüzde)");
+  probability.setAttribute("aria-label", marketLabel(marketType) + " için tahminin (yüzde)");
   probability.placeholder = "p %";
   probability.title = "Kendi olasılık tahminin (%); yazarken EV ve Kelly otomatik hesaplanır";
   probability.style.width = "60px";
@@ -676,7 +808,8 @@ function marketRow(fixture, marketType, market) {
   const stake = document.createElement("input");
   stake.type = "text";
   stake.value = "100";
-  stake.setAttribute("aria-label", marketType + " stake");
+  stake.setAttribute("aria-label", marketLabel(marketType) + " stake");
+  stake.title = "Bahis tutarı (TL) — kasadan kilitlenir";
   stake.style.width = "78px";
 
   const actions = document.createElement("div");
@@ -690,6 +823,8 @@ function marketRow(fixture, marketType, market) {
   const result = document.createElement("p");
   result.className = "assess";
   result.setAttribute("aria-live", "polite");
+  result.title = "EV: beklenen değer — pozitifse bahis uzun vadede kârlı. " +
+    "Kelly: kasanı iflasa sürüklemeden önerilen pay. Stake: kupon için kilitlenen tutar.";
   result.hidden = true;
 
   let requestSeq = 0;
@@ -699,8 +834,10 @@ function marketRow(fixture, marketType, market) {
     const selection = select.value;
     odds.textContent = market.outcomes[selection] || "–";
     const fair = market.fair_odds[selection];
-    meta.textContent = (fair ? "fair " + fair : "fair –") +
-      (market.margin_pct ? " · vig " + fmtPct(market.margin_pct) : "");
+    meta.textContent = (fair ? "adil oran " + fair : "adil oran –") +
+      (market.margin_pct ? " · marj %" + fmtNumber(market.margin_pct) : "");
+    meta.title = "Adil oran: bahisçi marjı arındırılmış oran. Marj: bahisçinin koyduğu komisyon " +
+      "(düşük marj → bahisçiye daha iyi oran).";
     requestSeq += 1;
     if (timer) clearTimeout(timer);
     result.hidden = true;
@@ -709,6 +846,22 @@ function marketRow(fixture, marketType, market) {
   function currentProbability() {
     const percent = Number(probability.value.replace(",", "."));
     return percent > 0 && percent < 100 ? percent : null;
+  }
+
+  /* Tutar alanı istemcide de doğrulanır: sunucu "stake: sayı değil" derse kullanıcı ne
+     yapacağını öğrenmiyordu. Mesaj alanın yanında (`.assess`, aria-live) ve odak alanda. */
+  function currentStake() {
+    const raw = stake.value.trim().replace(",", ".");
+    const amount = Number(raw);
+    if (!Number.isFinite(amount) || amount <= 0) return null;
+    return raw;
+  }
+
+  function showStakeProblem() {
+    stake.setAttribute("aria-invalid", "true");
+    result.textContent = "Bahis tutarı pozitif bir sayı olmalı (ör. 100 veya 25,50).";
+    result.hidden = false;
+    stake.focus();
   }
 
   async function assess() {
@@ -741,7 +894,7 @@ function marketRow(fixture, marketType, market) {
           ? " · Kelly %" + fmtNumber(Number(data.kelly_fraction) * 100, 2) +
             " · önerilen stake " + fmtMoney(data.suggested_stake)
           : " · pozitif EV yok (Kelly %0)") +
-        " · piyasa fair %" + fmtNumber(Number(data.fair_prob) * 100, 1)
+        " · adil oran %" + fmtNumber(Number(data.fair_prob) * 100, 1)
       ));
       result.hidden = false;
     } catch (error) {
@@ -757,12 +910,18 @@ function marketRow(fixture, marketType, market) {
     timer = setTimeout(assess, 420);
   });
   betButton.addEventListener("click", async () => {
+    const amount = currentStake();
+    if (amount === null) {
+      showStakeProblem();
+      return;
+    }
+    stake.removeAttribute("aria-invalid");
     const percent = currentProbability();
     const body = {
       match_id: fixture.match_id,
       market_type: marketType,
       selection: select.value,
-      stake: stake.value,
+      stake: amount,
     };
     if (percent !== null) body.probability = (percent / 100).toFixed(4);
     await placeWager(body, betButton);
@@ -787,7 +946,7 @@ function buildFixtures() {
     const meta = document.createElement("span");
     meta.className = "market-meta";
     meta.textContent = fixture.league + " · " + fixture.match_id + " · " +
-      Object.keys(fixture.markets).length + " market";
+      Object.keys(fixture.markets).length + " bahis türü";
     const spacer = document.createElement("span");
     spacer.className = "spacer";
     const simulate = document.createElement("button");
@@ -802,6 +961,14 @@ function buildFixtures() {
     summary.append(title, meta, spacer, simulate);
     card.appendChild(summary);
 
+    // Kolon adları soldan sağa: "p %" ve çıplak "100" tek başına okunmuyordu.
+    // Kontroller kendi `aria-label`ını taşıdığı için ekran okuyucuya tekrar edilmez.
+    const head = document.createElement("div");
+    head.className = "market-head";
+    head.setAttribute("aria-hidden", "true");
+    head.textContent = "Bahis türü · Seçim · Oran · Adil oran ve marj · Tahmin % · Tutar (TL)";
+    card.appendChild(head);
+
     Object.entries(fixture.markets).forEach(([marketType, market]) => {
       card.appendChild(marketRow(fixture, marketType, market));
     });
@@ -812,7 +979,7 @@ function buildFixtures() {
 
 /* --- eylemler --- */
 function noteWagerSuccess(payload) {
-  toast("Bahis alındı: " + payload.selection + " @ " + payload.odds +
+  toast("Bahis alındı: " + selectionLabel(payload.selection) + " @ " + payload.odds +
     " · olası ödeme " + fmtMoney(payload.potential_payout));
   if (payload.ruin_risk_warning) toast(payload.warning_message, "warn");
   if (payload.assessment && payload.assessment.verdict === "NEGATIF") {
@@ -833,7 +1000,7 @@ function confirmRuin(ruin) {
   const facts = el("ruin-facts");
   facts.innerHTML = "";
   const rows = [
-    ["Stake", fmtMoney(ruin.stake)],
+    ["Bahis tutarı", fmtMoney(ruin.stake)],
     ["Kasa", fmtMoney(ruin.cash)],
     ["Kasadaki pay", fmtPct(ruin.pct_of_cash)],
     ["Eşik", fmtPct(ruin.threshold_pct)],
@@ -841,8 +1008,8 @@ function confirmRuin(ruin) {
   const numeric = ruin.risk_of_ruin_pct !== null && ruin.risk_of_ruin_pct !== undefined;
   if (numeric) {
     rows.push(["İflas riski (R_ruin)", fmtPct(ruin.risk_of_ruin_pct)]);
-    rows.push(["Kenar (Edge)", fmtPct(Number(ruin.edge) * 100)]);
-    rows.push(["Birim (Units)", fmtNumber(ruin.units, 2)]);
+    rows.push(["Kenar (edge)", fmtPct(Number(ruin.edge) * 100)]);
+    rows.push(["Birim (units)", fmtNumber(ruin.units, 2)]);
   }
   rows.forEach(([label, value]) => {
     const dt = document.createElement("dt");
@@ -869,7 +1036,7 @@ function confirmRuin(ruin) {
    `ruin-warning-box` paritesi). Yalnız sunucunun gönderdiği sayılar gösterilir. */
 function showRuinBox(ruin) {
   el("ruin-box-text").textContent = ruin.message || "";
-  const parts = ["stake " + fmtMoney(ruin.stake), "kasadaki pay " + fmtPct(ruin.pct_of_cash)];
+  const parts = ["bahis tutarı " + fmtMoney(ruin.stake), "kasadaki pay " + fmtPct(ruin.pct_of_cash)];
   if (ruin.risk_of_ruin_pct !== null && ruin.risk_of_ruin_pct !== undefined) {
     parts.push("iflas riski " + fmtPct(ruin.risk_of_ruin_pct));
   }
@@ -879,8 +1046,9 @@ function showRuinBox(ruin) {
 
 async function placeWager(body, button) {
   if (state.portfolio && !state.portfolio.can_wager) {
-    toast("Enerji yetersiz (" + state.portfolio.simulation_energy + "/" +
-      state.portfolio.energy_max + "). Bahis gönderilmedi.", "warn");
+    toast("Enerji yetersiz (" + state.portfolio.simulation_energy + " / " +
+      state.portfolio.energy_max + ") — bahis gönderilmedi. Enerji zamanla yenilenir; " +
+      "birkaç dakika sonra tekrar dene.", "warn");
     return;
   }
   setBusy(button, true);
@@ -924,7 +1092,7 @@ function renderSimulation(payload) {
     const caption = document.createElement("small");
     caption.textContent = label;
     const result = document.createElement("b");
-    result.textContent = value;
+    result.textContent = selectionLabel(value); // ham enum ("BTTS_YES") ekrana çıkmaz
     tile.append(caption, result);
     outcomes.appendChild(tile);
   });
@@ -962,7 +1130,9 @@ async function simulateMatch(matchId, button) {
     toast(payload.match_title + " → " + payload.score + " · " +
       payload.settled_wagers.length + " kupon sonuçlandı");
     renderSimulation(payload);
-    if (payload.bankruptcy_triggered) toast("İflas: hesap cooldown'a alındı.", "warn");
+    if (payload.bankruptcy_triggered) {
+      toast("İflas: hesap beklemeye alındı; bakiye ekleyince yeni seri başlar.", "warn");
+    }
     await refresh();
   } catch (error) {
     toast(error.message, "error");
@@ -976,7 +1146,8 @@ async function refill() {
   setBusy(button, true);
   try {
     const payload = await api("/api/refill", { method: "POST" });
-    toast("Refill alındı. NAV değişmedi: " + fmtNumber(payload.nav, 2));
+    toast(fmtMoney(payload.refilled) + " bakiye eklendi · NAV değişmedi: " +
+      fmtNumber(payload.nav, 2));
     await refresh();
   } catch (error) {
     toast(error.message, "error");
@@ -1020,14 +1191,14 @@ function renderPortfolio(portfolio) {
   el("risk-note").textContent = reliability.sharpe_reliable
     ? ""
     : reliability.note +
-      " Profit factor " +
+      " Kâr faktörü " +
       (reliability.profit_factor_defined ? "tanımlı." : "hiç kayıp olmadığı için tanımsız.");
 
   const cd = portfolio.cooldown;
   el("cooldown-note").textContent = cd.locked
-    ? "Cooldown aktif (tier " + cd.tier + " · tavan " + cd.max_hours + " saat)"
-    : "Cooldown tavanı " + cd.max_hours + " saat" +
-      (fund.bankrupt ? " · fon iflas etti, refill yeni seri açar" : "");
+    ? "Bekleme süresi işliyor — kademe " + cd.tier + ", sınır " + fmtHours(cd.max_hours)
+    : "Bekleme sınırı " + fmtHours(cd.max_hours) +
+      (fund.bankrupt ? " · fon iflas etti; bakiye eklemek yeni seri başlatır" : "");
 
   // F5: solvent gün serisi — 3 gün tier'ı bir kademe düşürür; iflasta geçen günler yanar.
   const perTier = Math.max(1, cd.solvent_days_per_tier);
@@ -1039,6 +1210,14 @@ function renderPortfolio(portfolio) {
   const badgeRow = el("badge-row");
   badgeRow.hidden = badges.length === 0;
   badgeRow.innerHTML = "";
+  // Çıplak "pill" dizisi ne olduğunu söylemiyordu: satırın başına etiketi yazılır.
+  if (badges.length > 0) {
+    const label = document.createElement("span");
+    label.className = "muted";
+    label.style.fontSize = "12px";
+    label.textContent = "Disiplin rozeti";
+    badgeRow.appendChild(label);
+  }
   badges.forEach((name) => {
     const chip = document.createElement("span");
     chip.className = "pill badge";
@@ -1055,8 +1234,10 @@ function renderEnergy(portfolio) {
   display.className = portfolio.can_wager ? "" : "bad";
   el("energy-fill").style.width = Math.round((energy / max) * 100) + "%";
   el("energy-wrap").className = "energy" + (portfolio.can_wager ? "" : " is-blocked");
-  el("energy-hint").textContent = "her bahis " + portfolio.energy_per_wager +
-    (portfolio.can_wager ? "" : " · bahis kapalı");
+  // Kapalıyken kural "bahis başına 10 enerji" değil, "nasıl açılır" sorusu: çıkış yolu yazılır.
+  el("energy-hint").textContent = portfolio.can_wager
+    ? "bahis başına " + portfolio.energy_per_wager + " enerji"
+    : "bahis kapalı — enerji zamanla yenilenir";
   document.querySelectorAll('[data-role="bet"]').forEach((button) => {
     button.disabled = !portfolio.can_wager;
   });
@@ -1073,7 +1254,9 @@ function renderWagers(portfolio) {
     const td = document.createElement("td");
     td.colSpan = 7;
     td.className = "muted";
-    td.textContent = "Henüz kupon yok.";
+    // Boş durum yolu gösterir: önce maç, sonra "Bahis"; simülasyon kuponu sonuçlandırır.
+    td.textContent = "Henüz kupon yok — bir maçı açıp “Bahis” ile kupon oluştur; " +
+      "“Simüle et” kuponu sonuçlandırır.";
     tr.appendChild(td);
     body.appendChild(tr);
     return;
@@ -1084,20 +1267,25 @@ function renderWagers(portfolio) {
     const clv = w.clv_pct === undefined || w.clv_pct === null || !Number.isFinite(Number(w.clv_pct))
       ? null : Number(w.clv_pct);
     const tr = document.createElement("tr");
+    /* Durum kodu sözleşmeden gelir (WON/LOST/BEKLİYOR) ve testler onu arar; metni değişmez,
+       ama ne demek olduğu `title` ile yazılır — çıplak enum okunmaz bir etiket bırakmasın. */
     const cells = [
-      [w.match_title, ""],
-      [w.selection, ""],
-      [w.odds, "num"],
-      [fmtMoney(w.stake), "num"],
-      [w.kind, w.kind === "WON" ? "good" : (w.kind === "LOST" ? "bad" : "muted")],
+      [w.match_title, "", ""],
+      [selectionLabel(w.selection), "", w.selection],
+      [w.odds, "num", ""],
+      [fmtMoney(w.stake), "num", "Kasadan kilitlenen tutar"],
+      [w.kind, w.kind === "WON" ? "good" : (w.kind === "LOST" ? "bad" : "muted"),
+        WAGER_KIND_TITLES[w.kind] || ""],
       [net === null ? "–" : (net >= 0 ? "+" : "") + fmtMoney(net), "num " +
-        (net === null ? "" : (net >= 0 ? "good" : "bad"))],
-      [clv === null ? "–" : fmtSignedPct(clv), "num " + (clv === null ? "muted" : signClass(clv))],
+        (net === null ? "" : (net >= 0 ? "good" : "bad")), "Sonuçlanan kuponun net kâr/zararı"],
+      [clv === null ? "–" : fmtSignedPct(clv), "num " + (clv === null ? "muted" : signClass(clv)),
+        "Kapanış oranı değeri — aldığın oran ile kapanış oranı farkı"],
     ];
-    cells.forEach(([text, klass]) => {
+    cells.forEach(([text, klass, title]) => {
       const td = document.createElement("td");
       td.className = klass;
       td.textContent = String(text);
+      if (title) td.title = title;
       tr.appendChild(td);
     });
     body.appendChild(tr);
@@ -1223,7 +1411,7 @@ function renderLearning(learning) {
       "CLV eğilimi için kapanış oranı gerekiyor (en az " + learning.min_sample + " bahis)."
     );
   }
-  parts.push("Pazar çeşitliliği: " + learning.market_breadth + ".");
+  parts.push("Oynadığın farklı bahis türü: " + learning.market_breadth + ".");
   el("learning-note").textContent = parts.join(" ");
 }
 
@@ -1252,9 +1440,9 @@ function init() {
   const authForm = el("auth-form");
   authForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    authenticate("/api/auth/login");
+    authenticate("/api/auth/login", el("login"));
   });
-  el("register").addEventListener("click", () => authenticate("/api/auth/register"));
+  el("register").addEventListener("click", () => authenticate("/api/auth/register", el("register")));
   el("logout").addEventListener("click", logout);
   el("refill").addEventListener("click", refill);
   el("ruin-box-close").addEventListener("click", () => {

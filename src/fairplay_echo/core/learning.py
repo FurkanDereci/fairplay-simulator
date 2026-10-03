@@ -30,6 +30,20 @@ FAVOURITE_SHARE_LIMIT: Money = Decimal("0.70")
 #: CLV yarılar arası farkın "eğilim" sayılması için gereken bant (yüzde puanı).
 CLV_TREND_BAND: Money = Decimal("1.00")
 
+# --- Disiplin rozetleri (spec §4.2) ------------------------------------------------------
+#: Rozetler **var olan** ölçütlerden türetilir; yeni veri uydurulmaz. Her rozet `N ≥ MIN_SAMPLE`
+#: ister (az örneklemden rozet verilmez).
+BADGE_STAKE_DISCIPLINE = "ölçülü-bahis"
+BADGE_CLV_MASTER = "clv-ustası"
+BADGE_MARKET_BREADTH = "pazar-gezgini"
+ALL_BADGES: tuple[str, ...] = (BADGE_STAKE_DISCIPLINE, BADGE_CLV_MASTER, BADGE_MARKET_BREADTH)
+#: "pazar-gezgini" rozetinin eşiği: kullanılan farklı market sayısı.
+BADGE_MARKET_BREADTH_MIN: int = 3
+#: Bu sayıda rozet (üçünün tamamı) cooldown tavanını düşürür.
+DISCOUNT_BADGE_THRESHOLD: int = 3
+#: Disiplin indirimiyle cooldown tavanı (varsayılan 168 saat).
+DISCOUNTED_MAX_COOLDOWN_HOURS: Money = Decimal("72")
+
 _RATIO_Q: Money = Decimal("0.0001")
 PCT_Q: Money = Decimal("0.01")
 
@@ -197,3 +211,27 @@ def build_learning_report(
         favourite_verdict=favourite_verdict,
         headline=headline,
     )
+
+
+def earned_badges(report: LearningReport) -> tuple[str, ...]:
+    """Öğrenme ölçütlerinden **türetilen** disiplin rozetleri (spec §4.2).
+
+    Rozetler yeni bir veri kaynağı gerektirmez: bahis disiplini, CLV başarısı ve pazar
+    çeşitliliği zaten §6'da ölçülüyor. `report.reliable` (N ≥ `MIN_SAMPLE`) sağlanmadan rozet
+    verilmez — az örneklemden "disiplinli" hükmü çıkarmak `[G-14]`'ün yasakladığı sınıftır.
+    """
+    if not report.reliable:
+        return ()
+    badges: list[str] = []
+    if report.stake_verdict == "ölçülü":
+        badges.append(BADGE_STAKE_DISCIPLINE)
+    if report.clv_mean_pct is not None and report.clv_mean_pct > ZERO:
+        badges.append(BADGE_CLV_MASTER)
+    if report.market_breadth >= BADGE_MARKET_BREADTH_MIN:
+        badges.append(BADGE_MARKET_BREADTH)
+    return tuple(badges)
+
+
+def earns_discipline_discount(badges: Sequence[str]) -> bool:
+    """Yeterli rozet toplandı mı → cooldown tavanı düşer mi (spec §4.2)."""
+    return len(badges) >= DISCOUNT_BADGE_THRESHOLD

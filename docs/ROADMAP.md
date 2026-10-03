@@ -12,8 +12,8 @@ DoD = testler yeşil + `ruff`/`mypy` temiz + dokümanlar güncel + `docs-sync` g
 | **S4** | API kabuğu | auth, wager, portfolio, **sunucu-otoriteli** settlement, refill + OpenAPI + idempotency | Endpoint'te iş mantığı yok; `40-api.md` üretildi; güven sınırı testli | ✅ |
 | **S5** | Maç motoru | tohumlu Poisson + Monte Carlo | Aynı seed → aynı sonuç (testli) | ✅ |
 | **S6** | Benchmark botları | 3 strateji, maç kayıtlarından **türetilen** | Determinizm + restart'ta sıfırlanmama | ✅ |
-| **S7** | Oyunlaştırma + arayüz | enerji/cooldown; enerji **görünür**; kart tabanlı arayüz, lig filtresi, kullanıcı olasılığıyla EV/Kelly | Mock state yok; enerji görünür; bağımsız inceleme bulguları kapatıldı — **ama** istemci OpenAPI'den üretilmiyor, rozetler yok ve **DOM/tarayıcı test koşumu yok** | ⚠️ kısmi |
-| **S8** | Yayın | doküman geçişi, README kurulumu, uçtan uca duman | Temiz ortamda kurulum + `docs-sync` yeşil | ⏳ |
+| **S7** | Oyunlaştırma + arayüz | enerji/cooldown; enerji **görünür**; kart tabanlı arayüz, lig filtresi, kullanıcı olasılığıyla EV/Kelly; **disiplin rozetleri** + risk onay modalı | Mock state yok; enerji görünür; bağımsız inceleme bulguları kapatıldı; rozetler ve `tests/ui` (gerçek tarayıcı) var — **tek kalan:** istemci OpenAPI'den üretilmiyor (tipli istemci) | ✅ (tipli istemci hariç) |
+| **S8** | Yayın | doküman geçişi, README kurulumu, uçtan uca duman | Temiz ortamda kurulum + `docs-sync` yeşil | ✅ |
 
 ## Dilim → sözleşme bağı
 
@@ -28,8 +28,9 @@ DoD = testler yeşil + `ruff`/`mypy` temiz + dokümanlar güncel + `docs-sync` g
   arayüzü **gerçek tarayıcıda** sürüyor; DOM iddiaları, tıklama akışı, konsol/sayfa hatası kontrolü.
   Kurulum root gerektirmez (`playwright install chromium`); tarayıcı yoksa testler atlanır.
 - **Tipli istemci üretimi** (OpenAPI → TS) — elle yazılmış ince istemci var.
-- **Rozetler ve solvent-gün tier indirimi** — çekirdek fonksiyon hazır ve testli; duvar saatiyle gün
-  sınırı işleyen zamanlayıcıya bağlanmadı.
+- **Rozetler ve solvent-gün tier indirimi** — ✅ **rozetler** (disiplin, ADR-0012) `learning-report`
+  ölçütlerinden türetiliyor ve cooldown tavanını indiriyor; **solvent-gün** tier indirimi çekirdekte
+  testli (`I6`) ama duvar saatiyle gün sınırı işleyen zamanlayıcıya bağlanmadı (F5, kapsam dışı).
 - **Grafikte ortak zaman ekseni** — ✅ çözüldü: portföy NAV'ı **maç sınırlarında** örneklenir
   (`portfolio.nav_at_matches`), böylece botlarla aynı uzunlukta ve aynı eksende çizilir.
 - Sosyal kopya fon / lig (Faz 2) — ayrı ADR gerektirir.

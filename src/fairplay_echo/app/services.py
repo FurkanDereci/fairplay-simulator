@@ -15,14 +15,17 @@ from datetime import datetime
 from decimal import Decimal
 
 from ..core import energy as energy_mod
-from ..core.cooldown import CooldownState
+from ..core.cooldown import MAX_COOLDOWN_HOURS, CooldownState
 from ..core.errors import InsufficientCash, InvalidAmount
 from ..core.learning import (
+    DISCOUNTED_MAX_COOLDOWN_HOURS,
     FAVOURITE_LINE,
     MIN_SAMPLE,
     STAKE_RATIO_LIMIT,
     BetInput,
     build_learning_report,
+    earned_badges,
+    earns_discipline_discount,
 )
 from ..core.ledger import EntryType, LedgerEntry
 from ..core.metrics import (
@@ -39,9 +42,22 @@ from ..core.metrics import (
 )
 from ..core.money import BASE_NAV, ONE, ZERO, Money, dec, q, q_money, q_nav, to_pct
 from ..core.nav import Fund, nav_series, settled_outcomes
-from ..core.odds import NormalizedMarket, clv_pct, expected_value, kelly_fraction
+from ..core.odds import (
+    NormalizedMarket,
+    clv_pct,
+    expected_value,
+    kelly_fraction,
+    risk_of_ruin,
+    validate_market_odds,
+)
 from ..engines.bots import BotStrategy, benchmark_series
-from ..engines.match import MatchRecord, derive_lambdas, run_monte_carlo, simulate_match
+from ..engines.match import (
+    MARKET_1X2,
+    MatchRecord,
+    derive_lambdas,
+    run_monte_carlo,
+    simulate_match,
+)
 from ..repo import Repository, UserRecord, WagerRecord
 from . import fixtures as fixture_catalog
 from .clock import Clock
@@ -51,6 +67,7 @@ from .errors import (
     EnergyDepleted,
     LockedOut,
     NotFound,
+    RuinConfirmationRequired,
     Unauthorized,
     UnknownFixture,
     UnknownMarket,
@@ -150,6 +167,31 @@ class PortfolioService:
             self.repo.save_cooldown(user_id, state)
         return state
 
+    def _bet_inputs(self, user_id: str) -> dict[str, BetInput]:
+        """Öğrenme ölçütlerinin girdisi: kupon metadata'sı (DB tipi çekirdeğe sızmaz)."""
+        return {
+            record.wager_id: BetInput(
+                wager_id=record.wager_id,
+                market_type=record.market_type,
+                odds=record.odds,
+                closing_odds=record.closing_odds,
+            )
+            for record in self.repo.wagers_for(user_id)
+        }
+
+    def _badges(self, user_id: str) -> tuple[str, ...]:
+        """Kullanıcının kazandığı disiplin rozetleri (spec §4.2)."""
+        report = build_learning_report(self.repo.entries(user_id), self._bet_inputs(user_id))
+        return earned_badges(report)
+
+    def _cooldown_cap_hours(self, badges: Sequence[str]) -> Money:
+        """Rozet sayısına göre cooldown tavanı: üç rozet → 72 saat, yoksa 168 (spec §4.2)."""
+        return (
+            DISCOUNTED_MAX_COOLDOWN_HOURS
+            if earns_discipline_discount(badges)
+            else MAX_COOLDOWN_HOURS
+        )
+
     def _market_selection(
         self, match_id: str, market_type: str, selection: str
     ) -> tuple[Fixture, NormalizedMarket, Money]:
@@ -227,6 +269,7 @@ class PortfolioService:
         selection: str,
         stake: Money,
         probability: Money | None = None,
+        confirm_ruin: bool = False,
         idempotency_key: str | None = None,
     ) -> dict[str, object]:
         if idempotency_key is not None:
@@ -242,11 +285,42 @@ class PortfolioService:
             selection=selection,
             stake=stake,
             probability=probability,
+            confirm_ruin=confirm_ruin,
         )
         if idempotency_key is not None:
             self.repo.save_idempotent_response(
                 user_id, idempotency_key, json.dumps(payload, ensure_ascii=False)
             )
+        return payload
+
+    def _ruin_payload(
+        self,
+        stake: Money,
+        cash_before: Money,
+        odds: Money,
+        probability: Money | None,
+    ) -> dict[str, object]:
+        """Ruin uyarısının **yapısal** gövdesi (modal bunu gösterir).
+
+        `p` verilmezse `R_ruin` sayısı **uydurulmaz** (`null`); kullanıcı tahminini girerse
+        hesaplanır (ADR-0006, spec §3.4).
+        """
+        payload: dict[str, object] = {
+            "stake": str(q_money(stake)),
+            "cash": str(q_money(cash_before)),
+            "pct_of_cash": str(to_pct(stake / cash_before)),
+            "threshold_pct": str(to_pct(dec(self.settings.risk_of_ruin_threshold))),
+            "risk_of_ruin_pct": None,
+            "message": (
+                "Bu stake kasanın %15 eşiğini aşıyor: iflas riski yüksek. "
+                "Onay verirsen bahis işlenecek."
+            ),
+        }
+        if probability is not None:
+            edge = expected_value(probability, odds)
+            payload["edge"] = str(q(edge, Decimal("0.0001")))
+            payload["units"] = str(q(cash_before / stake, Decimal("0.0001")))
+            payload["risk_of_ruin_pct"] = str(risk_of_ruin(edge, cash_before / stake))
         return payload
 
     def _place_wager(
@@ -258,22 +332,16 @@ class PortfolioService:
         selection: str,
         stake: Money,
         probability: Money | None = None,
+        confirm_ruin: bool = False,
     ) -> dict[str, object]:
         self._require_user(user_id)
         now = self.clock.now()
 
+        # Sıra bilinçli: reddedilecek bir istek **hiçbir yan etki** bırakmaz. Önce bütün
+        # doğrulamalar ve ruin kapısı, en sonda enerji harcaması ve defter kaydı yapılır.
         cooldown = self._cooldown(user_id)
         if cooldown.is_locked(now):
             raise LockedOut(f"Hesap iflas cooldown'ında (tier {cooldown.tier}).")
-
-        energy, last_update = self._energy(user_id)
-        if not energy_mod.can_wager(energy, cost=self.settings.energy_per_wager):
-            raise EnergyDepleted(
-                f"Simülasyon enerjisi yetersiz ({energy}/{self.settings.energy_max}). "
-                f"Her bahis {self.settings.energy_per_wager} enerji harcar."
-            )
-        energy = energy_mod.spend(energy, cost=self.settings.energy_per_wager)
-        self.repo.save_energy(user_id, energy, last_update)
 
         fixture, market, odds = self._market_selection(match_id, market_type, selection)
 
@@ -283,6 +351,23 @@ class PortfolioService:
         if stake > fund.cash:
             raise InsufficientCash("Kasa bu bahsi karşılayamaz.")
         cash_before = fund.cash
+
+        threshold = dec(self.settings.risk_of_ruin_threshold)
+        ruin = stake > threshold * cash_before
+        if ruin and not confirm_ruin:
+            raise RuinConfirmationRequired(
+                "Bu stake kasanın %15 eşiğini aşıyor: onay ister (spec §3.4).",
+                self._ruin_payload(stake, cash_before, odds, probability),
+            )
+
+        energy, last_update = self._energy(user_id)
+        if not energy_mod.can_wager(energy, cost=self.settings.energy_per_wager):
+            raise EnergyDepleted(
+                f"Simülasyon enerjisi yetersiz ({energy}/{self.settings.energy_max}). "
+                f"Her bahis {self.settings.energy_per_wager} enerji harcar."
+            )
+        energy = energy_mod.spend(energy, cost=self.settings.energy_per_wager)
+        self.repo.save_energy(user_id, energy, last_update)
 
         wager_id = str(uuid.uuid4())
         self.repo.save_wager(
@@ -300,8 +385,10 @@ class PortfolioService:
         self.repo.append_entry(user_id, entry)
         fund.apply(entry)
 
-        threshold = dec(self.settings.risk_of_ruin_threshold)
-        ruin = stake > threshold * cash_before
+        risk_of_ruin_pct: str | None = None
+        if ruin and probability is not None:
+            edge = expected_value(probability, odds)
+            risk_of_ruin_pct = str(risk_of_ruin(edge, cash_before / stake))
         return {
             "wager_id": wager_id,
             "match_id": match_id,
@@ -316,6 +403,7 @@ class PortfolioService:
             "nav": str(q_nav(fund.nav)),
             "simulation_energy": energy,
             "ruin_risk_warning": ruin,
+            "risk_of_ruin_pct": risk_of_ruin_pct,
             "warning_message": (
                 "Stake kasasının %15'ini aşıyor: portföyü iflasa sürükleme olasılığı yüksek."
                 if ruin
@@ -356,20 +444,30 @@ class PortfolioService:
             raise UnknownFixture(f"Bilinmeyen maç: {match_id}")
 
         odds_1x2 = fixture.odds_1x2()
-        result = simulate_match(
-            match_id, fixture.home_team, fixture.away_team, odds_1x2, seed=seed
-        )
-        self.repo.save_match(
-            MatchRecord(
-                match_id=match_id,
-                home_team=fixture.home_team,
-                away_team=fixture.away_team,
-                home_score=result.home_score,
-                away_score=result.away_score,
-                odds_1x2=odds_1x2,
-                seed=seed,
+        # Bir maç **bir kez** üretilir (Suite 4): kayıt varsa sonuç kayıtlı seed'den yeniden
+        # üretilir, yoksa istek işlenip kaydedilir. Böylece tekrarlanan çağrı aynı skoru/olayları
+        # verir, ikinci kez ödeme yapılmaz ve yanıt depoyla çelişmez.
+        existing = self.repo.match(match_id)
+        if existing is not None:
+            odds_1x2 = dict(existing.odds_1x2)
+            result = simulate_match(
+                match_id, existing.home_team, existing.away_team, odds_1x2, seed=existing.seed
             )
-        )
+        else:
+            result = simulate_match(
+                match_id, fixture.home_team, fixture.away_team, odds_1x2, seed=seed
+            )
+            self.repo.save_match(
+                MatchRecord(
+                    match_id=match_id,
+                    home_team=fixture.home_team,
+                    away_team=fixture.away_team,
+                    home_score=result.home_score,
+                    away_score=result.away_score,
+                    odds_1x2=odds_1x2,
+                    seed=seed,
+                )
+            )
 
         fund, _ = self._fund(user_id)
         settled: list[dict[str, object]] = []
@@ -465,6 +563,8 @@ class PortfolioService:
             title = None
             source = "CUSTOM"
 
+        # Bozuk/negatif vig'li besleme burada **reddedilir**, kırpılmaz (Suite 3).
+        validate_market_odds(MARKET_1X2, odds)
         lambda_home, lambda_away = derive_lambdas(odds)
         summary = run_monte_carlo(lambda_home, lambda_away, iterations, seed=seed)
         return {
@@ -486,13 +586,14 @@ class PortfolioService:
         }
 
     def _apply_bankruptcy(self, user_id: str, fund: Fund) -> bool:
-        """İflas sonrası cooldown'ı **tek** yerden tetikler."""
+        """İflas sonrası cooldown'ı **tek** yerden tetikler; tavan rozetlere göre seçilir."""
         if fund.total_value > ZERO:
             return False
         cooldown = self.repo.cooldown(user_id)
         if cooldown.locked_until is not None:
             return False
-        cooldown.trigger(self.clock.now())
+        cap = self._cooldown_cap_hours(self._badges(user_id))
+        cooldown.trigger(self.clock.now(), max_hours=cap)
         self.repo.save_cooldown(user_id, cooldown)
         return True
 
@@ -546,22 +647,14 @@ class PortfolioService:
     def learning_report(self, *, user_id: str) -> dict[str, object]:
         """Öğrenme ölçütleri (docs/90): davranış ölçülür, **tavsiye verilmez**."""
         self._require_user(user_id)
-        entries = self.repo.entries(user_id)
-        bets = {
-            record.wager_id: BetInput(
-                wager_id=record.wager_id,
-                market_type=record.market_type,
-                odds=record.odds,
-                closing_odds=record.closing_odds,
-            )
-            for record in self.repo.wagers_for(user_id)
-        }
-        report = build_learning_report(entries, bets)
+        report = build_learning_report(self.repo.entries(user_id), self._bet_inputs(user_id))
+        badges = earned_badges(report)
         return {
             "bets": report.bets,
             "min_sample": MIN_SAMPLE,
             "reliable": report.reliable,
             "market_breadth": report.market_breadth,
+            "badges": list(badges),
             "clv": {
                 "mean_pct": report.clv_mean_pct,
                 "first_half_pct": report.clv_first_half_pct,
@@ -605,6 +698,8 @@ class PortfolioService:
         energy, last_update = self._energy(user_id)
         self.repo.save_energy(user_id, energy, last_update)
         cooldown = self._cooldown(user_id)
+        badges = self._badges(user_id)
+        cap_hours = self._cooldown_cap_hours(badges)
 
         reliability = {
             "periods": periods,
@@ -656,12 +751,14 @@ class PortfolioService:
             "energy_max": self.settings.energy_max,
             "energy_per_wager": self.settings.energy_per_wager,
             "can_wager": energy_mod.can_wager(energy, cost=self.settings.energy_per_wager),
+            "badges": list(badges),
             "cooldown": {
                 "tier": cooldown.tier,
                 "locked": cooldown.is_locked(self.clock.now()),
                 "locked_until": (
                     cooldown.locked_until.isoformat() if cooldown.locked_until else None
                 ),
+                "max_hours": str(cap_hours),
             },
             "nav_history": [str(point) for point in series],
             "nav_at_matches": self._nav_at_matches(user_id, entries),

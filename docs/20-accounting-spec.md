@@ -178,13 +178,30 @@ P_fair,i = P_i / S        O_fair,i = 1 / P_fair,i
 > `P_fair = {0.4919438, 0.2740830, 0.2339733}` (Σ ≈ 1)
 > `O_fair = {2.03, 3.65, 4.27}`
 
+**Girdi denetimi — reddet, kırpma.** Sisteme giren oran dizisi üç kuralı sağlamalı; sağlamazsa
+istek `400` ile **reddedilir** (kırpılmaz):
+- pazarın zorunlu sonuçları eksiksiz (1X2 için `HOME`/`DRAW`/`AWAY`),
+- her oran `> 1` (`O ≤ 1` matematiksel olarak imkânsız orandır),
+- `Σ(1/O_i) > 1` (aksi hâlde **negatif vig** vardır: bahisçi lehine garanti kâr, gerçek oran
+  dizisinde olamaz).
+
+`overround = max(0, …)` ile bozuk beslemeyi kırpmak onu **gizlemektir**; gizlemek kabul etmekten
+kötüdür (orijinalin `03` Suite 3 gereksinimi).
+
+> **[G-19] Oran temizliği (reddetme)**
+> `{3.50, 3.50, 3.50}` → `Σ(1/O) = 0,857143 ≤ 1` → **reddedilir** (negatif vig)
+> `{1.00, 2.00, 3.00}` → `HOME = 1.00 ≤ 1` → **reddedilir**
+> `{1.95, 3.50, 4.10}` → `Σ = 1,0424372 > 1` → **kabul** (bkz. `[G-8]`)
+
 ### 3.2 Kelly kriteri ve EV
 ```
 EV   = p × O − 1
 f*   = max(0, (p × O − 1) / (O − 1))
 ```
-`O ≤ 1` → `f* = 0`. Tek kupon kasasının %15'ini aşarsa **Risk-of-Ruin uyarısı** (engel değil, uyarı).
-`kelly_fraction` **tam hassasiyetle** döner; raporlarken 4 ondalığa yuvarlanır (ör. `0.1409` → %14.09).
+`O ≤ 1` → `f* = 0`. Tek kupon kasasının %15'ini aşarsa **Risk-of-Ruin onay kapısı** devreye girer
+(§3.4): sunucu isteği reddeder, istemci uyarıyı onaylayıp **aynı isteği** `confirm_ruin=true` ile
+tekrar gönderir. `kelly_fraction` **tam hassasiyetle** döner; raporlarken 4 ondalığa yuvarlanır
+(ör. `0.1409` → %14.09).
 
 > **Uygulama notu — `p` kullanıcıdan gelir.** Piyasanın fair olasılığı `p` olarak kullanılırsa `f*`
 > **her zaman 0** çıkar (`[G-9]`), çünkü bookmaker oranı fair orandan kısadır; yani Kelly sabit ve
@@ -214,6 +231,28 @@ Kapanış oranı kupon konulduğunda **snapshot** alınır (sonradan değişmez)
 > **[G-11] CLV**
 > `O_konulan = 2.10`, `O_kapanış = 1.95` → **Beklenen:** `CLV = +7.69%`
 
+### 3.4 Risk of Ruin ve onay kapısı
+
+`Edge = p·o − 1` (bahis başına beklenen getiri), `Units = cash/stake` (kasadaki eşit-bahis sayısı):
+
+```
+R_ruin = ( (1 − Edge) / (1 + Edge) ) ^ Units        → yüzde
+```
+
+Tek kupon **kasanın %15'ini aşarsa** sistem bu değeri hesaplar ve **onay isteyen bir kapı** koyar:
+istek `confirm_ruin` olmadan gelirse `409` + `ruin` gövdesi döner; istemci uyarıyı gösterip onay
+alırsa **aynı istek** `confirm_ruin=true` ile tekrar gönderilir ve bahis işlenir. Kapı sunucudadır
+(istemci yalnız gösterir, eşiği ve formülü kendisi hesaplamaz) ama **bahsi yasaklamaz** — kararı
+kullanıcı verir.
+
+`p` **kullanıcıdan** gelir (ADR-0006): verilmezse sayı **uydurulmaz**, `risk_of_ruin_pct = null`
+döner ve uyarı niteliksel kalır. `Edge ≤ 0` ise iflas kaçınılmazdır → `100.00`.
+
+> **[G-17] Risk of Ruin**
+> `Edge = 0.01`, `Units = 100` → `(0.99 / 1.01)^100 = 0.135326…`
+> **Beklenen:** `R_ruin = 13.53%`
+> `Edge = 0.00` → **Beklenen:** `100.00%` (kenar yoksa iflas kaçınılmaz)
+
 ---
 
 ## 4. Politika katmanı
@@ -242,11 +281,23 @@ Bahis anında `energy < cost` ise **429**.
 
 ### 4.2 Cooldown
 ```
-T(n) = min(168, 4^(n−1)) saat      # n = tier ≥ 1
+T(n) = min(tavan, 4^(n−1)) saat     # n = tier ≥ 1; tavan varsayılan 168
 3 ardışık solvent gün → tier −= 1 (taban 0)
 ```
+
+**Disiplin indirimi.** **3+ disiplin rozeti** tavanı 168 → 72 saate çeker (orijinalin
+`01_gamification` §3 kuralı). Rozetler **var olan** öğrenme ölçütlerinden türetilir (§6):
+`ölçülü-bahis` · `clv-ustası` · `pazar-gezgini`; her biri `N ≥ 6` örneklem ister ve üçünün
+**tamamı** gerekir. Tavan `min(tavan, 4^(n−1))` ile uygulanır — yani tier 4'te (64 saat) indirim
+görünmez, tier 5'te görünür.
+
 > **[G-13] Cooldown**
 > **Beklenen:** `T(1)=1s · T(2)=4s · T(3)=16s · T(4)=64s · T(5)=168s (tavan)`
+
+> **[G-18] Disiplin indirimi**
+> Tavan 72 iken **Beklenen:** `T(5)=72 · T(4)=64 · T(3)=16`
+> Varsayılan tavanla: `T(5)=168` (indirim yok)
+> Üç rozetin tamamı → indirim; iki rozet → indirim yok
 
 ---
 
@@ -262,6 +313,7 @@ T(n) = min(168, 4^(n−1)) saat      # n = tier ≥ 1
 | Eşzamanlı settlement | Aynı kupon ikinci kez settle edilemez (I3, `409`) |
 | Restart ortasında `PENDING` | Defterden replay ile kupon durumu korunur (I2, S2) |
 | `stake > cash` | `400` — kısmi doldurma yok |
+| Bozuk oran dizisi (eksik sonuç · `O ≤ 1` · negatif vig) | `400` — kırpılmaz, **reddedilir** (§3.1, `[G-19]`) |
 
 ---
 
@@ -278,6 +330,7 @@ hepsi defterden türer, hiçbiri tavsiye değildir (kararı kullanıcı verir �
 | Favori payı | oranı `< 2.00` olan bahislerin payı | `> %70` → `favori ağırlıklı` |
 | Pazar çeşitliliği | kullanılan farklı market sayısı | — (bilgi) |
 | CLV eğilimi | ilk yarı ortalaması vs ikinci yarı ortalaması | fark `≥ +1,00` → `iyileşiyor`; `≤ −1,00` → `kötüleşiyor`; arası → `yatay` |
+| Disiplin rozeti | `ölçülü-bahis` (bahis oranı ≤ %15) · `clv-ustası` (ortalama CLV > 0) · `pazar-gezgini` (≥ 3 market) | her biri `N ≥ 6`; üçü birden → cooldown tavanı 168 → **72** (§4.2) |
 
 Bahis oranında **portföy değeri** (`cash + locked`) kullanılır, NAV değil: NAV birim fiyatıdır
 (100 tabanlı), bahis boyutu ise portföyün yüzdesi olarak anlamlıdır.

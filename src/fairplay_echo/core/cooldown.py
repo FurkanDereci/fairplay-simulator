@@ -16,11 +16,15 @@ HOURS_BASE: Money = Decimal("4")
 SOLVENT_DAYS_PER_TIER: int = 3
 
 
-def cooldown_hours(tier: int) -> Money:
-    """Tier n için kilit süresi (saat). Tier < 1 → 0."""
+def cooldown_hours(tier: int, *, max_hours: Money = MAX_COOLDOWN_HOURS) -> Money:
+    """Tier n için kilit süresi (saat). Tier < 1 → 0.
+
+    `max_hours` **tavan**: disiplin indirimi bunu 168'den 72'ye çeker (spec §4.2). Varsayılan
+    değişmez, böylece indirimsiz davranış aynen korunur.
+    """
     if tier < 1:
         return Decimal(0)
-    return min(MAX_COOLDOWN_HOURS, HOURS_BASE ** (tier - 1))
+    return min(max_hours, HOURS_BASE ** (tier - 1))
 
 
 def record_solvent_day(streak: int, tier: int) -> tuple[int, int]:
@@ -49,11 +53,14 @@ class CooldownState:
             return True
         return False
 
-    def trigger(self, now: datetime) -> Money:
-        """İflası işler: tier artar, kilit `T(tier)` saat sonrasına kurulur."""
+    def trigger(self, now: datetime, *, max_hours: Money = MAX_COOLDOWN_HOURS) -> Money:
+        """İflası işler: tier artar, kilit `T(tier)` saat sonrasına kurulur.
+
+        `max_hours` disiplin indirimini uygular (spec §4.2); varsayılan 168.
+        """
         self.tier += 1
         self.solvent_streak = 0
-        hours = cooldown_hours(self.tier)
+        hours = cooldown_hours(self.tier, max_hours=max_hours)
         self.locked_until = now + timedelta(hours=float(hours))
         return hours
 

@@ -40,7 +40,9 @@ Aynı ikili `replay`, `export-openapi`, `render-api-docs` ve `version` alt komut
 ```
 
 **3. Elle, tarayıcıdan** — `fairplay-echo serve` ile aç; kayıt ol, bahis yap (enerji başlıkta
-görünür), "Simüle" ile maçı sonuçlandır, NAV ve benchmark eğrilerini izle.
+görünür), "Simüle" ile maçı sonuçlandır, NAV ve benchmark eğrilerini izle. Kasanın %15'ini aşan bir
+stake girersen **onay modalı** çıkar (risk kapısı); 6+ bahis sonrası `learning-report` ölçütlerinden
+**disiplin rozetleri** görünür.
 
 > `pip install -e ".[dev]"` yapılmadıysa komut yerine
 > `PYTHONPATH=src .venv/bin/python -m fairplay_echo.cli <komut>` kullan.
@@ -72,7 +74,7 @@ uyarı bandı çıkar.
 | --- | --- |
 | Neden var, ne değil | `docs/00-vision.md` |
 | Varlıklar, durum makineleri, değişmezler (I1–I6) | `docs/10-domain-model.md` |
-| **Sözleşme** — formüller + 13 işlenmiş örnek (`[G-x]`) | `docs/20-accounting-spec.md` |
+| **Sözleşme** — formüller + işlenmiş örnekler (`[G-x]`) | `docs/20-accounting-spec.md` |
 | **Arayüz sözleşmesi** (tokenlar, nevers, bileşen kuralları) | `DESIGN.md` |
 | Mevcut vs hedef mimari + geçiş tetikleyicileri | `docs/30-architecture.md` |
 | API (OpenAPI'den üretilir) | `docs/40-api.md` |

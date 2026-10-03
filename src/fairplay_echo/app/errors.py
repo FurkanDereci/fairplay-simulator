@@ -6,6 +6,8 @@ exception handler'ları) yapılır. Böylece servis, web çatısına bağımlı 
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 
 class AppError(Exception):
     status_code = 400
@@ -49,3 +51,17 @@ class UnknownFixture(AppError):
 
 class UnknownMarket(AppError):
     status_code = 400
+
+
+class RuinConfirmationRequired(AppError):
+    """Kasa eşiğini aşan bahis, kullanıcı onayı olmadan işlenmez (spec §3.4).
+
+    `ruin` gövdesi istemciye **yapısal** gider (stake, kasadaki pay, `R_ruin %`); istemci
+    formülü kendisi hesaplamaz (SSOT). Şema `app/main.py`'deki özel handler'da verilir.
+    """
+
+    status_code = 409
+
+    def __init__(self, detail: str, ruin: Mapping[str, object]) -> None:
+        super().__init__(detail)
+        self.ruin: dict[str, object] = dict(ruin)

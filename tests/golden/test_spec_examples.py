@@ -9,10 +9,21 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal as D
 
+import pytest
+
 from fairplay_echo.core import cooldown as cooldown_mod
 from fairplay_echo.core import energy as energy_mod
 from fairplay_echo.core import metrics, nav, odds
-from fairplay_echo.core.learning import BetInput, build_learning_report
+from fairplay_echo.core.errors import InvalidOdds
+from fairplay_echo.core.learning import (
+    BADGE_CLV_MASTER,
+    BADGE_MARKET_BREADTH,
+    BADGE_STAKE_DISCIPLINE,
+    BetInput,
+    build_learning_report,
+    earned_badges,
+    earns_discipline_discount,
+)
 from fairplay_echo.core.ledger import Ledger
 from fairplay_echo.core.metrics import SettledWager
 from fairplay_echo.core.money import Money, q, q_nav, q_units
@@ -130,6 +141,12 @@ def test_g11_clv() -> None:
     assert odds.clv_pct(D("2.10"), D("1.95")) == D("7.69")
 
 
+def test_g17_risk_of_ruin() -> None:
+    """[G-17] R_ruin = ((1−Edge)/(1+Edge))^Units; kenar yoksa iflas kaçınılmaz."""
+    assert odds.risk_of_ruin(D("0.01"), D("100")) == D("13.53")
+    assert odds.risk_of_ruin(D("0.00"), D("100")) == D("100.00")
+
+
 def test_g12_energy() -> None:
     """[G-12] Enerji: 10 bahis → 0; 30 dk → +5; 2 saat → +20."""
     energy = energy_mod.MAX_ENERGY
@@ -240,3 +257,66 @@ def test_g13_cooldown() -> None:
         D("64"),
         D("168"),
     ]
+
+
+def test_g18_discipline_discount() -> None:
+    """[G-18] 3+ rozet tavanı 72'ye çeker; tier 4 (64) indirimden etkilenmez."""
+    discounted = D("72")
+    assert [cooldown_mod.cooldown_hours(n, max_hours=discounted) for n in (3, 4, 5)] == [
+        D("16"),
+        D("64"),
+        D("72"),
+    ]
+    assert cooldown_mod.cooldown_hours(5) == D("168")  # indirimsiz varsayılan
+
+
+def test_g18_badges_are_derived_from_measured_metrics() -> None:
+    """[G-18] Rozetler **var olan** ölçütlerden türetilir; üçü birlikte indirimi açar."""
+    ledger = Ledger()
+    ledger.deposit(D("1000"))
+    for index in range(6):
+        ledger.place_wager(f"b{index}", D("50"))  # 50/1000 = %5 → ölçülü
+        ledger.settle_wager(f"b{index}", D("50"), D("50"))  # push: portföy değeri sabit
+
+    markets = ["1x2", "ou", "btts", "1x2", "ou", "btts"]  # 3 farklı pazar
+    bets = {
+        f"b{index}": BetInput(f"b{index}", market, D("2.00"), D("1.90"))
+        for index, market in enumerate(markets)
+    }
+    badges = earned_badges(build_learning_report(ledger.entries, bets))
+
+    assert BADGE_STAKE_DISCIPLINE in badges
+    assert BADGE_CLV_MASTER in badges  # 2.00 → 1.90: CLV pozitif
+    assert BADGE_MARKET_BREADTH in badges
+    assert earns_discipline_discount(badges) is True
+
+
+def test_g18_no_badges_from_a_thin_sample() -> None:
+    """[G-18] Az örneklemden rozet verilmez (`[G-14]` sınıfının ikizi)."""
+    ledger = Ledger()
+    ledger.deposit(D("1000"))
+    for index in range(3):
+        ledger.place_wager(f"t{index}", D("10"))
+    bets = {
+        f"t{index}": BetInput(f"t{index}", "1x2", D("2.00"), D("1.90")) for index in range(3)
+    }
+    assert earned_badges(build_learning_report(ledger.entries, bets)) == ()
+    assert earns_discipline_discount([]) is False
+
+
+def test_g19_odds_sanitation_rejects_corrupt_feeds() -> None:
+    """[G-19] Bozuk/negatif vig'li oran **reddedilir**; geçerli dizi kabul edilir."""
+    # Sağlam: Σ(1/O) > 1 → kabul.
+    odds.validate_market_odds("1X2", {"HOME": D("1.95"), "DRAW": D("3.50"), "AWAY": D("4.10")})
+
+    # Negatif vig: Σ(1/O) = 0.857143 ≤ 1 → reddedilir.
+    with pytest.raises(InvalidOdds):
+        odds.validate_market_odds("1X2", {"HOME": D("3.50"), "DRAW": D("3.50"), "AWAY": D("3.50")})
+
+    # O ≤ 1: matematiksel olarak imkânsız oran → reddedilir.
+    with pytest.raises(InvalidOdds):
+        odds.validate_market_odds("1X2", {"HOME": D("1.00"), "DRAW": D("2.00"), "AWAY": D("3.00")})
+
+    # Eksik sonuç: 1X2 için DRAW yok → reddedilir.
+    with pytest.raises(InvalidOdds):
+        odds.validate_market_odds("1X2", {"HOME": D("1.95"), "AWAY": D("4.10")})

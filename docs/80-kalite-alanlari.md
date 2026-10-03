@@ -35,7 +35,7 @@ yazmak yasak).
 | 8 | **Süreç kapıları, ADR, bağımsız inceleme** | Her mimari karar ADR; "bitti" tanımı testlerle; **yazar kendi işini onaylamaz** (farklı model, salt-okur inceleme) | `docs/60-decisions/` · docs-sync · bağımsız inceleme turu | ✅ |
 | 9 | **Kullanıcı, değişim, ürün değeri** | Ürün **eğitir**: kararı kullanıcı verir (`p`), tavsiye/tahmin yok. "Öğretir" iddiası **iki katmana** ayrıldı — davranış ölçümü (kapı var) ve öğrenme (🅿️ insan çalışması, protokol yazılı) | `docs/90-urun-degeri.md` · `GET /api/learning-report` · `[G-16]` golden · `tests/api` örneklem testi | ✅ / 🅿️ |
 | 10 | **Mimari sınırlar, geçiş tetikleyicileri** | Tek süreç + SQLite; hedef mimari (PG/Timescale/Redis) **sayısal tetikleyiciye** bağlı | `docs/30-architecture.md` CURRENT/TARGET | ✅ (tetikleyiciler elle; test edilebilir hale getirilebilir) |
-| 11 | **Domain paketi (projeye özel matematik)** | Vig arındırma **çarpımsal** (bilinçli sınır: favori–longshot yanlılığı modellenmiyor); R_ruin formülü ve yarım-Kelly | `[G-8]`–`[G-13]` golden · planlanan ruin tablosu testi | ✅ / ⏳ (R1 açık) |
+| 11 | **Domain paketi (projeye özel matematik)** | Vig arındırma **çarpımsal** (bilinçli sınır: favori–longshot yanlılığı modellenmiyor); R_ruin formülü (§3.4) ve yarım-Kelly; bozuk oran **sınırda reddedilir** | `[G-8]`–`[G-13]`, `[G-17]`–`[G-19]` golden · `tests/test_boundaries.py` | ✅ |
 
 ---
 
@@ -60,7 +60,7 @@ yazmak yasak).
 ## İlgili belgeler
 
 - `docs/50-test-strategy.md` — risk → test matrisi ve devralınan 4 doğrulama paketi (§8).
-- `docs/70-parite-ve-devralma.md` — gereksinim paritesi; R1–R7 (alan 3 ve 11'in açık maddeleri).
+- `docs/70-parite-ve-devralma.md` — gereksinim paritesi; R1–R6 kapandı, R7 bilinçli kapsam-dışı.
 - `docs/90-urun-degeri.md` — "öğrettiği" nasıl ölçülür: davranış ölçütleri + eşikler (alan 9).
 - `docs/30-architecture.md` — CURRENT/TARGET ve geçiş tetikleyicileri (alan 10).
 - `DESIGN.md` — arayüz sözleşmesi: tokenlar, "ne olmayacak"lar, doğrulama tanımı (alan 7).

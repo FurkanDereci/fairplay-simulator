@@ -127,6 +127,8 @@ def test_repeated_bets_do_not_flood_the_toast_stack(
     page.locator("details.match > summary").first.click()
     bet = page.locator("[data-role='bet']").first
     bet.wait_for(state="visible", timeout=5000)
+    # Küçük stake: bu test toast yığınını ölçer, ruin kapısını değil (R1 ayrı testte).
+    page.locator("input[aria-label$='stake']").first.fill("10")
     for _ in range(6):
         bet.click()
         page.wait_for_timeout(250)
@@ -149,6 +151,11 @@ def test_energy_gate_closes_the_bet_buttons(
         page.wait_for_timeout(150)
     page.wait_for_selector("[data-role='bet']", timeout=5000)
 
+    # Küçük stake: bu test enerji kapısını ölçer; büyük stake ruin kapısına takılırdı (R1).
+    stakes = page.locator("input[aria-label$='stake']")
+    for index in range(stakes.count()):
+        stakes.nth(index).fill("10")
+
     for index in range(10):
         page.locator("[data-role='bet']").nth(index).click()
         page.wait_for_timeout(700)
@@ -157,4 +164,28 @@ def test_energy_gate_closes_the_bet_buttons(
     assert page.locator("#energy-wrap").get_attribute("class").find("is-blocked") >= 0
     enabled = page.locator("[data-role='bet']:not([disabled])").count()
     assert enabled == 0, f"enerji 0 iken {enabled} bahis butonu açık kaldı"
+    page.close()
+
+
+def test_high_stake_bet_requires_modal_confirmation(
+    browser: Browser, live_server: str, register
+) -> None:
+    """R1 — kasa eşiğini aşan bahis modal ister; onaylanmadan hiçbir kupon oluşmaz."""
+    page = browser.new_page(viewport={"width": 1440, "height": 1000})
+    register(page, "ruin")
+    page.locator("details.match > summary").first.click()
+    page.wait_for_selector("[data-role='bet']", timeout=5000)
+
+    page.locator("input[aria-label$='stake']").first.fill("500")  # 500 / 1000 = %50 > %15
+    page.locator("[data-role='bet']").first.click()
+
+    dialog = page.locator("#ruin-dialog")
+    dialog.wait_for(state="visible", timeout=5000)
+    assert "eşiğini" in page.locator("#ruin-body").inner_text()
+    assert page.locator("#ruin-facts dt").count() >= 4
+    assert page.locator("#wagers-body").inner_text().find("BEKLİYOR") == -1
+
+    page.click("#ruin-confirm")
+    page.wait_for_selector("#wagers-body:has-text('BEKLİYOR')", timeout=8000)
+    assert not dialog.is_visible()
     page.close()

@@ -63,7 +63,13 @@ bu bir **güven sınırı ihlali** (bedava kupon). echo'da sonuç yalnız maç s
 - **`monte_carlo` ucu kimlik doğrulaması ister.** Orijinalde anonimdi; echo'da `/api/matches/*`
 tutarlılığı için token gerekir.
 - **Oranlar katalogdan gelir.** Orijinal `simulate` ucu da katalogdan okuyordu; echo'da
-`monte_carlo` hem katalog hem **varsayımsal oran** kabul eder (parite korunur).
+  `monte_carlo` hem katalog hem **varsayımsal oran** kabul eder (parite korunur).
+- **Kasa eşiğini aşan bahis onay ister.** Tek kupon kasanın %15'ini aşarsa echo isteği `409` +
+  `ruin` gövdesiyle reddeder; istemci onaylarsa (`confirm_ruin`) işlenir. Orijinalde yalnız
+  istemci tarafında bir uyarı vardı ve eşik/formül sunucuda değildi (ADR-0011) — dış istemciler
+  için davranış farkı.
+- **`simulate` bir maçı bir kez üretir.** İkinci çağrı (farklı `seed` ile bile) kayıtlı sonucu
+  döndürür; Suite 4 idempotentliği (ADR-0014). Yeniden simülasyon bekleyen istemci için fark.
 
 ## 4. echo'nun ekledikleri
 
@@ -77,7 +83,11 @@ tutarlılığı için token gerekir.
 - **Kurulabilirlik:** `pyproject.toml` + temiz ortamda doğrulanmış kurulum (orijinal
   `requirements.txt`'i sonradan kazandı).
 
-## 5. Devralma planı (henüz **uygulanmadı**)
+## 5. Devralma planı
+
+> **Durum (2026-10-03):** parite ön koşulu kapandı — R1–R6 karşılandı (§7.2), dört kapı yeşil.
+> Sıra bu yolun **uygulanmasında**: içerik `v2` dalında yayınlanır, PR ile diff olarak incelenir.
+> `main`'e doğrudan yazılmaz, force-push yapılmaz.
 
 Karar: bu depo daha iyi bulunursa içerik doğrudan `fairplay-simulator` reposuna gider.
 
@@ -167,17 +177,17 @@ Değer/emek sırasına göre: ~~**F1 + F2** (motor olayları + arena)~~ **✅ ya
 | Poisson + Monte Carlo, çoklu pazar (1X2 / O-U / BTTS) | `00`, `research/01` | `engines/match.py` · `/api/matches/monte_carlo` |
 | **Settlement idempotentliği** (Suite 4) | `03` Suite 4 | `I3` + `AlreadySettled`; orijinalde **0** test |
 
-### 7.2 echo'nun **karşılamadığı** gereksinimler (yapılacaklar)
+### 7.2 Gereksinim paritesi — R1–R7 sonucu (2026-10-03)
 
-| # | Gereksinim | Kaynak | Eksik olan |
+| # | Gereksinim | Kaynak | Durum (2026-10-03) |
 | --- | --- | --- | --- |
-| R1 | **Risk of Ruin formülü**: `R_ruin = ((1−Edge)/(1+Edge))^Units` **ve** "onay isteyen açık bir uyarı **modalı**" | `01` §1.2 | echo'da yalnız eşik bayrağı + toast var; **formül yok, onay kapısı yok** |
-| R2 | **Disiplin indirimi**: 3+ rozet → cooldown tavanı 168s → **72s** | `01` §3 | echo'da rozet yok (orijinalde de yok) |
-| R3 | **Suite 1**: kilit süresi **geçtikten sonra** bahis yeniden serbest olmalı | `03` Suite 1 | echo kilidi test ediyor (423), **açılmayı test etmiyor** |
-| R4 | **Suite 2**: `NAV_t × U_t = Cash_t + Exposure_t` her adımda | `03` Suite 2 | Model gereği sağlanıyor ama **kimliği doğrulayan test yok** |
-| R5 | **Suite 3**: `Σ(1/o_i) > 1` olmalı; **negatif vig / bozuk oran reddedilmeli** | `03` Suite 3 | echo **reddetmiyor, sessizce kırpıyor** (`overround = max(0, …)`) — gizlemek reddetmekten kötü |
-| R6 | **Suite 4 (uç düzeyi)**: aynı maç finalizasyonu **tekrar** işlenirse tek ödeme | `03` Suite 4 | Motor/çekirdek düzeyinde testli (`I3`), **`simulate` uç düzeyinde test yok**; ayrıca `save_match` `INSERT OR IGNORE` → ikinci çağrı **farklı skor döndürebilir** ama kayıt değişmez (tutarsızlık riski) |
-| R7 | **Asian Handicap / double-chance** pazarları | `research/01` §2.1 | MVP kapsamı dışıydı; devralmada hedef olup olmadığı **karar bekler** |
+| R1 | **Risk of Ruin formülü** `R_ruin = ((1−Edge)/(1+Edge))^Units` **ve** onay isteyen uyarı **modalı** | `01` §1.2 | ✅ spec §3.4 · `[G-17]` · `core/odds.risk_of_ruin` · sunucu-zorlamalı kapı (`confirm_ruin`, 409) · modal + ADR-0011 |
+| R2 | **Disiplin indirimi**: 3+ rozet → cooldown tavanı 168 → **72** | `01` §3 | ✅ spec §4.2 · `[G-18]` · üç rozet ölçütlerden türetilir · ADR-0012 |
+| R3 | **Suite 1**: kilit süresi **geçtikten sonra** bahis yeniden serbest | `03` Suite 1 | ✅ `test_cooldown_unlocks_after_expiry` (enjekte saat) |
+| R4 | **Suite 2**: `NAV_t × U_t = Cash_t + Exposure_t` | `03` Suite 2 | ✅ `test_i2_nav_times_units_equals_value` + `test_nav_identity_holds_at_the_endpoint` |
+| R5 | **Suite 3**: `Σ(1/o_i) > 1`; negatif vig / bozuk oran **reddedilmeli** | `03` Suite 3 | ✅ `[G-19]` · `core/odds.validate_market_odds` · sınırda `400` (kırpma yok) · ADR-0013 |
+| R6 | **Suite 4 (uç düzeyi)**: aynı finalizasyon tekrar işlenirse **tek ödeme** | `03` Suite 4 | ✅ `test_repeated_simulation_returns_the_same_score_and_pays_once` · bir maç bir kez üretilir · ADR-0014 |
+| R7 | **Asian Handicap / double-chance** pazarları | `research/01` §2.1 | ⚪ **bilinçli kapsam-dışı** — MVP 1X2 / O-U / BTTS. Yarım kazanç/kayıp altyapısı (`HALF_WON/HALF_LOST`) hazır ama kullanılmıyor |
 
 ### 7.3 İkisinde de olmayan, **hedef** olduğu açıkça yazılı olanlar
 
@@ -194,9 +204,12 @@ kupon) · dokümanın hedef DDL'inde `odds_snapshots` geçmişi · OpenTelemetry
   dökümanın istediği "kullanıcı tahmini" akışı **uygulanmamış**, yerine sabit bir öneri konmuş.
 - `03` Suite 4 orijinalde **0 test**; Suite 1/2 de yarım (ölçüm: yukarıdaki grep).
 
-**Sonuç:** echo, döküman gereksinimlerinin çoğunu karşılıyor ve birkaçında (Suite 4, Kelly) orijinalin
-önünde; ama **Suite 3'te geride** (bozuk oranı reddetmiyor) ve R1/R2 hiç yok. Devralma kararının
-**kabul ölçütü** bu tablo olmalı: R1–R6 kapanmadan "eşitlendi" denemez.
+**Sonuç (2026-10-03).** Kapanış turunda **R1–R6 karşılandı**, **R7 bilinçli kapsam-dışı** bırakıldı.
+Özetle echo: bozuk oranı artık **reddediyor** (Suite 3), kilit **açılmasını** test ediyor (Suite 1),
+`NAV × U = V` kimliğini hem property hem uç düzeyinde doğruluyor (Suite 2) ve tekrarlanan
+finalizasyonu **tek ödemeye** indiriyor (Suite 4). Kelly'de ve Suite 4'te orijinalin **önünde**ydi;
+şimdi Suite 3 ve R1/R2 açıkları da kapandı. Devralma kararının **kabul ölçütü** bu tablo olmalı:
+R1–R6 kapandı, "daha iyi mi" eşiğini **kullanıcı** koyar.
 
 ## 8. Açık sorular
 

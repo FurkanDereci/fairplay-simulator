@@ -14,6 +14,7 @@ from fairplay_echo.app.clock import FixedClock
 from fairplay_echo.app.config import Settings
 from fairplay_echo.app.fixtures import CATALOG, closing_odds
 from fairplay_echo.app.main import create_app
+from fairplay_echo.core.money import q_nav
 from fairplay_echo.core.odds import clv_pct
 from fairplay_echo.engines.match import MARKET_1X2, simulate_match
 
@@ -49,19 +50,23 @@ def _wager(
     *,
     stake: str = "100",
     match_id: str = "md-01",
+    market_type: str = MARKET_1X2,
     selection: str = "HOME",
     probability: str | None = None,
+    confirm_ruin: bool = False,
     key: str | None = None,
 ) -> object:
     extra = {"Idempotency-Key": key} if key else {}
     body: dict[str, object] = {
         "match_id": match_id,
-        "market_type": MARKET_1X2,
+        "market_type": market_type,
         "selection": selection,
         "stake": stake,
     }
     if probability is not None:
         body["probability"] = probability
+    if confirm_ruin:
+        body["confirm_ruin"] = True
     return client.post("/api/wager", headers={**headers, **extra}, json=body)
 
 
@@ -176,6 +181,35 @@ def test_simulation_settles_server_side(world: tuple[TestClient, FixedClock]) ->
     assert portfolio["risk"]["trade_stats"]["total_trades"] == 1
 
 
+def test_repeated_simulation_returns_the_same_score_and_pays_once(
+    world: tuple[TestClient, FixedClock],
+) -> None:
+    """R6 (Suite 4) — aynı finalizasyon tekrar işlenirse **tek** ödeme yapılır."""
+    client, _ = world
+    headers = _auth(client)
+    placed = _wager(client, headers, stake="100", match_id="md-01")
+    assert placed.status_code == 201
+    wager_id = placed.json()["wager_id"]
+
+    first = client.post(
+        "/api/matches/simulate", headers=headers, json={"match_id": "md-01", "seed": 5}
+    )
+    # Farklı seed bile kayıtlı sonucu değiştirmez: bir maç bir kez üretilir.
+    second = client.post(
+        "/api/matches/simulate", headers=headers, json={"match_id": "md-01", "seed": 999}
+    )
+
+    assert first.status_code == second.status_code == 200
+    assert first.json()["score"] == second.json()["score"], "aynı maç iki farklı skor döndürdü"
+    assert first.json()["events"] == second.json()["events"]
+    assert [w["wager_id"] for w in first.json()["settled_wagers"]] == [wager_id]
+    assert second.json()["settled_wagers"] == [], "ikinci finalizasyon yeni ödeme üretti"
+
+    portfolio = client.get("/api/portfolio", headers=headers).json()
+    assert len(portfolio["settled_wagers"]) == 1
+    assert portfolio["risk"]["trade_stats"]["total_trades"] == 1
+
+
 def test_refill_does_not_change_nav(world: tuple[TestClient, FixedClock]) -> None:
     """I1 — HTTP üzerinden: refill NAV'ı değiştirmez."""
     client, _ = world
@@ -214,7 +248,9 @@ def test_bankruptcy_locks_the_account(world: tuple[TestClient, FixedClock]) -> N
     preview = simulate_match("md-01", "Arsenal", "Chelsea", odds, seed=7)
     losing_selection = "AWAY" if preview.outcome_1x2 == "HOME" else "HOME"
 
-    placed = _wager(client, headers, stake="1000", selection=losing_selection)
+    placed = _wager(
+        client, headers, stake="1000", selection=losing_selection, confirm_ruin=True
+    )
     assert placed.status_code == 201
     assert placed.json()["ruin_risk_warning"] is True
 
@@ -227,6 +263,113 @@ def test_bankruptcy_locks_the_account(world: tuple[TestClient, FixedClock]) -> N
 
     assert _wager(client, headers, stake="10").status_code == 423
     assert client.post("/api/refill", headers=headers).status_code == 423
+
+
+def test_cooldown_unlocks_after_expiry(world: tuple[TestClient, FixedClock]) -> None:
+    """R3 (Suite 1) — kilit süresi **dolduktan sonra** bahis yeniden serbest olmalı."""
+    client, clock = world
+    headers = _auth(client)
+
+    odds = {"HOME": D("1.95"), "DRAW": D("3.50"), "AWAY": D("4.10")}
+    preview = simulate_match("md-01", "Arsenal", "Chelsea", odds, seed=7)
+    losing_selection = "AWAY" if preview.outcome_1x2 == "HOME" else "HOME"
+
+    placed = _wager(
+        client, headers, stake="1000", selection=losing_selection, confirm_ruin=True
+    )
+    assert placed.status_code == 201
+    client.post("/api/matches/simulate", headers=headers, json={"match_id": "md-01", "seed": 7})
+
+    locked = client.get("/api/portfolio", headers=headers).json()
+    assert locked["cooldown"]["locked"] is True
+    assert locked["cooldown"]["tier"] == 1
+    assert _wager(client, headers, stake="10").status_code == 423
+    assert client.post("/api/refill", headers=headers).status_code == 423
+
+    # T(1) = 1 saat. Süre geçince kilit açılır: refill ve bahis yeniden serbest.
+    clock.advance(hours=2)
+    assert client.post("/api/refill", headers=headers).status_code == 200, "kilit açılmadı"
+
+    reopened = _wager(client, headers, stake="10")
+    assert reopened.status_code == 201, reopened.text
+    assert client.get("/api/portfolio", headers=headers).json()["cooldown"]["locked"] is False
+
+
+def test_nav_identity_holds_at_the_endpoint(world: tuple[TestClient, FixedClock]) -> None:
+    """R4 (Suite 2) — `NAV_t × U_t = Cash_t + Exposure_t`, her portföy okumasında."""
+    client, _ = world
+    headers = _auth(client)
+
+    def assert_identity() -> None:
+        fund = client.get("/api/portfolio", headers=headers).json()["fund"]
+        cash, locked = D(fund["cash"]), D(fund["locked"])
+        total, units = D(fund["total_value"]), D(fund["units"])
+        assert cash + locked == total
+        # Dönen NAV, projenin yuvarlama politikasıyla `V/U` olmalı (kapalı devre kimlik).
+        assert D(fund["nav"]) == q_nav(total / units)
+
+    assert_identity()  # başlangıç
+    _wager(client, headers, stake="100")
+    assert_identity()  # bahis: kasa → kilitli transferi
+    client.post("/api/matches/simulate", headers=headers, json={"match_id": "md-01", "seed": 5})
+    assert_identity()  # sonuçlanma: NAV burada değişir
+    client.post("/api/refill", headers=headers)
+    assert_identity()  # refill: I1
+
+
+def test_ruin_gate_ignores_a_sub_threshold_stake(world: tuple[TestClient, FixedClock]) -> None:
+    """R1 — kasanın %15'i ve altı onay istemez (uyarı da yok)."""
+    client, _ = world
+    headers = _auth(client)
+    response = _wager(client, headers, stake="100")  # 100 / 1000 = %10
+    assert response.status_code == 201
+    assert response.json()["ruin_risk_warning"] is False
+    assert response.json()["risk_of_ruin_pct"] is None
+
+
+def test_ruin_gate_requires_confirmation_above_the_threshold(
+    world: tuple[TestClient, FixedClock],
+) -> None:
+    """R1 — eşik üstü stake sunucuda onay ister; sayı uydurulmaz, `p` gelirse hesaplanır."""
+    client, _ = world
+    headers = _auth(client)
+
+    gated = _wager(client, headers, stake="200")  # 200 / 1000 = %20 > %15
+    assert gated.status_code == 409, gated.text
+    ruin = gated.json()["ruin"]
+    assert ruin["pct_of_cash"] == "20.00"
+    assert ruin["threshold_pct"] == "15.00"
+    assert ruin["risk_of_ruin_pct"] is None, "p yoksa R_ruin sayısı uydurulmaz"
+
+    # Bahis onaylanmadı: hiçbir kupon oluşmadı.
+    assert client.get("/api/portfolio", headers=headers).json()["pending_wagers"] == []
+
+    with_probability = _wager(client, headers, stake="200", probability="0.60")
+    assert with_probability.status_code == 409
+    numeric = with_probability.json()["ruin"]
+    assert numeric["risk_of_ruin_pct"] is not None
+    assert float(numeric["risk_of_ruin_pct"]) >= 0.0
+    assert float(numeric["edge"]) == pytest.approx(0.17, abs=0.001)
+
+    confirmed = _wager(client, headers, stake="200", confirm_ruin=True)
+    assert confirmed.status_code == 201, confirmed.text
+    assert confirmed.json()["ruin_risk_warning"] is True
+    assert confirmed.json()["risk_of_ruin_pct"] is None  # p verilmedi → sayı yok
+
+
+def test_ruin_gate_does_not_consume_energy_when_it_rejects(
+    world: tuple[TestClient, FixedClock],
+) -> None:
+    """R1 — reddedilen istek yan etki bırakmaz: enerji harcanmaz, defter değişmez."""
+    client, _ = world
+    headers = _auth(client)
+    before = client.get("/api/portfolio", headers=headers).json()["simulation_energy"]
+
+    assert _wager(client, headers, stake="200").status_code == 409
+
+    after = client.get("/api/portfolio", headers=headers)
+    assert after.json()["simulation_energy"] == before
+    assert after.json()["pending_wagers"] == []
 
 
 def test_insufficient_cash_is_rejected(world: tuple[TestClient, FixedClock]) -> None:
@@ -413,6 +556,30 @@ def test_monte_carlo_requires_exactly_one_odds_source(
     assert bad_iterations.status_code == 400
 
 
+def test_monte_carlo_rejects_corrupt_or_negative_vig_odds(
+    world: tuple[TestClient, FixedClock],
+) -> None:
+    """R5 (Suite 3) — bozuk/negatif vig'li oran **kırpılmaz, reddedilir** (400)."""
+    client, _ = world
+    headers = _auth(client)
+
+    def monte_carlo(odds_1x2: dict[str, str]) -> object:
+        return client.post(
+            "/api/matches/monte_carlo",
+            headers=headers,
+            json={"odds_1x2": odds_1x2, "iterations": 100, "seed": 1},
+        )
+
+    # Negatif vig: Σ(1/O) = 0.857 ≤ 1 → bahisçi lehine garanti kâr, reddedilir.
+    assert monte_carlo({"HOME": "3.50", "DRAW": "3.50", "AWAY": "3.50"}).status_code == 400
+    # O ≤ 1 → matematiksel olarak imkânsız oran.
+    assert monte_carlo({"HOME": "1.00", "DRAW": "2.00", "AWAY": "3.00"}).status_code == 400
+    # Eksik sonuç (DRAW yok).
+    assert monte_carlo({"HOME": "1.95", "AWAY": "4.10"}).status_code == 400
+    # Sağlam dizi kabul edilir.
+    assert monte_carlo({"HOME": "1.50", "DRAW": "4.00", "AWAY": "6.00"}).status_code == 200
+
+
 def test_monte_carlo_does_not_touch_the_ledger(world: tuple[TestClient, FixedClock]) -> None:
     """Analiz ucu: bahis açmaz, enerji harcamaz, deftere yazmaz."""
     client, _ = world
@@ -469,11 +636,60 @@ def test_learning_report_measures_behavior_not_advice(
         "min_sample",
         "reliable",
         "market_breadth",
+        "badges",
         "clv",
         "stake",
         "favourite",
         "headline",
     }
+
+
+def test_portfolio_exposes_earned_badges_and_the_discipline_discount(
+    world: tuple[TestClient, FixedClock],
+) -> None:
+    """R2 (spec §4.2) — rozetler ölçütlerden türer; üçü birlikte cooldown tavanını 72'ye çeker."""
+    client, _ = world
+    headers = _auth(client)
+
+    # Deterministik kurulum: kapanışı açılıştan **kısa** (pozitif CLV) seçimler; en az 3 pazar.
+    picks: list[tuple[str, str, str]] = []
+    covered: set[str] = set()
+    for match_id, fixture in CATALOG.items():
+        for market_type, market in fixture.markets.items():
+            if len(picks) >= 6 and len(covered) >= 3:
+                break
+            for selection, opening in market.outcomes.items():
+                if closing_odds(match_id, selection, opening) < opening:
+                    picks.append((match_id, market_type, selection))
+                    covered.add(market_type)
+                    break
+        if len(picks) >= 6 and len(covered) >= 3:
+            break
+
+    assert len(picks) == 6 and len(covered) == 3, (picks, covered)
+    for match_id, market_type, selection in picks:
+        placed = _wager(
+            client,
+            headers,
+            stake="50",
+            match_id=match_id,
+            market_type=market_type,
+            selection=selection,
+        )
+        assert placed.status_code == 201, placed.text
+
+    for match_id in sorted({pick[0] for pick in picks}):
+        client.post(
+            "/api/matches/simulate", headers=headers, json={"match_id": match_id, "seed": 5}
+        )
+
+    portfolio = client.get("/api/portfolio", headers=headers).json()
+    badges = set(portfolio["badges"])
+    assert {"ölçülü-bahis", "clv-ustası", "pazar-gezgini"} <= badges, badges
+    assert portfolio["cooldown"]["max_hours"] == "72"
+
+    learning = client.get("/api/learning-report", headers=headers).json()
+    assert set(learning["badges"]) == badges
 
 
 def test_risk_reliability_flags_a_thin_sample(world: tuple[TestClient, FixedClock]) -> None:

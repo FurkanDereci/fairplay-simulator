@@ -103,6 +103,7 @@
   .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .spacer { flex: 1; }
   .pill { border: 1px solid var(--line-strong); border-radius: 999px; padding: 3px 10px; font-size: 12px; }
+  .pill.badge { background: var(--card-2); border-color: var(--accent-soft); }
 
   /* --- enerji --- */
   .energy { display: flex; align-items: center; gap: 8px; font-size: 13px; }
@@ -126,6 +127,19 @@
   #toast div.err::before { content: "Hata: "; font-weight: 600; color: var(--bad); }
   #toast div.warn { border-left-color: var(--warn); }
   #toast div.warn::before { content: "Uyarı: "; font-weight: 600; color: var(--warn); }
+
+  /* --- yüksek risk onayı (modal) --- */
+  dialog {
+    background: var(--card); color: var(--fg); border: 1px solid var(--line-strong);
+    border-radius: var(--radius); padding: 16px 18px; width: calc(100% - 32px);
+    max-width: 420px;
+  }
+  dialog::backdrop { background: rgb(0 0 0 / .55); }
+  dialog h3 { margin: 0 0 8px; font-size: 15px; }
+  .facts { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; margin: 10px 0 0;
+           font-size: 13px; }
+  .facts dt { color: var(--muted); }
+  .facts dd { margin: 0; text-align: right; font-weight: 600; }
 
   /* --- giriş --- */
   #auth-screen { max-width: 460px; margin: 8vh auto 0; }
@@ -342,6 +356,8 @@
             <div class="tile"><small>Kazanma</small><b id="t-wins">–</b></div>
             <div class="tile"><small>Profit factor</small><b id="t-pf">–</b></div>
           </div>
+          <div class="row" id="badge-row" hidden aria-label="Disiplin rozetleri"
+               title="Üç rozetin tamamı cooldown tavanını 72 saate indirir"></div>
           <div class="row" style="margin-top:14px">
             <button class="ghost" id="refill">1.000 TL refill</button>
             <span class="muted" id="cooldown-note" style="font-size:12px"></span>
@@ -371,6 +387,17 @@
     </div>
   </div>
 </div>
+
+<dialog id="ruin-dialog" aria-labelledby="ruin-title">
+  <h3 id="ruin-title">Yüksek riskli bahis — onay ister</h3>
+  <p id="ruin-body" class="muted" style="margin:0;font-size:13px"></p>
+  <dl class="facts" id="ruin-facts"></dl>
+  <p id="ruin-hint" class="muted" style="font-size:11.5px;margin:10px 0 0"></p>
+  <div class="row" style="margin-top:14px;justify-content:flex-end">
+    <button type="button" class="ghost" id="ruin-cancel">Vazgeç</button>
+    <button type="button" id="ruin-confirm">Onayla ve oyna</button>
+  </div>
+</dialog>
 
 <div id="toast" role="status" aria-live="polite"></div>
 
@@ -451,7 +478,11 @@ async function api(path, options = {}) {
     const detail = typeof body.detail === "string"
       ? body.detail
       : "İstek reddedildi (" + response.status + ")";
-    throw new Error(detail);
+    /* Hata gövdesi kaybolmasın: ruin kapısı (409) yapısal `ruin` verisini burada taşır. */
+    const problem = new Error(detail);
+    problem.status = response.status;
+    problem.body = body;
+    throw problem;
   }
   return body;
 }
@@ -756,6 +787,60 @@ function buildFixtures() {
 }
 
 /* --- eylemler --- */
+function noteWagerSuccess(payload) {
+  toast("Bahis alındı: " + payload.selection + " @ " + payload.odds +
+    " · olası ödeme " + fmtMoney(payload.potential_payout));
+  if (payload.ruin_risk_warning) toast(payload.warning_message, "warn");
+  if (payload.assessment && payload.assessment.verdict === "NEGATIF") {
+    toast(payload.assessment.note, "warn");
+  }
+}
+
+function sendWager(body) {
+  return api("/api/wager", { method: "POST", body: JSON.stringify(body) });
+}
+
+/* Kasa eşiğini aşan bahis: sunucu 409 + `ruin` döner, burada onay alınır (spec §3.4).
+   Eşik ve formül sunucuda; burada yalnız gösterilir ve kullanıcının kararı toplanır. */
+function confirmRuin(ruin) {
+  const dialog = el("ruin-dialog");
+  el("ruin-body").textContent = ruin.message || "";
+
+  const facts = el("ruin-facts");
+  facts.innerHTML = "";
+  const rows = [
+    ["Stake", fmtMoney(ruin.stake)],
+    ["Kasa", fmtMoney(ruin.cash)],
+    ["Kasadaki pay", fmtPct(ruin.pct_of_cash)],
+    ["Eşik", fmtPct(ruin.threshold_pct)],
+  ];
+  const numeric = ruin.risk_of_ruin_pct !== null && ruin.risk_of_ruin_pct !== undefined;
+  if (numeric) {
+    rows.push(["İflas riski (R_ruin)", fmtPct(ruin.risk_of_ruin_pct)]);
+    rows.push(["Kenar (Edge)", fmtPct(Number(ruin.edge) * 100)]);
+    rows.push(["Birim (Units)", fmtNumber(ruin.units, 2)]);
+  }
+  rows.forEach(([label, value]) => {
+    const dt = document.createElement("dt");
+    dt.textContent = label;
+    const dd = document.createElement("dd");
+    dd.textContent = value;
+    facts.append(dt, dd);
+  });
+  el("ruin-hint").textContent = numeric
+    ? "İflas riski, kenarına ve kaç birimlik kasan olduğuna göre hesaplanır."
+    : "Tahminini (p %) girersen iflas riski oranı da hesaplanır; sayı uydurulmaz.";
+
+  return new Promise((resolve) => {
+    dialog.addEventListener("close", () => resolve(dialog.returnValue === "confirm"), {
+      once: true,
+    });
+    el("ruin-cancel").onclick = () => dialog.close("cancel");
+    el("ruin-confirm").onclick = () => dialog.close("confirm");
+    dialog.showModal();
+  });
+}
+
 async function placeWager(body, button) {
   if (state.portfolio && !state.portfolio.can_wager) {
     toast("Enerji yetersiz (" + state.portfolio.simulation_energy + "/" +
@@ -764,13 +849,18 @@ async function placeWager(body, button) {
   }
   setBusy(button, true);
   try {
-    const payload = await api("/api/wager", { method: "POST", body: JSON.stringify(body) });
-    toast("Bahis alındı: " + payload.selection + " @ " + payload.odds +
-      " · olası ödeme " + fmtMoney(payload.potential_payout));
-    if (payload.ruin_risk_warning) toast(payload.warning_message, "warn");
-    if (payload.assessment && payload.assessment.verdict === "NEGATIF") {
-      toast(payload.assessment.note, "warn");
+    let payload;
+    try {
+      payload = await sendWager(body);
+    } catch (error) {
+      if (error.status !== 409 || !error.body || !error.body.ruin) throw error;
+      if (!(await confirmRuin(error.body.ruin))) {
+        toast("Yüksek riskli bahis onaylanmadı; gönderilmedi.", "warn");
+        return;
+      }
+      payload = await sendWager(Object.assign({}, body, { confirm_ruin: true }));
     }
+    noteWagerSuccess(payload);
     await refresh();
   } catch (error) {
     toast(error.message, "error");
@@ -891,8 +981,22 @@ function renderPortfolio(portfolio) {
       (reliability.profit_factor_defined ? "tanımlı." : "hiç kayıp olmadığı için tanımsız.");
 
   el("cooldown-note").textContent = portfolio.cooldown.locked
-    ? "Cooldown aktif (tier " + portfolio.cooldown.tier + ")"
-    : (fund.bankrupt ? "Fon iflas etti; refill yeni seri açar." : "");
+    ? "Cooldown aktif (tier " + portfolio.cooldown.tier + " · tavan " +
+      portfolio.cooldown.max_hours + " saat)"
+    : "Cooldown tavanı " + portfolio.cooldown.max_hours + " saat" +
+      (fund.bankrupt ? " · fon iflas etti, refill yeni seri açar" : "");
+
+  // Disiplin rozetleri: ölçütlerden türetilir; üçü birden cooldown tavanını indirir.
+  const badges = portfolio.badges || [];
+  const badgeRow = el("badge-row");
+  badgeRow.hidden = badges.length === 0;
+  badgeRow.innerHTML = "";
+  badges.forEach((name) => {
+    const chip = document.createElement("span");
+    chip.className = "pill badge";
+    chip.textContent = name;
+    badgeRow.appendChild(chip);
+  });
 }
 
 function renderEnergy(portfolio) {

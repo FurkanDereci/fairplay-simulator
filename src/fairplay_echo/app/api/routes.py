@@ -36,6 +36,9 @@ class WagerRequest(BaseModel):
     selection: str = "HOME"
     stake: Decimal
     probability: Decimal | None = None
+    #: Kasa eşiğini aşan bahis, kullanıcı onayı olmadan işlenmez (spec §3.4). İstemci 409'daki
+    #: `ruin` uyarısını gösterip onay alırsa **aynı istek** bu bayrak `true` ile tekrar gönderilir.
+    confirm_ruin: bool = False
 
     @field_validator("stake", mode="before")
     @classmethod
@@ -170,6 +173,7 @@ def place_wager(
         selection=req.selection,
         stake=req.stake,
         probability=req.probability,
+        confirm_ruin=req.confirm_ruin,
         idempotency_key=idempotency_key,
     )
 

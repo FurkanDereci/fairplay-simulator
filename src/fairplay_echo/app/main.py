@@ -22,18 +22,20 @@ from ..core.errors import (
     DuplicateWager,
     InsufficientCash,
     InvalidAmount,
+    InvalidOdds,
     UnknownWager,
 )
 from .api import router
 from .clock import Clock, SystemClock
 from .config import Settings
-from .errors import AppError
+from .errors import AppError, RuinConfirmationRequired
 
 Handler = Callable[[Request, Exception], Awaitable[JSONResponse]]
 
 _CORE_STATUS: dict[type[DomainError], int] = {
     InsufficientCash: 400,
     InvalidAmount: 400,
+    InvalidOdds: 400,
     UnknownWager: 404,
     AlreadySettled: 409,
     DuplicateWager: 409,
@@ -97,6 +99,16 @@ def create_app(
         status_code = exc.status_code if isinstance(exc, AppError) else 400
         return JSONResponse(status_code=status_code, content={"detail": detail})
 
+    async def ruin_confirmation(_request: Request, exc: Exception) -> JSONResponse:
+        """Ruin kapısı `detail`e ek olarak **yapısal** `ruin` gövdesi döner.
+
+        İstemci modalı bu sayıları gösterir; eşiği ve formülü kendisi hesaplamaz (SSOT).
+        """
+        assert isinstance(exc, RuinConfirmationRequired)  # handler yalnız bu tip için kayıtlı
+        return JSONResponse(
+            status_code=exc.status_code, content={"detail": exc.detail, "ruin": exc.ruin}
+        )
+
     async def validation_error(_request: Request, exc: Exception) -> JSONResponse:
         """Doğrulama hatası insan okur bir cümle olarak döner — ham Python repr'i DEĞİL."""
         detail = "Gönderilen alanlar geçersiz."
@@ -110,6 +122,7 @@ def create_app(
         return JSONResponse(status_code=400, content={"detail": detail})
 
     app.add_exception_handler(AppError, app_error)
+    app.add_exception_handler(RuinConfirmationRequired, ruin_confirmation)
     for error_type, status_code in _CORE_STATUS.items():
         app.add_exception_handler(error_type, _error_handler(status_code))
     app.add_exception_handler(RequestValidationError, validation_error)

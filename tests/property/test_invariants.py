@@ -91,6 +91,21 @@ def test_i2_replay_reproduces_state(case: tuple[Ledger, Fund]) -> None:
 
 @given(case=generated_funds())
 @_SETTINGS
+def test_i2_nav_times_units_equals_value(case: tuple[Ledger, Fund]) -> None:
+    """I2 — `NAV × U = Cash + Exposure` (Suite 2).
+
+    `nav = V/U` bölmesi 28 basamakta tam olmadığı için kimlik **para kuantumunda** karşılaştırılır;
+    ölçülen sapma yuvarlama artığıdır, ihlal değil.
+    """
+    _ledger, fund = case
+    if fund.units <= ZERO:
+        return
+    assert fund.total_value == fund.cash + fund.locked
+    assert q_money(fund.nav * fund.units) == q_money(fund.total_value)
+
+
+@given(case=generated_funds())
+@_SETTINGS
 def test_i3_settlement_is_idempotent(case: tuple[Ledger, Fund]) -> None:
     """I3 — Sonuçlanmış kupon ikinci kez uygulanamaz; durum değişmez."""
     _ledger, fund = case
@@ -159,6 +174,15 @@ def test_i6_solvent_days_decay_tier(tier: int) -> None:
         streak, current = cooldown_mod.record_solvent_day(streak, current)
     assert current == max(0, tier - 1)
     assert streak == 0
+
+
+@given(tier=st.integers(min_value=1, max_value=20), cap=st.sampled_from([D("72"), D("168")]))
+@_SETTINGS
+def test_i6_discipline_discount_caps_the_cooldown(tier: int, cap: D) -> None:
+    """I6 — disiplin indirimi yalnız **tavanı** düşürür: `min(tavan, 4^(n−1))` formülü korunur."""
+    hours: Money = cooldown_mod.cooldown_hours(tier, max_hours=cap)
+    assert ZERO < hours <= cap
+    assert hours == min(cap, D("4") ** (tier - 1))
 
 
 def test_base_nav_is_one_hundred() -> None:

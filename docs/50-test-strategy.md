@@ -31,6 +31,9 @@ tutmazsa build kırılır. Bu, "formül değişti ama doküman kaldı" durumunu 
 | G-9 · G-10 | Kelly negatif/pozitif EV |
 | G-11 | CLV |
 | G-12 · G-13 | Enerji · Cooldown |
+| G-17 | Risk of Ruin (formül + kenar yoksa %100) |
+| G-18 | Disiplin rozetleri · cooldown indirimi |
+| G-19 | Oran temizliği: bozuk/negatif vig reddi |
 
 ## 3. Doküman ↔ kod senkronu (`tests/test_docs_sync.py`)
 
@@ -88,10 +91,10 @@ satır satır yazılı (R3–R6). Özet:
 
 | Paket | Gereksinim | echo'daki durum |
 | --- | --- | --- |
-| Suite 1 | Kilit süresi dolunca bahis yeniden serbest | Kilit test edildi, **açılma edilmedi** |
-| Suite 2 | `NAV × U = Cash + Exposure` | Model gereği sağlanıyor, **kimlik testi yok** |
-| Suite 3 | Bozuk/negatif vig'li oran **reddedilmeli** | **Kırpılıyor, reddedilmiyor** |
-| Suite 4 | Aynı finalizasyon tekrar işlenirse tek ödeme | Çekirdekte testli, **uç düzeyinde değil** |
+| Suite 1 | Kilit süresi dolunca bahis yeniden serbest | ✅ `test_cooldown_unlocks_after_expiry` (uç düzeyi, enjekte saat) |
+| Suite 2 | `NAV × U = Cash + Exposure` | ✅ `test_i2_nav_times_units_equals_value` (property) + `test_nav_identity_holds_at_the_endpoint` |
+| Suite 3 | Bozuk/negatif vig'li oran **reddedilmeli** | ✅ `test_g19_odds_sanitation_rejects_corrupt_feeds` + `test_monte_carlo_rejects_corrupt_or_negative_vig_odds` |
+| Suite 4 | Aynı finalizasyon tekrar işlenirse tek ödeme | ✅ `test_repeated_simulation_returns_the_same_score_and_pays_once` + `I3` |
 
 ## 9. Sınır kararları (mutation denetimi yerine)
 
@@ -118,5 +121,10 @@ gösterir (ADR-0010). Testler: `tests/test_boundaries.py` (+ `[G-15]` golden).
 | Cooldown: kilit **tam** bitiş anında açılır | `test_unlock_happens_at_the_exact_expiry_instant` |
 | Cooldown: 3. solvent günü tier'ı düşürür | `test_solvent_day_streak_drops_the_tier_at_exactly_three` |
 | Sharpe t: `periods ≤ 0` guard | `test_sharpe_t_statistic_guards_a_zero_period_count` |
+| Ruin: kasa eşiğinin altı/üstü (%15) | `test_ruin_gate_requires_confirmation_above_the_threshold` |
+| Ruin: reddedilen istek yan etki bırakmaz | `test_ruin_gate_does_not_consume_energy_when_it_rejects` |
+| Cooldown indirimi: 3 rozet tavanı 72'ye çeker | `test_i6_discipline_discount_caps_the_cooldown` |
+| Oran: `Σ(1/O) ≤ 1` (negatif vig) ve `O ≤ 1` reddedilir | `test_g19_odds_sanitation_rejects_corrupt_feeds` |
+| Finalizasyon: tekrar çağrı aynı skoru döndürür, ikinci ödeme yok | `test_repeated_simulation_returns_the_same_score_and_pays_once` |
 
 Tablodaki adlar **uydurulamaz**: `tests/test_docs_sync.py` her adın gerçekten var olduğunu doğrular.

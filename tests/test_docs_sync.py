@@ -8,13 +8,13 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from fairplay_echo.app.config import Settings
-from fairplay_echo.app.main import create_app
-from fairplay_echo.cli import render_api_docs
+from fairplay_simulator.app.config import Settings
+from fairplay_simulator.app.main import create_app
+from fairplay_simulator.cli import render_api_docs
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
-SRC = ROOT / "src" / "fairplay_echo"
+SRC = ROOT / "src" / "fairplay_simulator"
 GOLDEN_TEST = ROOT / "tests" / "golden" / "test_spec_examples.py"
 PROPERTY_TEST = ROOT / "tests" / "property" / "test_invariants.py"
 
@@ -68,7 +68,7 @@ def test_generated_api_docs_are_current() -> None:
     expected = render_api_docs(app.openapi())
     actual = _read(DOCS / "40-api.md")
     assert actual == expected, (
-        "docs/40-api.md bayat: `python -m fairplay_echo.cli render-api-docs` ile yeniden üret."
+        "docs/40-api.md bayat: `python -m fairplay_simulator.cli render-api-docs` ile yeniden üret."
     )
 
 
@@ -94,10 +94,10 @@ def test_client_side_settlement_endpoint_is_gone() -> None:
 
 
 def test_parity_document_matches_the_api_surface() -> None:
-    """`docs/70-parite-ve-devralma.md`'nin **echo kolonu** `docs/40-api.md` ile tutarlı olmalı.
+    """`docs/70-parite-ve-devralma.md`'nin **bu depo kolonu** `docs/40-api.md` ile tutarlı olmalı.
 
     Orijinal repo hakkındaki satırlar bu deponun testinden geçemez (provenansı belgede yazılı);
-    burada yalnız echo tarafı iddialar bağlanır ki parite belgesi kendi başına sürüklenmesin.
+    burada yalnız bu depo tarafı iddialar bağlanır ki parite belgesi kendi başına sürüklenmesin.
     """
     rows = re.findall(
         r"^\| `([A-Z]+) (/[^`]*)` \| [^|]+ \| ([^|]+) \|",
@@ -106,7 +106,7 @@ def test_parity_document_matches_the_api_surface() -> None:
     )
     assert rows, "Parite belgesinde uç tablosu bulunamadı."
     claimed = {
-        (method, path) for method, path, echo_cell in rows if echo_cell.strip().strip("*") == "var"
+        (method, path) for method, path, repo_cell in rows if repo_cell.strip().strip("*") == "var"
     }
     documented = set(
         re.findall(r"^\| (GET|POST) \| `([^`]+)` \|", _read(DOCS / "40-api.md"), re.M)

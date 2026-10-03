@@ -1,5 +1,5 @@
 ---
-title: FairPlay Echo — Vizyon
+title: FairPlay Simulator — Vizyon
 status: VISION
 created: 2026-09-29
 ---

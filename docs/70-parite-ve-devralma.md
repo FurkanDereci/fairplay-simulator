@@ -4,33 +4,37 @@ Bu depo, mevcut **`github.com/FurkanDereci/fairplay-simulator`** reposunun **yer
 adayıdır**; ayrı bir repo değildir. Bu dosyanın amacı o kararı kanaate bırakmamak: iddiaları
 ölçülebilir hâle getirmek.
 
+> **Ad notu (2026-10-03).** Bu depo geliştirme boyunca **"FairPlay Echo"** çalışma adını taşıyordu;
+> devralma kararı netleşince ad **`fairplay-simulator`** oldu (upstream ile aynı). Belgede
+> **"orijinal"** = bugünkü upstream (`main`), **"bu depo"** = yerine geçme adayı olan bu çalışma.
+
 > **Provenans (önemli).** Orijinal repo hakkındaki satırlar **2026-09-30**'da
 > `~/dev/fairplay_simulator_src` (`4c34c53`, `origin/main` ile senkron) üzerinde **ölçülerek**
 > alındı; bu deponun test koşusunun parçası olmadıkları için `docs-sync` onları doğrulayamaz —
-> bu yüzden her satırın yanında ölçüm kaynağı yazılıdır. **echo tarafı** iddiaları ise
+> bu yüzden her satırın yanında ölçüm kaynağı yazılıdır. **Bu depo tarafı** iddiaları ise
 > `tests/test_docs_sync.py` ile bağlıdır.
 
 ---
 
 ## 1. API paritesi
 
-| Uç | Orijinal | echo | Not |
+| Uç | Orijinal | bu depo | Not |
 | --- | --- | --- | --- |
 | `GET /` | var | var | |
 | `GET /api/fixtures` | var | var | |
 | `GET /api/portfolio` | var | var | |
 | `POST /api/auth/register` | var | var | |
 | `POST /api/auth/login` | var | var | |
-| `POST /api/wager` | var | var | echo'da idempotency anahtarı + enerji kapısı |
+| `POST /api/wager` | var | var | bu depoda idempotency anahtarı + enerji kapısı |
 | `POST /api/refill` | var | var | |
-| `POST /api/matches/simulate` | var | var | echo'da **tohumlu** (aynı seed → aynı skor) |
-| `POST /api/matches/monte_carlo` | var | var | echo'da `match_id` **veya** ham oran + `seed` |
+| `POST /api/matches/simulate` | var | var | bu depoda **tohumlu** (aynı seed → aynı skor) |
+| `POST /api/matches/monte_carlo` | var | var | bu depoda `match_id` **veya** ham oran + `seed` |
 | `POST /api/wager/settle` | var | **yok** | bilinçli kaldırıldı — bkz. §3 |
 | `GET /healthz` | yok | var | |
 | `POST /api/estimate` | yok | var | kullanıcı olasılığından EV/Kelly (ADR-0006) |
 | `GET /api/learning-report` | yok | var | öğrenme ölçütleri: davranış metrikleri, tavsiye değil (`docs/90`) |
 
-**Ölçüm:** orijinalin uçları `src/backend/app.py` içindeki `@app.*` dekoratörlerinden, echo'nunki
+**Ölçüm:** orijinalin uçları `src/backend/app.py` içindeki `@app.*` dekoratörlerinden, bu deponunki
 `docs/40-api.md`'den (OpenAPI'den üretilir) okundu.
 
 **Arayüz kullanımı:** orijinalin SPA'sı (`src/frontend/index.html`) yalnız şu uçları çağırıyor:
@@ -41,7 +45,7 @@ farkları **arayüz akışını etkilemez**, yalnız API yüzeyini etkiler.
 
 Orijinalin 2026-09-10 incelemesinde çıkan ve belgelenen kod riskleri:
 
-| Orijinalin riski | echo'daki durum | Kanıt |
+| Orijinalin riski | bu depodaki durum | Kanıt |
 | --- | --- | --- |
 | `auth.py`: `JWT_SECRET_KEY` yoksa **bilinen sabit** varsayılana düşüyor | env yoksa rastgele anahtar + `RuntimeWarning` | `app/config.py` · `tests/api` (token akışı) |
 | `calculate_twr` seriler arası bileşik değil | `Fund.twr` seriler arası **bileşik** | `core/nav.py` · `[G-2]` · `I4` |
@@ -50,28 +54,28 @@ Orijinalin 2026-09-10 incelemesinde çıkan ve belgelenen kod riskleri:
 | CORS `*` | `CORS_ORIGINS` ile yapılandırılabilir; varsayılan localhost + `null` | `app/config.py` · `app/main.py` |
 | `WagerModel.created_at` yok → bekleyen kuponu olan kullanıcıda `/api/portfolio` çöküyordu | böyle bir model yok; kupon durumu defterden türer | `core/nav.py` · `tests/api` |
 
-**Kapılar:** orijinal 40 test (`unittest`; 2026-09-30 ölçümü) · echo'nun paketi `pytest` + Hypothesis +
+**Kapılar:** orijinal 40 test (`unittest`; 2026-09-30 ölçümü) · bu deponun paketi `pytest` + Hypothesis +
 gerçek tarayıcı (güncel sayı bilinçli olarak yazılmaz — sayı kayar, kapı kalır; bkz. `docs/80`). Asıl fark
 **neyin** test edildiğidir (§4).
 
 ## 3. Bilinçli farklar (eksik değil)
 
 - **`POST /api/wager/settle` kaldırıldı.** Orijinalde istemci "bu kupon kazandı" diyebiliyordu;
-bu bir **güven sınırı ihlali** (bedava kupon). echo'da sonuç yalnız maç simülasyonundan gelir.
+bu bir **güven sınırı ihlali** (bedava kupon). bu depoda sonuç yalnız maç simülasyonundan gelir.
 Ölçüm: orijinalin arayüzü de bu ucu kullanmıyordu, yani kaldırmak mevcut akışı bozmuyor — ama
 **dış istemciler için kırıcı bir değişikliktir** ve devralmada not edilmelidir.
-- **`monte_carlo` ucu kimlik doğrulaması ister.** Orijinalde anonimdi; echo'da `/api/matches/*`
+- **`monte_carlo` ucu kimlik doğrulaması ister.** Orijinalde anonimdi; bu depoda `/api/matches/*`
 tutarlılığı için token gerekir.
-- **Oranlar katalogdan gelir.** Orijinal `simulate` ucu da katalogdan okuyordu; echo'da
+- **Oranlar katalogdan gelir.** Orijinal `simulate` ucu da katalogdan okuyordu; bu depoda
   `monte_carlo` hem katalog hem **varsayımsal oran** kabul eder (parite korunur).
-- **Kasa eşiğini aşan bahis onay ister.** Tek kupon kasanın %15'ini aşarsa echo isteği `409` +
+- **Kasa eşiğini aşan bahis onay ister.** Tek kupon kasanın %15'ini aşarsa bu depo isteği `409` +
   `ruin` gövdesiyle reddeder; istemci onaylarsa (`confirm_ruin`) işlenir. Orijinalde yalnız
   istemci tarafında bir uyarı vardı ve eşik/formül sunucuda değildi (ADR-0011) — dış istemciler
   için davranış farkı.
 - **`simulate` bir maçı bir kez üretir.** İkinci çağrı (farklı `seed` ile bile) kayıtlı sonucu
   döndürür; Suite 4 idempotentliği (ADR-0014). Yeniden simülasyon bekleyen istemci için fark.
 
-## 4. echo'nun ekledikleri
+## 4. bu deponun ekledikleri
 
 - **Ölçülebilir doküman dürüstlüğü:** `docs-sync` testi; spec örnekleri (`[G-x]`) ↔ golden testler,
   belgedeki uç listesi ↔ OpenAPI şeması, belgedeki test yolları ↔ gerçek dosyalar.
@@ -86,16 +90,19 @@ tutarlılığı için token gerekir.
 ## 5. Devralma planı
 
 > **Durum (2026-10-03):** parite ön koşulu kapandı — R1–R6 karşılandı (§7.2), dört kapı yeşil.
-> Sıra bu yolun **uygulanmasında**: içerik `v2` dalında yayınlanır, PR ile diff olarak incelenir.
-> `main`'e doğrudan yazılmaz, force-push yapılmaz.
+> İçerik yayınlandı; iki geçmiş **ilgisiz** olduğu için GitHub `v2`den PR açmadı, içerik
+> **`v2-merge`** dalında `main` geçmişinin **üstüne tek commit** olarak konuldu ve **PR #1** açıldı.
+> `main`'e doğrudan yazılmadı, force-push yapılmadı.
 
-Karar: bu depo daha iyi bulunursa içerik doğrudan `fairplay-simulator` reposuna gider.
+Karar: bu depo daha iyi bulunursa içerik doğrudan **upstream** repoya gider. (Bu depo artık aynı adı
+taşıyor: `fairplay-simulator`; "echo" çalışma adı bırakıldı.)
 
-Önerilen yol **(dal + PR)**, force-push **değil**:
+Yol **(dal + PR)**, force-push **değil**:
 
-1. `fairplay_echo` uzak olarak `git@github.com:FurkanDereci/fairplay-simulator.git` eklenir.
-2. İçerik **ayrı bir dalda** yayınlanır (ör. `v2`), `main`'e doğrudan yazılmaz.
-3. PR ile **diff olarak** incelenir: parite kaybı var mı, kırıcı değişiklik ne, testler ne diyor.
+1. Bu depo, `origin` olarak `git@github.com:FurkanDereci/fairplay-simulator.git`'e bağlandı.
+2. İçerik **ayrı bir dalda** yayınlandı (`v2`; PR için `v2-merge`), `main`'e doğrudan yazılmadı.
+3. PR ile **diff olarak** incelendi: parite kaybı var mı, kırıcı değişiklik ne, testler ne diyor
+   → **PR #1**: https://github.com/FurkanDereci/fairplay-simulator/pull/1
 4. Kabul edilirse `main`'e merge edilir; edilmezse dal silinir.
 
 Gerekçe: orijinalin commit geçmişi korunur, karar **incelenebilir bir diff** olur (kanaat değil) ve
@@ -103,19 +110,19 @@ geri dönüşü vardır. Force-push, public repoda geçmişi geri dönüşsüz s
 
 **Devralma anında çözülecek iki şey:**
 
-- **İki yerel klon:** `~/dev/fairplay_simulator_src` ve `~/dev/fairplay_echo`. Hangisi çalışma klonu
-  olacak, diğeri ne olacak? (Vault'taki `fairplay-simulator` notu şu an ilkini işaret ediyor.)
-- **`wager/settle` kırıcı değişikliği** PR açıklamasında açıkça yazılmalı.
+- **İki yerel klon:** `~/dev/fairplay_simulator_src` (upstream klonu) ve `~/dev/fairplay-simulator`
+  (bu depo). Hangisi çalışma klonu olacak, diğeri ne olacak?
+- **`wager/settle` kırıcı değişikliği** PR açıklamasında açıkça yazılmalı → yazıldı.
 
 ## 6. Özellik paritesi (ölçülmüş, 2026-09-30)
 
 Uç paritesi (§1) **yüzeyi** ölçer; bu bölüm **ürün davranışını** ölçer. Ölçüm: orijinalin
-`src/frontend/index.html` kimlikleri (58) ↔ echo'nunki (42), `src/` içindeki terim taraması ve
+`src/frontend/index.html` kimlikleri (58) ↔ bu deponunki (42), `src/` içindeki terim taraması ve
 GDD'nin vaatleri.
 
-### 6.1 echo'da olmayan, orijinalde olan
+### 6.1 bu depoda olmayan, orijinalde olan
 
-| # | Özellik | Orijinalde kanıt | echo'daki durum | Durum |
+| # | Özellik | Orijinalde kanıt | bu depodaki durum | Durum |
 | --- | --- | --- | --- | --- |
 | F1 | **Maç olayları (gol/dakika zaman çizelgesi)** | `match_engine.py` `MatchEvent` + `events.sort(...)`, `app.py` cevabında `"events"` | `MatchEvent` + `_build_events`; cevapta `events` (dakika, takım, tür, **anlık skor**) | ✅ |
 | F2 | **Simülasyon arenası** (skor + pazar bazında sonuçlar paneli) | `simulation-arena`, `sim-score-display`, `sim-outcome-1x2/ou/btts` | `#sim-panel`: skor, 3 pazar sonucu, olay listesi | ✅ |
@@ -137,13 +144,13 @@ GDD'nin vaatleri.
   `badge` referansı **kupon fişi ve bekleyen-sayısı etiketleri**; disiplin rozeti yok.
 - **Virtual Copy Fund / sosyal lig**: GDD'de açıkça Faz 2'ye ertelenmiş.
 
-### 6.3 echo'nun önde olduğu yerler (ölçülmüş)
+### 6.3 bu deponun önde olduğu yerler (ölçülmüş)
 
 - **Kelly — orijinaldeki uygulama güvenilmez:** `slip-kelly-val` **istemci tarafında** hesaplanıyor
   ve kenar yokken **varsayılan %5 öneriyor** (`kellyFraction = edge > 0 ? ... : 0.05`) — yani
-  pozitif kenar olmadığında da "Kelly %5.0 (50 TL)" yazıyor. echo'da hesap **sunucuda**, `p`
+  pozitif kenar olmadığında da "Kelly %5.0 (50 TL)" yazıyor. bu depoda hesap **sunucuda**, `p`
   kullanıcıdan gelir ve kenar yoksa açıkça "pozitif EV yok (Kelly %0)" der (ADR-0006).
-- **CLV — orijinalde hiç yok:** `clv|closing` = **0**. echo'da var (ADR-0005) ve ~10 referans.
+- **CLV — orijinalde hiç yok:** `clv|closing` = **0**. bu depoda var (ADR-0005) ve ~10 referans.
 - **Gerçek tarayıcı testleri + yerleşim taşma kapısı:** orijinalde yok.
 - **Lig filtresi**, `/api/estimate`, `/healthz`.
 - **Tasarım token'ları + `DESIGN.md`**: renk tek yerde, ham hex yok (testle bağlı).
@@ -152,7 +159,7 @@ GDD'nin vaatleri.
 
 Değer/emek sırasına göre: ~~**F1 + F2** (motor olayları + arena)~~ **✅ yapıldı** →
 **F5** (küçük, oyunlaştırma hikâyesini tamamlar) → **F6** (küçük) →
-**F3** (fiş; echo'da işlev zaten satır içinde) → **F4** (factsheet; kozmetik, metrikler var).
+**F3** (fiş; bu depoda işlev zaten satır içinde) → **F4** (factsheet; kozmetik, metrikler var).
 
 ## 7. Gereksinim paritesi — orijinalin **dökümanlarından** (2026-09-30)
 
@@ -163,9 +170,9 @@ Değer/emek sırasına göre: ~~**F1 + F2** (motor olayları + arena)~~ **✅ ya
 > **Neden bu bölüm sonradan eklendi:** ilk turlarda yalnız GDD + ROADMAP okunmuştu; `01_gamification`
 > ve `03_verification` okunmadan geliştirme yapıldı. Eksik okumanın bedeli bu bölümün bulgularıdır.
 
-### 7.1 echo'nun karşıladığı gereksinimler
+### 7.1 bu deponun karşıladığı gereksinimler
 
-| Gereksinim | Kaynak | echo'daki kanıt |
+| Gereksinim | Kaynak | bu depodaki kanıt |
 | --- | --- | --- |
 | **Kelly'de `p` kullanıcıdan gelir** — doc: *"Given **user-estimated** or benchmark true probability p ∈ (0,1)"* | `01` §1.1 | `POST /api/estimate` + bahiste `probability`; ADR-0006. **Orijinalin kodu kendi dökümanından sapıyor** (§7.4) |
 | Risk-of-Ruin **eşiği**: tek kupon > %15 kasa → uyarı | `01` §1.2 | `risk_of_ruin_threshold = 0.15` · `ruin_risk_warning` |
@@ -205,7 +212,7 @@ kupon) · dokümanın hedef DDL'inde `odds_snapshots` geçmişi · OpenTelemetry
 - `03` Suite 4 orijinalde **0 test**; Suite 1/2 de yarım (ölçüm: yukarıdaki grep).
 
 **Sonuç (2026-10-03).** Kapanış turunda **R1–R6 karşılandı**, **R7 bilinçli kapsam-dışı** bırakıldı.
-Özetle echo: bozuk oranı artık **reddediyor** (Suite 3), kilit **açılmasını** test ediyor (Suite 1),
+Özetle bu depo: bozuk oranı artık **reddediyor** (Suite 3), kilit **açılmasını** test ediyor (Suite 1),
 `NAV × U = V` kimliğini hem property hem uç düzeyinde doğruluyor (Suite 2) ve tekrarlanan
 finalizasyonu **tek ödemeye** indiriyor (Suite 4). Kelly'de ve Suite 4'te orijinalin **önünde**ydi;
 şimdi Suite 3 ve R1/R2 açıkları da kapandı. Devralma kararının **kabul ölçütü** bu tablo olmalı:

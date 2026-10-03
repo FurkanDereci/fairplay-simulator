@@ -21,8 +21,8 @@ pytest.importorskip("playwright", reason="playwright kurulu değil")
 import uvicorn
 from playwright.sync_api import Browser, Page, sync_playwright
 
-from fairplay_echo.app.config import Settings
-from fairplay_echo.app.main import create_app
+from fairplay_simulator.app.config import Settings
+from fairplay_simulator.app.main import create_app
 
 SECRET = "ui-flow-test-secret-long-enough-for-hs256"
 _counter = itertools.count(1)

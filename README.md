@@ -1,4 +1,4 @@
-# FairPlay Echo
+# FairPlay Simulator
 
 Sıfırdan çizilmiş FairPlay: gerçek para içermeyen, eğitici futbol tahmin/**portföy** simülatörü.
 Kupon bir fon pozisyonu gibi ele alınır — birim NAV, vig arındırma, Kelly, Sharpe/Sortino/MDD,
@@ -18,7 +18,7 @@ python3 -m venv .venv          # veya: python3 -m virtualenv .venv
 ## Çalıştırma
 
 ```bash
-.venv/bin/fairplay-echo serve --db fairplay.db --port 8000
+.venv/bin/fairplay-simulator serve --db fairplay.db --port 8000
 # arayüz: http://127.0.0.1:8000  (kayıt ol → 1.000 TL sanal bakiye)
 ```
 
@@ -39,13 +39,13 @@ Aynı ikili `replay`, `export-openapi`, `render-api-docs` ve `version` alt komut
 .venv/bin/mypy                  # tip (strict)
 ```
 
-**3. Elle, tarayıcıdan** — `fairplay-echo serve` ile aç; kayıt ol, bahis yap (enerji başlıkta
+**3. Elle, tarayıcıdan** — `fairplay-simulator serve` ile aç; kayıt ol, bahis yap (enerji başlıkta
 görünür), "Simüle" ile maçı sonuçlandır, NAV ve benchmark eğrilerini izle. Kasanın %15'ini aşan bir
 stake girersen **onay modalı** çıkar (risk kapısı); 6+ bahis sonrası `learning-report` ölçütlerinden
 **disiplin rozetleri** görünür.
 
 > `pip install -e ".[dev]"` yapılmadıysa komut yerine
-> `PYTHONPATH=src .venv/bin/python -m fairplay_echo.cli <komut>` kullan.
+> `PYTHONPATH=src .venv/bin/python -m fairplay_simulator.cli <komut>` kullan.
 
 ### Arayüz açılmıyorsa
 
@@ -59,13 +59,13 @@ uyarı bandı çıkar.
 
 ```bash
 # Bir kullanıcının defterini oynat ve durumu bas (I2: replay durumu birebir üretir)
-.venv/bin/fairplay-echo replay aytek --db fairplay.db
+.venv/bin/fairplay-simulator replay aytek --db fairplay.db
 
 # API dokümanını OpenAPI'den yeniden üret (elle yazılmaz)
-.venv/bin/fairplay-echo render-api-docs --output docs/40-api.md
+.venv/bin/fairplay-simulator render-api-docs --output docs/40-api.md
 
 # OpenAPI şeması
-.venv/bin/fairplay-echo export-openapi | head -40
+.venv/bin/fairplay-simulator export-openapi | head -40
 ```
 
 ## Nereden bakılır

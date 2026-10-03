@@ -12,11 +12,11 @@ from pathlib import Path
 
 import pytest
 
-from fairplay_echo.cli import main
-from fairplay_echo.core.cooldown import CooldownState
-from fairplay_echo.core.ledger import Ledger
-from fairplay_echo.core.nav import Fund
-from fairplay_echo.repo import Repository
+from fairplay_simulator.cli import main
+from fairplay_simulator.core.cooldown import CooldownState
+from fairplay_simulator.core.ledger import Ledger
+from fairplay_simulator.core.nav import Fund
+from fairplay_simulator.repo import Repository
 
 
 def _seeded_ledger() -> Ledger:

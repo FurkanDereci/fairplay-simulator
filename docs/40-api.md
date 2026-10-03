@@ -3,7 +3,7 @@
 > **Bu dosya elle yazılmaz.** OpenAPI şemasından üretilir; şema uygulamadan türetildiği
 > için belge ile kod arasında sapma oluşamaz (P11).
 >
-> Üretim: `python -m fairplay_echo.cli render-api-docs --output docs/40-api.md`
+> Üretim: `python -m fairplay_simulator.cli render-api-docs --output docs/40-api.md`
 
 Toplam **12 uç**.
 

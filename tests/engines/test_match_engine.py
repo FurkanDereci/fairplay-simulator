@@ -6,8 +6,8 @@ from decimal import Decimal as D
 
 import pytest
 
-from fairplay_echo.core.money import Money
-from fairplay_echo.engines.match import (
+from fairplay_simulator.core.money import Money
+from fairplay_simulator.engines.match import (
     BTTS_NO,
     BTTS_YES,
     MARKET_1X2,

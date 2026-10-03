@@ -14,9 +14,9 @@ from pathlib import Path
 
 import pytest
 
-from fairplay_echo.core.ledger import EntryType, Ledger, LedgerEntry
-from fairplay_echo.core.nav import Fund
-from fairplay_echo.repo import Repository
+from fairplay_simulator.core.ledger import EntryType, Ledger, LedgerEntry
+from fairplay_simulator.core.nav import Fund
+from fairplay_simulator.repo import Repository
 
 MOMENT = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
 

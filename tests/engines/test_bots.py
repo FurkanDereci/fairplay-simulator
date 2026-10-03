@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from decimal import Decimal as D
 
-from fairplay_echo.core.money import Money
-from fairplay_echo.engines.bots import BotStrategy, benchmark_latest, benchmark_series
-from fairplay_echo.engines.match import MatchRecord
+from fairplay_simulator.core.money import Money
+from fairplay_simulator.engines.bots import BotStrategy, benchmark_latest, benchmark_series
+from fairplay_simulator.engines.match import MatchRecord
 
 
 def _record(match_id: str, home: int, away: int, odds: dict[str, Money]) -> MatchRecord:

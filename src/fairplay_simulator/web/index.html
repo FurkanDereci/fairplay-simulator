@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>FairPlay Echo</title>
+<title>FairPlay Simulator</title>
 <style>
   /* Belirteçler — "Financial Dashboard" koyu paleti (ui-ux-pro-max).
      Kural: yeşil/kırmızı YALNIZ kâr/zarar anlamında; eylem rengi ayrı (mavi).
@@ -243,7 +243,7 @@
 </head>
 <body>
 <header>
-  <h1>FairPlay Echo<small>eğitici portföy simülatörü</small></h1>
+  <h1>FairPlay Simulator<small>eğitici portföy simülatörü</small></h1>
   <div class="spacer"></div>
   <div class="energy" id="energy-wrap" hidden>
     <span class="muted">Enerji</span>
@@ -464,7 +464,7 @@ async function api(path, options = {}) {
     response = await fetch(API_BASE + path, Object.assign({}, options, { headers }));
   } catch (error) {
     showBanner("API'ye ulaşılamadı: <code>" + (API_BASE || location.origin) + "</code>. " +
-      "Sunucuyu <code>fairplay-echo serve</code> ile başlat, sonra tarayıcıda " +
+      "Sunucuyu <code>fairplay-simulator serve</code> ile başlat, sonra tarayıcıda " +
       "<code>http://127.0.0.1:8000</code> adresini aç.");
     throw new Error("API'ye ulaşılamadı");
   }
@@ -1201,7 +1201,7 @@ function init() {
   showChrome(false);
   if (!SERVED) {
     showBanner("Bu sayfa doğrudan dosyadan açıldı (<code>file://</code>). API'ye <code>" + API_BASE +
-      "</code> üzerinden bağlanılıyor — sunucu çalışmıyorsa <code>fairplay-echo serve</code> ile " +
+      "</code> üzerinden bağlanılıyor — sunucu çalışmıyorsa <code>fairplay-simulator serve</code> ile " +
       "başlat. En temizi sayfayı doğrudan <code>http://127.0.0.1:8000</code> adresinden açmaktır.");
   }
 

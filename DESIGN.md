@@ -1,4 +1,4 @@
-# DESIGN.md — FairPlay Echo arayüz sözleşmesi
+# DESIGN.md — FairPlay Simulator arayüz sözleşmesi
 
 Arayüz üretirken kararların **tek kaynağı** burasıdır: bir kural burada yaşar, başka yerde
 tekrarlanmaz. Kalite eşikleri (`AGENTS.md` §9) bilinçli olarak burada **yazılmaz** — orada kalır.

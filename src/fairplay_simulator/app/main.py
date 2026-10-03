@@ -81,7 +81,7 @@ def create_app(
     if db_path is not None:
         resolved = replace(resolved, db_path=db_path)
 
-    app = FastAPI(title="FairPlay Echo API", version=__version__)
+    app = FastAPI(title="FairPlay Simulator API", version=__version__)
     app.state.settings = resolved
     app.state.clock = clock or SystemClock()
 
@@ -136,6 +136,6 @@ def create_app(
         page = Path(__file__).resolve().parents[1] / "web" / "index.html"
         if page.exists():
             return FileResponse(page)
-        return {"service": "fairplay-echo", "version": __version__}
+        return {"service": "fairplay-simulator", "version": __version__}
 
     return app

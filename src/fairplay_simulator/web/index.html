@@ -108,8 +108,11 @@
   .field { display: grid; gap: 4px; }
   .num { text-align: right; }
   /* Sayı METİN değildir: mono yığın (DESIGN.md "Token revizyonu"). Etiket ve gövde metni
-     sans kalır. `nowrap` YOK — sarmak serbest, kırpmak yasak. */
-  .num, .tile b, .metric b, .sim-score, .timeline .minute { font-family: var(--font-mono); }
+     sans kalır. Kural **tutarlı**: sayı nerede görünürse mono — tablo, kutu, metrik, skor,
+     dakika, modal künyesi, çip içindeki seri no ve giriş ekranındaki tutar. `nowrap` YOK —
+     sarmak serbest, kırpmak yasak. */
+  .num, .tile b, .metric b, .sim-score, .timeline .minute,
+  .facts dd, .pill b, .auth-list b { font-family: var(--font-mono); }
   .muted { color: var(--muted); }
   .good { color: var(--good); }
   .bad { color: var(--bad); }

@@ -5,10 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>FairPlay Simulator</title>
 <style>
-  /* Belirteçler — "Financial Dashboard" koyu paleti (ui-ux-pro-max).
-     Kural: yeşil/kırmızı YALNIZ kâr/zarar anlamında; eylem rengi ayrı (mavi).
+  /* Belirteçler — "Financial Dashboard" koyu paleti (ui-ux-pro-max); 2026-10-04 revizyonu:
+     eylem rengi mavi → DESATÜRE TEAL, sayısal metin mono. Gerekçe ve ölçümler DESIGN.md
+     "Token revizyonu" bölümünde. Kural: yeşil/kırmızı YALNIZ kâr/zarar ve durum anlamında;
+     teal YALNIZ kontrol yüzeyi — asla bir sayının rengi değil.
      Grafik serileri anlam taşımadığı için nötr palet + çizgi deseni kullanır.
-     Font: yerel Fira yok, ağdan font çekilmez → sistem yığını + tabular-nums. */
+     Font: ağdan font ÇEKİLMEZ (CDN/@font-face yok) → iki sistem yığını + tabular-nums. */
   :root {
     --bg: #020617;
     --sunken: #060a16;
@@ -18,13 +20,19 @@
     --line-strong: #46527a;
     --fg: #f8fafc;
     --muted: #94a3b8;
-    --accent: #2563eb;
-    --accent-hover: #1d4ed8;
-    --accent-soft: #3b82f6;
+    --accent: #2fb3a4;
+    --accent-hover: #27998d;
+    --accent-soft: #5cc9bb;
     --good: #22c55e;
     --warn: #f59e0b;
     --bad: #ef4444;
-    --on-accent: #ffffff;
+    /* Teal dolgu üstünde beyaz 2,48:1 verir (eşik 4,5) → eylem yüzeyinin metni KOYU olur. */
+    --on-accent: #06151a;
+    /* Kısıt bildirimi (amber kutu): metin 6,9:1 · başlık 8,2:1 · çerçeve 3,7:1 */
+    --warn-bg: #1b1915;
+    --warn-line: #9a6a19;
+    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --opacity-disabled: .45;
     --zebra: #ffffff08;
     --code-bg: #00000066;
@@ -49,7 +57,7 @@
   html { color-scheme: dark; }
   body {
     margin: 0; background: var(--bg); color: var(--fg);
-    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-family: var(--font-sans); font-size: 14px; line-height: 1.5;
     font-variant-numeric: tabular-nums;
   }
   h1 { font-size: 15px; margin: 0; letter-spacing: .2px; }
@@ -73,6 +81,9 @@
      yatay taşma üretmesine yol açıyordu (375px'de 96px taşma ölçüldü). Zinciri baştan sıfırla. */
   #workspace-grid > div,
   #fixtures, details.match, .market { min-width: 0; }
+  /* Pazar satırının kolon modu KAPSAYICIYA bakar (aşağıdaki @container): kabuk yan tarafa menü
+     koyunca pencere geniş olsa da içerik kolonu daralıyor ve 7 kolon sığmıyordu. */
+  #workspace-grid > div:first-child { container-type: inline-size; container-name: market-kolon; }
   section { background: var(--card); border: 1px solid var(--line-strong); border-radius: var(--radius);
             padding: 14px 16px; margin-bottom: var(--gap); min-width: 0; }
   fieldset { border: 0; margin: 0; padding: 0; }
@@ -96,6 +107,9 @@
   label { color: var(--muted); font-size: 12px; }
   .field { display: grid; gap: 4px; }
   .num { text-align: right; }
+  /* Sayı METİN değildir: mono yığın (DESIGN.md "Token revizyonu"). Etiket ve gövde metni
+     sans kalır. `nowrap` YOK — sarmak serbest, kırpmak yasak. */
+  .num, .tile b, .metric b, .sim-score, .timeline .minute { font-family: var(--font-mono); }
   .muted { color: var(--muted); }
   .good { color: var(--good); }
   .bad { color: var(--bad); }
@@ -106,7 +120,7 @@
   .pill.badge { background: var(--card-2); border-color: var(--accent-soft); }
 
   /* --- enerji --- */
-  .energy { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .energy { display: flex; align-items: center; gap: 8px; font-size: 13px; flex-wrap: wrap; }
   .energy-bar { width: 120px; height: 8px; border-radius: 5px; background: var(--sunken);
                 border: 1px solid var(--line-strong); overflow: hidden; }
   .energy-bar > i { display: block; height: 100%; background: var(--warn);
@@ -221,19 +235,26 @@
   .market { display: grid; grid-template-columns: var(--market-cols);
             gap: 10px; align-items: center; padding: 8px 12px;
             border-top: 1px solid var(--line); }
-  @media (max-width: 860px) {
+  /* Kolon modu pencereye değil KAPSAYICIYA bağlı (container query): kabuk yan tarafa menü
+     koyunca pencere geniş olsa da içerik kolonu daralır; 1200px'de 7 kolon sığmayıp "Bahis"
+     düğmesi komşu kolonun altında kalıyordu (yerleşim kapısı yakaladı). */
+  @container market-kolon (max-width: 780px) {
     details.match { --market-cols: repeat(2, minmax(0, 1fr)); }
     .market-head { display: none; }
+    .market-name { white-space: normal; }
+  }
+  @media (max-width: 860px) {
     /* 7 kolonlu tablo dar ekranda sıkışıp başlıkları kırpmasın: doğal genişlikte kalsın ve
        .table-wrap içinde yatay kaydırılsın (contain, tablonun sayfayı genişletmesini önler). */
     table { min-width: 420px; table-layout: auto; }
-    .market-name { white-space: normal; }
   }
   @media (max-width: 520px) {
     /* Üç kutu sığmayınca büyük NAV/TWR değerleri kutudan taşıyordu.
        (Temel .tiles kuralı bu bloğun altında olduğu için özgüllük yükseltildi.) */
     section .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .tiles .tile.hero b { font-size: 22px; }
+    /* Başlık çipi kendi satırına düşünce sağa yaslanmasın (satır başında okunur kalsın). */
+    .module-meta { margin-left: 0; }
   }
   .market-name { font-size: 11.5px; color: var(--muted); text-transform: uppercase;
                  letter-spacing: .5px; }
@@ -254,6 +275,38 @@
   .tile b { font-size: 16px; font-weight: 600; }
   .tile.hero b { font-size: 26px; font-weight: 700; }
   .group + .group { margin-top: 14px; }
+
+  /* --- portföy paneli: modül dili + yoğun rail (prototip: FairPlay LAB) ---
+     Bölüm numarası sırayı söyler (01–04 portföy, 05 grafik); numara mono + aksan, başlık metin. */
+  .module-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+                 margin-bottom: 10px; }
+  .module-head h2 { margin: 0; }
+  .module-no { font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+               color: var(--accent); letter-spacing: .2px; }
+  .module-meta { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .module + .module { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+  /* Nav/TWR hero çifti: "Fon serisi" başlıktaki çipe taşındığı için satır iki kolondur. */
+  #fund-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Tek eylem bloğu: modülün işi tam genişlikte ve aksan dolgusunda durur. */
+  .block { width: 100%; }
+
+  /* Ölçüm satırı: etiket solda, değer mono sağda — "Solvent gün 0 / 3" tek satırda okunur. */
+  .metric { display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+            font-size: 12px; }
+  .metric b { color: var(--fg); }
+
+  /* Kısıt bildirimi: eksik/ölçüsüz veri susmaz, görünür bir yüzey olur. Tek simge CSS ile
+     çizilir (emoji yasak); "Örneklem yetersiz" metni kısaltılmaz. */
+  .callout { display: flex; align-items: flex-start; gap: 10px; margin-top: 10px;
+             padding: 10px 12px; background: var(--warn-bg);
+             border: 1px solid var(--warn-line); border-radius: 8px; }
+  .callout > div { min-width: 0; }
+  .callout-mark { flex: 0 0 auto; width: 16px; height: 16px; border-radius: 4px;
+                  border: 1px solid var(--warn-line); color: var(--warn); text-align: center;
+                  font-family: var(--font-mono); font-size: 11.5px; font-weight: 700;
+                  line-height: 14px; }
+  .callout-title { margin: 0; color: var(--warn); font-size: 11px; font-weight: 700;
+                   text-transform: uppercase; letter-spacing: .6px; }
 
   /* --- simülasyon arenası --- */
   .sim-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
@@ -276,10 +329,50 @@
 
   canvas { width: 100%; height: 210px; background: var(--sunken); border: 1px solid var(--line-strong);
            border-radius: 8px; }
-  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted);
+  .legend { display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted);
             margin-top: 8px; }
+  /* Lejant = çip toggle. Gizli seri yalnız "sönük" değil: üstü çizilir + metni soluklaşır
+     (renk tek başına anlam taşımaz). Basılı çip dolgu taşımaz — 4 dolgu gürültü olurdu. */
+  .legend .chip[aria-pressed="true"] { background: transparent; border-color: var(--line-strong);
+                                       color: var(--fg); }
+  .legend .chip[aria-pressed="false"] { color: var(--muted); text-decoration: line-through; }
+  /* Zaman aralığı: tek seçim, basılı çip aksan dolgusudur (kontrol yüzeyi). */
+  .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip-row .chip { padding: 3px 9px; font-size: 11.5px; }
   .dot { display: inline-block; width: 14px; height: 3px; border-radius: 2px; margin-right: 6px;
          vertical-align: middle; }
+
+  /* --- kabuk: sol menü + içerik + sağ rail (prototip: FairPlay LAB) ---
+     Menü **görünüm değiştirmez** — bölüme götürür. Sebep: UI kapıları girişten sonra
+     `details.match`, `#wagers-body`, `#fund-tiles` öğelerinin AYNI ANDA görünür olmasını
+     şart koşar; görünüm saklayan bir menü o kapıları kırardı. */
+  .app { display: grid; grid-template-columns: 212px minmax(0, 1fr); align-items: start; }
+  /* `min-width: 0` ŞART: ızgara öğesinin otomatik minimumu `auto` kalırsa, menüdeki
+     yatay kaydırmalı nav-list max-content genişliğiyle kolonu şişirir (375px'de 114px taşma
+     ölçüldü) — `#workspace-grid` için yazılan dersin aynısı. */
+  .side { position: sticky; top: 0; height: 100dvh; min-width: 0;
+          display: flex; flex-direction: column; gap: 14px;
+          padding: 16px 12px; background: var(--card); border-right: 1px solid var(--line-strong); }
+  .side .brand { font-weight: 700; letter-spacing: .2px; }
+  .side .brand span { font-size: 10px; border: 1px solid var(--accent-soft); color: var(--accent);
+                      border-radius: 4px; padding: 1px 5px; margin-left: 6px; vertical-align: 2px; }
+  .side-sub { margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+  .nav-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; min-width: 0; }
+  .nav-item { width: 100%; text-align: left; background: transparent; color: var(--muted);
+              border: 1px solid transparent; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+  .nav-item:hover:not(:disabled) { background: var(--card-2); color: var(--fg); }
+  .nav-item[aria-current="true"] { background: var(--card-2); color: var(--fg);
+                                   border-color: var(--accent-soft); }
+  .side-foot { margin-top: auto; border-top: 1px solid var(--line); padding-top: 12px;
+               color: var(--muted); font-size: 11px; }
+  .content { min-width: 0; }
+  @media (max-width: 1000px) {
+    .app { grid-template-columns: 1fr; }
+    .side { position: static; height: auto; border-right: 0;
+            border-bottom: 1px solid var(--line-strong); }
+    .nav-list { grid-auto-flow: column; grid-auto-columns: max-content; overflow-x: auto; }
+    .side-foot { display: none; }
+  }
 
   @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; animation: none !important; }
@@ -287,6 +380,21 @@
 </style>
 </head>
 <body>
+<div class="app">
+<nav class="side" id="side-nav" hidden aria-label="Laboratuvar menü">
+  <div>
+    <div class="brand">FairPlay<span>LAB</span></div>
+    <p class="side-sub">Aktüeryal disiplin &amp; portföy takip laboratuvarı</p>
+  </div>
+  <ul class="nav-list">
+    <li><button type="button" class="nav-item" data-target="view-kupon">Kupon Simülatörü</button></li>
+    <li><button type="button" class="nav-item" data-target="portfolio-panel">Genel Bakış</button></li>
+    <li><button type="button" class="nav-item" data-target="view-defter">İşlem Defteri</button></li>
+    <li><button type="button" class="nav-item" data-target="view-disiplin">Disiplin Skoru</button></li>
+  </ul>
+  <p class="side-foot">Eğitici simülatör — gerçek para yoktur.</p>
+</nav>
+<div class="content">
 <header>
   <h1>FairPlay<small>eğitici portföy simülatörü</small></h1>
   <div class="spacer"></div>
@@ -353,7 +461,7 @@
     </section>
     <div id="workspace-grid">
       <div>
-        <section>
+        <section id="view-kupon">
           <h2>Fikstürler</h2>
           <div class="chips" id="league-chips" role="group" aria-label="Lig filtresi"></div>
           <div class="row" style="margin-bottom:10px">
@@ -365,7 +473,7 @@
           <p id="fixtures-empty" class="muted" hidden>Bu ligde maç yok — “Tümü” seçerek tüm fikstürleri görebilirsin.</p>
         </section>
 
-        <section>
+        <section id="view-defter">
           <h2>Kuponlar</h2>
           <div class="table-wrap">
             <table>
@@ -391,12 +499,19 @@
           <ol class="timeline" id="sim-events"></ol>
         </section>
 
-        <section>
-          <h2>Portföy</h2>
+        <!-- Portföy paneli: numaralı modüller (01–04) — "yoğun rail" okunma sırasını söyler.
+             Modüller tek kartta durur; ayrım çizgisiyle bölünür (ayrı kart yığmak gürültü olurdu). -->
+        <section id="portfolio-panel" aria-label="Portföy">
+          <div class="module-head">
+            <span class="module-no" aria-hidden="true">01 //</span>
+            <h2>Sermaye ve fon durumu</h2>
+            <div class="module-meta">
+              <span class="pill" title="İflastan sonra bakiye eklenince yeni seri başlar; seri no bu yüzden artar">Fon serisi <b id="t-series">–</b></span>
+            </div>
+          </div>
           <div class="tiles" id="fund-tiles">
             <div class="tile hero"><small title="Birim pay değeri — kasanın bir paya düşen değeri">NAV</small><b id="t-nav">–</b></div>
             <div class="tile hero"><small title="Zaman ağırlıklı getiri — para giriş/çıkışının etkisi arındırılmış">TWR</small><b id="t-twr">–</b></div>
-            <div class="tile"><small title="İflastan sonra bakiye eklenince yeni seri başlar; seri no bu yüzden artar">Fon serisi</small><b id="t-series">–</b></div>
           </div>
           <div class="group">
             <div class="tiles">
@@ -405,33 +520,58 @@
               <div class="tile"><small>Toplam</small><b id="t-total">–</b></div>
             </div>
           </div>
-          <h2 style="margin-top:16px">Risk</h2>
-          <div class="tiles">
-            <div class="tile"><small title="Getirinin oynaklığa bölümü — risk başına kazanç">Sharpe</small><b id="t-sharpe">–</b></div>
-            <div class="tile"><small title="Yalnız aşağı yönlü oynaklığa göre risk başına kazanç">Sortino</small><b id="t-sortino">–</b></div>
-            <div class="tile"><small title="En büyük düşüş — tepeden dibe en derin gerileme">MDD</small><b id="t-mdd">–</b></div>
-            <div class="tile"><small title="Piyasaya göre oynaklık — 1 = piyasa kadar oynak">Beta</small><b id="t-beta">–</b></div>
-            <div class="tile"><small title="Piyasanın üstünde kalan getiri — betanın beklediğinden fazlası">Alpha</small><b id="t-alpha">–</b></div>
-            <div class="tile"><small title="Riske göre düzeltilmiş puan">RAS</small><b id="t-ras">–</b></div>
+
+          <div class="module">
+            <div class="module-head">
+              <span class="module-no" aria-hidden="true">02 //</span>
+              <h2>Risk ve sapma göstergeleri</h2>
+            </div>
+            <div class="tiles">
+              <div class="tile"><small title="Getirinin oynaklığa bölümü — risk başına kazanç">Sharpe</small><b id="t-sharpe">–</b></div>
+              <div class="tile"><small title="Yalnız aşağı yönlü oynaklığa göre risk başına kazanç">Sortino</small><b id="t-sortino">–</b></div>
+              <div class="tile"><small title="En büyük düşüş — tepeden dibe en derin gerileme">MDD</small><b id="t-mdd">–</b></div>
+              <div class="tile"><small title="Piyasaya göre oynaklık — 1 = piyasa kadar oynak">Beta</small><b id="t-beta">–</b></div>
+              <div class="tile"><small title="Piyasanın üstünde kalan getiri — betanın beklediğinden fazlası">Alpha</small><b id="t-alpha">–</b></div>
+              <div class="tile"><small title="Riske göre düzeltilmiş puan">RAS</small><b id="t-ras">–</b></div>
+            </div>
+            <!-- Kısıt bildirimi: anlamsız örneklemde renk susar (DESIGN.md) ve kısıt burada
+                 yazılı kalır. #risk-note metni kısaltılmaz ("Örneklem yetersiz" birebir). -->
+            <div class="callout" id="risk-warning" hidden>
+              <span class="callout-mark" aria-hidden="true">!</span>
+              <div>
+                <p class="callout-title">Metodolojik kısıt bildirimi</p>
+                <p id="risk-note" class="muted" style="font-size:11.5px;margin:8px 0 0"></p>
+              </div>
+            </div>
           </div>
-          <p id="risk-note" class="muted" style="font-size:11.5px;margin:8px 0 0"></p>
-          <h2 style="margin-top:16px">İşlemler</h2>
-          <div class="tiles">
-            <div class="tile"><small>Adet</small><b id="t-trades">–</b></div>
-            <div class="tile"><small>Kazanma</small><b id="t-wins">–</b></div>
-            <div class="tile"><small>Kâr faktörü</small><b id="t-pf">–</b></div>
+
+          <div class="module">
+            <div class="module-head">
+              <span class="module-no" aria-hidden="true">03 //</span>
+              <h2>İşlem adedi ve verim</h2>
+            </div>
+            <div class="tiles">
+              <div class="tile"><small>Adet</small><b id="t-trades">–</b></div>
+              <div class="tile"><small>Kazanma</small><b id="t-wins">–</b></div>
+              <div class="tile"><small>Kâr faktörü</small><b id="t-pf">–</b></div>
+            </div>
+            <div class="row" id="badge-row" hidden role="group" aria-label="Disiplin rozetleri"
+                 title="Üç rozetin tamamı bekleme sınırını 72 saate indirir"></div>
           </div>
-          <div class="row" id="badge-row" hidden role="group" aria-label="Disiplin rozetleri"
-               title="Üç rozetin tamamı bekleme sınırını 72 saate indirir"></div>
-          <div class="row" style="margin-top:14px">
-            <button class="ghost" id="refill">1.000 TL bakiye ekle</button>
-            <span class="muted" id="cooldown-note" style="font-size:12px"
-                  title="Kademe her iflasta bir artar ve bekleme süresini 4 katına çıkarır; tavanı aşamaz. 3 solvent gün bir kademe düşürür."></span>
-          </div>
-          <div class="row" style="margin-top:8px">
-            <span class="muted" style="font-size:12px"
-                  title="Üst üste solvent geçen gün sayısı. 3 güne ulaşınca kademe bir düşer; iflas edilen günler yanar.">Solvent gün <b id="t-solvent">–</b></span>
-            <div class="streak-bar" style="width:90px"><i id="streak-fill" style="width:0"></i></div>
+
+          <div class="module" id="view-disiplin">
+            <div class="module-head">
+              <span class="module-no" aria-hidden="true">04 //</span>
+              <h2>Disiplin ve likidite</h2>
+            </div>
+            <button id="refill" class="block">1.000 TL bakiye ekle</button>
+            <p style="margin:8px 0 0"><span class="muted" id="cooldown-note" style="font-size:12px"
+                  title="Kademe her iflasta bir artar ve bekleme süresini 4 katına çıkarır; tavanı aşamaz. 3 solvent gün bir kademe düşürür."></span></p>
+            <div class="metric" style="margin-top:8px">
+              <span class="muted" style="font-size:12px"
+                    title="Üst üste solvent geçen gün sayısı. 3 güne ulaşınca kademe bir düşer; iflas edilen günler yanar.">Solvent gün <b id="t-solvent">–</b></span>
+              <div class="streak-bar" style="width:90px"><i id="streak-fill" style="width:0"></i></div>
+            </div>
           </div>
         </section>
 
@@ -446,8 +586,16 @@
           <p id="learning-note" class="muted" style="font-size:11.5px;margin:8px 0 0"></p>
         </section>
 
-        <section>
-          <h2>NAV ve kıyas botları</h2>
+        <section id="chart-panel">
+          <div class="module-head">
+            <span class="module-no" aria-hidden="true">05 //</span>
+            <h2>NAV ve kıyas botları</h2>
+            <!-- Zaman aralığı: tek seçim. Çipler veri gelmeden de durur; pencere yalnız
+                 sunucudan gelen dizinin kuyruğunu alır (nokta uydurulmaz). -->
+            <div class="module-meta">
+              <div class="chip-row" id="chart-range" role="group" aria-label="Grafik zaman aralığı"></div>
+            </div>
+          </div>
           <canvas id="chart"></canvas>
           <p class="muted" style="font-size:11.5px;margin:6px 0 0">
             Dikey eksen NAV'dır ve 100'den başlar. Portföyün maç sınırlarında örneklenir;
@@ -459,6 +607,8 @@
     </div>
   </div>
 </div>
+</div><!-- /.content -->
+</div><!-- /.app -->
 
 <dialog id="ruin-dialog" aria-labelledby="ruin-title">
   <h3 id="ruin-title">Yüksek riskli bahis — onay ister</h3>
@@ -641,7 +791,7 @@ const setTile = (id, text, klass = "") => {
 function showChrome(visible) {
   el("workspace").hidden = !visible;
   el("auth-screen").hidden = visible;
-  ["energy-wrap", "user-pill", "logout"].forEach((id) => {
+  ["energy-wrap", "user-pill", "logout", "side-nav"].forEach((id) => {
     el(id).hidden = !visible;
   });
 }
@@ -1193,6 +1343,9 @@ function renderPortfolio(portfolio) {
     : reliability.note +
       " Kâr faktörü " +
       (reliability.profit_factor_defined ? "tanımlı." : "hiç kayıp olmadığı için tanımsız.");
+  /* Kısıt yalnız metin değil, görünür bir yüzeydir: kutu yalnız örneklem yetersizken açılır
+     (metin boşken boş bir amber kutu göstermek "yanlış alarm" olurdu). */
+  el("risk-warning").hidden = reliability.sharpe_reliable;
 
   const cd = portfolio.cooldown;
   el("cooldown-note").textContent = cd.locked
@@ -1300,20 +1453,114 @@ const SERIES = [
   { key: "HOME_ADVANTAGE", color: token("--series-home"), dash: [10, 4], label: "Ev sahibi" },
 ];
 
+/* Grafik görünümü — kullanıcının **gerçek** veriye uyguladığı iki kontrol (uydurma durum yok):
+   `range` sunucudan gelen dizinin kuyruğunu keser, `hidden` seriyi çizimden çıkarır. Nokta
+   uydurulmaz, sunucudan gelmeyen hiçbir sayı ekrana çıkmaz. */
+const chartView = { range: null, hidden: new Set() };
+
+/* Zaman aralığı: T-0 = başlangıçtan itibaren tümü (varsayılan), L5/L10 = son N maç. */
+const RANGES = [
+  { key: null, label: "T-0", title: "T-0'dan itibaren tüm maçlar" },
+  { key: 10, label: "L10", title: "Son 10 maç" },
+  { key: 5, label: "L5", title: "Son 5 maç" },
+];
+
+/* Çipler bir kez kurulur, sonra yerinde güncellenir: yeniden kurmak odağı düşürürdü
+   (klavye kullanıcısı seçimden sonra nerede olduğunu kaybeder). */
+function syncRangeChips() {
+  [...el("chart-range").children].forEach((chip, index) => {
+    chip.setAttribute("aria-pressed", String(RANGES[index].key === chartView.range));
+  });
+}
+
+function buildRangeChips() {
+  const host = el("chart-range");
+  host.innerHTML = "";
+  RANGES.forEach((range) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip";
+    chip.textContent = range.label;
+    chip.title = range.title;
+    chip.addEventListener("click", () => {
+      chartView.range = range.key;
+      syncRangeChips();
+      redrawChart();
+    });
+    host.appendChild(chip);
+  });
+  syncRangeChips();
+}
+
+const redrawChart = () => {
+  if (state.portfolio) renderChart(state.portfolio);
+};
+
+function toggleSeries(key) {
+  if (chartView.hidden.has(key)) chartView.hidden.delete(key);
+  else chartView.hidden.add(key);
+  redrawChart();
+}
+
+/* Lejant: her seri bir toggle'dır. Öğe **tek `<span>`**tir (etiket + son değer aynı düğümde),
+   böylece yeniden kurmadan yalnız metni ve basılı durumu güncellenir. */
+function ensureLegend() {
+  const host = el("chart-legend");
+  if (host.children.length === SERIES.length) return;
+  host.innerHTML = "";
+  SERIES.forEach((series) => {
+    const item = document.createElement("span");
+    item.className = "chip";
+    item.dataset.key = series.key;
+    item.setAttribute("role", "button");
+    item.setAttribute("tabindex", "0");
+    item.title = series.label + " serisini göster/gizle";
+    const dot = document.createElement("i");
+    dot.className = "dot";
+    dot.setAttribute("style", series.dash.length
+      ? "background:repeating-linear-gradient(90deg," + series.color + " 0 4px,transparent 4px 7px)"
+      : "background:" + series.color);
+    item.append(dot, document.createTextNode(series.label));
+    item.addEventListener("click", () => toggleSeries(series.key));
+    item.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      toggleSeries(series.key);
+      // Gizleme `redrawChart` ile canvas'ı yeniler; odak bu öğede kalır (DOM kurulmaz).
+    });
+    host.appendChild(item);
+  });
+}
+
+function renderLegend(plotted) {
+  ensureLegend();
+  const items = [...el("chart-legend").children];
+  plotted.forEach((series, index) => {
+    const item = items[index];
+    item.setAttribute("aria-pressed", String(!chartView.hidden.has(series.key)));
+    const last = series.points.length ? series.points[series.points.length - 1] : null;
+    item.lastChild.nodeValue = series.label + (last === null ? "" : " · " + fmtNumber(last, 1));
+  });
+}
+
 function renderChart(portfolio) {
+  /* Pencere = her serinin son N noktası; seriler maç ekseninde hizalı olduğu için aynı kesim. */
+  const slice = (points) => (chartView.range ? points.slice(-chartView.range) : points);
   const plotted = SERIES.map((series) => ({
     key: series.key,
     color: series.color,
     dash: series.dash,
     label: series.label,
-    points: series.key === "nav_at_matches"
+    points: slice(series.key === "nav_at_matches"
       ? (portfolio.nav_at_matches || []).map(Number)
-      : (portfolio.benchmarks.series[series.key] || []).map(Number),
+      : (portfolio.benchmarks.series[series.key] || []).map(Number)),
   }));
+  renderLegend(plotted);
+  const drawn = plotted.filter((series) => !chartView.hidden.has(series.key));
   /* Portföy en ÜSTTE çizilir: seriler üst üste bindiğinde kullanıcının kendi eğrisi görünür kalsın. */
   const drawOrder = [
-    ...plotted.filter((series) => series.key !== "nav_at_matches"),
-    ...plotted.filter((series) => series.key === "nav_at_matches"),
+    ...drawn.filter((series) => series.key !== "nav_at_matches"),
+    ...drawn.filter((series) => series.key === "nav_at_matches"),
   ];
 
   const canvas = el("chart");
@@ -1326,10 +1573,10 @@ function renderChart(portfolio) {
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   ctx.clearRect(0, 0, cssWidth, cssHeight);
 
-  const all = plotted.flatMap((series) => series.points);
+  const all = drawn.flatMap((series) => series.points);
   if (all.length === 0) return;
 
-  const maxLength = Math.max(...plotted.map((series) => series.points.length));
+  const maxLength = Math.max(...drawn.map((series) => series.points.length));
   const min = Math.min(90, ...all);
   const max = Math.max(110, ...all);
   const pad = { left: 42, right: 12, top: 10, bottom: 20 };
@@ -1338,7 +1585,7 @@ function renderChart(portfolio) {
   const yOf = (value) => pad.top + height - ((value - min) / (max - min)) * height;
   const xOf = (index) => pad.left + (maxLength <= 1 ? 0 : (index / (maxLength - 1)) * width);
 
-  ctx.font = "10px system-ui";
+  ctx.font = "10px " + token("--font-mono");
   [min, 100, max].forEach((value) => {
     const y = yOf(value);
     ctx.strokeStyle = value === 100 ? token("--chart-grid") : token("--chart-line");
@@ -1362,15 +1609,6 @@ function renderChart(portfolio) {
     ctx.stroke();
     ctx.setLineDash([]);
   });
-
-  el("chart-legend").innerHTML = plotted.map((series) => {
-    const last = series.points.length ? series.points[series.points.length - 1] : null;
-    const dash = series.dash.length
-      ? "background:repeating-linear-gradient(90deg," + series.color + " 0 4px,transparent 4px 7px)"
-      : "background:" + series.color;
-    return "<span><i class='dot' style='" + dash + "'></i>" + series.label +
-      (last === null ? "" : " · " + fmtNumber(last, 1)) + "</span>";
-  }).join("");
 }
 
 /* --- döngü --- */
@@ -1431,6 +1669,7 @@ async function refresh() {
 
 function init() {
   showChrome(false);
+  buildRangeChips();
   if (!SERVED) {
     showBanner("Bu sayfa doğrudan dosyadan açıldı (<code>file://</code>). API'ye <code>" + API_BASE +
       "</code> üzerinden bağlanılıyor — sunucu çalışmıyorsa <code>fairplay-simulator serve</code> ile " +
@@ -1444,6 +1683,29 @@ function init() {
   });
   el("register").addEventListener("click", () => authenticate("/api/auth/register", el("register")));
   el("logout").addEventListener("click", logout);
+
+  /* Sol menü: bölüme götürür (hiçbir bölümü gizlemez — UI kapıları hepsinin görünür
+     kalmasını şart koşar) ve kaydırdıkça hangi bölümde olduğunu söyler. */
+  const navItems = [...document.querySelectorAll(".nav-item")];
+  const setCurrent = (active) =>
+    navItems.forEach((node) => node.setAttribute("aria-current", String(node === active)));
+  navItems.forEach((item) => {
+    item.addEventListener("click", () => {
+      const target = el(item.dataset.target);
+      if (!target) return;
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      setCurrent(item);
+    });
+  });
+  const navObserver = new IntersectionObserver((entries) => {
+    entries.filter((entry) => entry.isIntersecting).forEach((entry) => {
+      const item = navItems.find((node) => node.dataset.target === entry.target.id);
+      if (item) setCurrent(item);
+    });
+  }, { rootMargin: "-45% 0px -50% 0px" });
+  [...document.querySelectorAll("#portfolio-panel, #view-kupon, #view-defter, #view-disiplin")]
+    .forEach((node) => navObserver.observe(node));
+  if (navItems.length) setCurrent(navItems[0]);
   el("refill").addEventListener("click", refill);
   el("ruin-box-close").addEventListener("click", () => {
     el("ruin-box").hidden = true;

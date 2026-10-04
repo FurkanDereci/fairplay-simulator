@@ -77,5 +77,13 @@ def register(live_server: str):
         page.fill("#email", f"{name}@example.com")
         page.click("#register")
         page.wait_for_selector("details.match", timeout=15000)
+        # `details.match` fikstür yüklemesinde görünür; portföy paneli ise ondan SONRA gelen
+        # `refresh()` ile dolar. Beklemezsek `#t-nav` ara sıra "–" kalıyor ve testler yarışa
+        # düşüyordu (ölçüldü 2026-10-04: aynı hata commit kapısını da düşürdü).
+        page.wait_for_function(
+            "() => { const t = document.getElementById('t-nav');"
+            " return t && t.textContent.trim() !== '\u2013'; }",
+            timeout=15000,
+        )
 
     return _register

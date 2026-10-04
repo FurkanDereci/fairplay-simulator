@@ -167,7 +167,7 @@ GDD'nin vaatleri.
 - **CLV — orijinalde hiç yok:** `clv|closing` = **0**. bu depoda var (ADR-0005) ve ~10 referans.
 - **Gerçek tarayıcı testleri + yerleşim taşma kapısı:** orijinalde yok.
 - **Lig filtresi**, `/api/estimate`, `/healthz`.
-- **Tasarım token'ları + `DESIGN.md`**: renk tek yerde, ham hex yok (testle bağlı).
+- **Tasarım dili + `DESIGN.md`**: görsel dil tek kaynakta (`DESIGN.md` → Tailwind `theme` + `app.css`) belgelenir; ham-hex kapısı görsel dil değişikliğiyle kaldırıldı.
 
 ### 6.4 Eşitleme sırası
 

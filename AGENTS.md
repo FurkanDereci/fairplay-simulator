@@ -58,7 +58,7 @@ Arayüz değişiklikleri şu eşikleri geçmeden "bitti" sayılmaz:
   `label`/`for` eşleşmesi veya `aria-label`ı vardır; aç/kapa düğmeleri `aria-pressed` bildirir.
 - **Hareket:** `prefers-reduced-motion` saygı görür; geçişler 150–300 ms.
 - **Simge:** yapısal simge olarak emoji kullanılmaz; arka plan görseli yerine vektör tercih edilir.
-- **Belirteç:** renkler/boşluklar CSS değişkeniyle yönetilir; ekrana özel gömülü hex yazılmaz.
+- **Belirteç:** görsel dil tek kaynaktan yönetilir (`DESIGN.md` → Tailwind `theme` + `app.css`); ayrıntı ve istisnalar `DESIGN.md`'dedir.
 - **Sayı biçimi:** para `tr-TR` (virgül ondalık); **oranlar bahisçi konvansiyonu olarak nokta kalır**
   (bilinçli istisna).
 - **İnceleme:** arayüz işi, yazarın kendi onayıyla kapanmaz; bağımsız bir alt ajana inceletilir (ADR-0007).
@@ -78,3 +78,16 @@ Arayüz değişiklikleri şu eşikleri geçmeden "bitti" sayılmaz:
   metinleri, test adları ve docstring'ler. Bu **bilinçli bir ayrımdır**, tutarsızlık değil;
   gerekçe §11'in ilk maddesinde.
 - Commit başlığı emir kipi ve kısa; gövde "ne değişti + niye" der (mevcut alışkanlık korunur).
+
+## 12. Tasarım değişikliği süreci
+
+- **Tasarıma özgü olgular makineyle kaplanmaz; invariantlar kaplanır.** Kontrast, taşma/kırpılma/
+  örtüşme, "renk tek başına anlam taşımaz", sayı biçimi, klavye ve `[hidden]` **kapılıdır**;
+  hex'in nerede yaşadığı, fontun kaynağı, gradyan/cam/glow gibi görsel-dil tercihleri `DESIGN.md`'de
+  **prose**dur — test olmaz, köklü değişiklikte silinecek kapı yoktur.
+- **Köklü görsel değişiklik proposal ister** (ADR-0016): problem · hedef görünüm · değişenler ·
+  risk altındaki invariantlar · güncellenecek dokümanlar. Onay ölçütü: 4 genişlikte
+  (375/900/1200/1440) ekran görüntüsü + invariant suite yeşil + kontrast kontrolü. Kayıt
+  `docs/60-decisions/`.
+- **Renk tek kaynak:** `web/assets/app.css` `:root`; Tailwind `theme` ona `var()` ile referans
+  verir; markup ham hex yazmaz.

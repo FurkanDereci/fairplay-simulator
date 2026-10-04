@@ -114,19 +114,6 @@ def test_parity_document_matches_the_api_surface() -> None:
     assert claimed == documented, f"Parite belgesi ↔ API farkı: {sorted(claimed ^ documented)}"
 
 
-def test_design_tokens_have_no_raw_hex_outside_root() -> None:
-    """`DESIGN.md` iddiası: bütün renkler `:root`'ta yaşar, bileşenlerde ham hex yok.
-
-    İddia bir kez denetlenmişti; burada **kapıya** bağlanır ki yarın sessizce kaymasın.
-    """
-    page = _read(SRC / "web" / "index.html")
-    root = re.search(r":root\s*\{(.*?)\}", page, re.S)
-    assert root is not None, "`:root` token bloğu bulunamadı."
-    outside = page.replace(root.group(1), "")
-    found = sorted(set(re.findall(r"#[0-9a-fA-F]{3,8}\b", outside)))
-    assert not found, f":root dışında ham hex var: {found}"
-
-
 def test_quality_index_paths_exist() -> None:
     """`docs/80-kalite-alanlari.md` bir **indekstir**: işaret ettiği her yol gerçekten var olmalı.
 

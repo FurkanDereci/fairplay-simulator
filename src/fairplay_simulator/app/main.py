@@ -14,6 +14,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from .. import __version__
 from ..core.errors import (
@@ -93,6 +94,10 @@ def create_app(
         allow_headers=["*"],
     )
     app.include_router(router)
+
+    assets = Path(__file__).resolve().parents[1] / "web" / "assets"
+    if assets.is_dir():
+        app.mount("/assets", StaticFiles(directory=assets), name="assets")
 
     async def app_error(_request: Request, exc: Exception) -> JSONResponse:
         detail = exc.detail if isinstance(exc, AppError) else str(exc)

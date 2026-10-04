@@ -26,7 +26,7 @@ yazmak yasak).
 | 4 | **Güven sınırı ve yetki** | Durumun ve paranın otoritesi **sunucuda**; istemci sonuç bildirmez; sır için güvensiz varsayılan yok | `test_client_cannot_declare_a_result` · 401/403 testleri · `test_validation_error_is_readable…` | ✅ |
 | 5 | **Veri dayanıklılığı** | Yedek **online backup API**'siyle alınır; `journal_mode=WAL` + `synchronous=NORMAL` + `foreign_keys=ON` **yazılı karar** (ADR-0008); kurtarma **tatbikatla** kanıtlanır | `tests/repo` geri yükleme tatbikatı · pragma + FK testleri | ✅ |
 | 6 | **Gözlemlenebilirlik ve replay** | Defter biçimi **sürümlenir**; bilinmeyen sürüm **açık hata** (sessiz okuma yok); snapshot tetikleyicisi **sayısal ve ölçülmüş** (> 100.000 olay / > 250 ms) | `tests/data` donmuş defter fixture'ı · `tests/repo` sürüm testleri · `/healthz` · ADR-0009 | ✅ |
-| 7 | **Arayüz kalitesi ve durumlar** | **"Arayüz işi görmeden bitmez"**; sessiz başarısızlık yasak; renk/boşluk token'dan | `tests/ui` (akış + taşma/kırpılma) · `DESIGN.md` token testi | ✅ |
+| 7 | **Arayüz kalitesi ve durumlar** | **"Arayüz işi görmeden bitmez"**; sessiz başarısızlık yasak; renk/boşluk token'dan (`app.css :root`); tasarıma özgü olgular **prose**, invariantlar **kapılı** | `tests/ui` (akış + taşma/kırpılma/örtüşme) · `DESIGN.md` · ADR-0016 | ✅ |
 
 ## C — Fark yaratan alanlar
 

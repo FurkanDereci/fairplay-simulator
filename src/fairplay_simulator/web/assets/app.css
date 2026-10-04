@@ -318,6 +318,11 @@ label { color: var(--muted); font-size: 12px; }
   margin-top: auto; padding: 12px; border: 1px solid var(--line); border-radius: 12px;
   background: #121923; font-size: 11px; color: var(--muted);
 }
+/* "SİSTEM DURUMU / EĞİTİM MODU" satırı: 216px kolonda etiketler ortadan kırılıyordu
+   ("SİSTEM" / "DURUMU:"). Etiketler bütün kalır; satır sığmazsa durum ikinci satıra
+   sola hizalı iner (space-between tek öğeyi satır başına koyar). */
+.side-foot > div { flex-wrap: wrap; column-gap: 10px; row-gap: 3px; }
+.side-foot > div > span { white-space: nowrap; }
 @media (max-width: 1023px) {
   .side { position: static; padding: 12px; }
   .side-eyebrow { display: none; }

@@ -390,10 +390,10 @@
     <p class="side-sub">Aktüeryal disiplin &amp; portföy takip laboratuvarı</p>
   </div>
   <ul class="nav-list">
-    <li><button type="button" class="nav-item" data-target="view-kupon">Kupon Simülatörü</button></li>
-    <li><button type="button" class="nav-item" data-target="portfolio-panel">Genel Bakış</button></li>
-    <li><button type="button" class="nav-item" data-target="view-defter">İşlem Defteri</button></li>
-    <li><button type="button" class="nav-item" data-target="view-disiplin">Disiplin Skoru</button></li>
+    <li><button type="button" class="nav-item" data-view="kupon">Kupon Simülatörü</button></li>
+    <li><button type="button" class="nav-item" data-view="genel">Genel Bakış</button></li>
+    <li><button type="button" class="nav-item" data-view="kupon" data-scroll="view-defter">İşlem Defteri</button></li>
+    <li><button type="button" class="nav-item" data-view="genel" data-scroll="view-disiplin">Disiplin Skoru</button></li>
   </ul>
   <p class="side-foot">Eğitici simülatör — gerçek para yoktur.</p>
 </nav>
@@ -463,7 +463,7 @@
       <p id="ruin-box-facts" class="muted" style="margin:6px 0 0;font-size:12.5px"></p>
     </section>
     <div id="workspace-grid">
-      <div>
+      <div class="view" data-view="kupon">
         <section id="view-kupon">
           <h2>Fikstürler</h2>
           <div class="chips" id="league-chips" role="group" aria-label="Lig filtresi"></div>
@@ -489,9 +489,7 @@
             </table>
           </div>
         </section>
-      </div>
 
-      <div>
         <section id="sim-panel" hidden>
           <h2>Simülasyon sonucu</h2>
           <div class="sim-head">
@@ -501,7 +499,9 @@
           <div class="tiles" id="sim-outcomes"></div>
           <ol class="timeline" id="sim-events"></ol>
         </section>
+      </div>
 
+      <div class="view" data-view="genel" hidden>
         <!-- Portföy paneli: numaralı modüller (01–04) — "yoğun rail" okunma sırasını söyler.
              Modüller tek kartta durur; ayrım çizgisiyle bölünür (ayrı kart yığmak gürültü olurdu). -->
         <section id="portfolio-panel" aria-label="Portföy">
@@ -1687,27 +1687,26 @@ function init() {
   el("register").addEventListener("click", () => authenticate("/api/auth/register", el("register")));
   el("logout").addEventListener("click", logout);
 
-  /* Sol menü: bölüme götürür (hiçbir bölümü gizlemez — UI kapıları hepsinin görünür
-     kalmasını şart koşar) ve kaydırdıkça hangi bölümde olduğunu söyler. */
+  /* Sol menü = gerçek yönlendirme: her öğe bir **görünüm** açar; `data-scroll` varsa o
+     görünümdeki bölüme kaydırır. Ölü menü yok — dört öğenin dördü de bir yere götürür. */
   const navItems = [...document.querySelectorAll(".nav-item")];
+  const views = [...document.querySelectorAll(".view")];
   const setCurrent = (active) =>
     navItems.forEach((node) => node.setAttribute("aria-current", String(node === active)));
+  const showView = (name) => {
+    views.forEach((view) => {
+      view.hidden = view.dataset.view !== name;
+    });
+  };
   navItems.forEach((item) => {
     item.addEventListener("click", () => {
-      const target = el(item.dataset.target);
-      if (!target) return;
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
       setCurrent(item);
+      showView(item.dataset.view);
+      const target = item.dataset.scroll ? el(item.dataset.scroll) : null;
+      if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+      else window.scrollTo({ top: 0, behavior: "smooth" });
     });
   });
-  const navObserver = new IntersectionObserver((entries) => {
-    entries.filter((entry) => entry.isIntersecting).forEach((entry) => {
-      const item = navItems.find((node) => node.dataset.target === entry.target.id);
-      if (item) setCurrent(item);
-    });
-  }, { rootMargin: "-45% 0px -50% 0px" });
-  [...document.querySelectorAll("#portfolio-panel, #view-kupon, #view-defter, #view-disiplin")]
-    .forEach((node) => navObserver.observe(node));
   if (navItems.length) setCurrent(navItems[0]);
   el("refill").addEventListener("click", refill);
   el("ruin-box-close").addEventListener("click", () => {

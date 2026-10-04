@@ -72,7 +72,7 @@ def test_probability_yields_an_assessment_without_betting(
 
 
 def test_full_flow_bet_simulate_and_console_is_clean(
-    browser: Browser, live_server: str, register
+    browser: Browser, live_server: str, register, show_view
 ) -> None:
     page = browser.new_page(viewport={"width": 1600, "height": 1000})
     console_errors: list[str] = []
@@ -81,7 +81,10 @@ def test_full_flow_bet_simulate_and_console_is_clean(
     page.on("pageerror", lambda e: page_errors.append(str(e)))
 
     register(page, "flow")
+    # Portföy "Genel Bakış" görünümünde; NAV orada okunur (menü artık yönlendiriyor).
+    show_view(page, "genel")
     assert page.locator("#t-nav").inner_text().startswith("100,00")
+    show_view(page, "kupon")
     assert page.locator("#energy-display").inner_text().startswith("100")
 
     page.locator("details.match > summary").first.click()
@@ -114,7 +117,7 @@ def test_full_flow_bet_simulate_and_console_is_clean(
 
 
 def test_unreliable_risk_metrics_carry_no_colour(
-    browser: Browser, live_server: str, register
+    browser: Browser, live_server: str, register, show_view
 ) -> None:
     """Alan 3'ün arayüz ayağı: `t < 2` iken metrik etiketlenir **ve rengi susar**.
 
@@ -131,6 +134,8 @@ def test_unreliable_risk_metrics_carry_no_colour(
     page.locator("button:has-text('Simüle et')").first.click()
     page.wait_for_timeout(1500)
 
+    # Metrikler "Genel Bakış" görünümünde; renk kuralı orada okunur.
+    show_view(page, "genel")
     assert "Örneklem yetersiz" in page.locator("#risk-note").inner_text()
     for tile in ("t-sharpe", "t-sortino", "t-mdd", "t-beta", "t-alpha", "t-ras"):
         klass = page.locator(f"#{tile}").get_attribute("class")
@@ -139,11 +144,12 @@ def test_unreliable_risk_metrics_carry_no_colour(
 
 
 def test_solvent_day_indicator_is_visible(
-    browser: Browser, live_server: str, register
+    browser: Browser, live_server: str, register, show_view
 ) -> None:
     """F5 — solvent gün göstergesi arayüzde görünür; değer sunucudan gelir (spec §4.2)."""
     page = browser.new_page()
     register(page, "solvent")
+    show_view(page, "genel")  # gösterge "Genel Bakış" görünümünde
     assert page.locator("#t-solvent").inner_text() == "0 / 3"
     assert page.locator("#streak-fill").count() == 1
     page.close()

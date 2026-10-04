@@ -58,9 +58,13 @@ def _open_workspace(browser: Browser, base: str, register, prefix: str) -> Page:
 
 
 def test_no_overflow_or_clipping_at_any_viewport(
-    browser: Browser, live_server: str, register
+    browser: Browser, live_server: str, register, show_view
 ) -> None:
-    """375 / 900 / 1440: yatay taşma yok, kırpılan metin yok."""
+    """375 / 900 / 1440: yatay taşma yok, kırpılan metin yok — **her görünümde**.
+
+    Menü yönlendirdiği için ölçüm de görünüm görünüm yapılır: "Kupon Simülatörü" (tablo,
+    pazar satırı) ve "Genel Bakış" (metrik kutuları, grafik) ayrı ayrı ölçülür.
+    """
     page = _open_workspace(browser, live_server, register, "layout")
     try:
         for width, label in VIEWPORTS:
@@ -70,6 +74,12 @@ def test_no_overflow_or_clipping_at_any_viewport(
             assert data["tasma"] <= 1, f"{label} ({width}px): {data['tasma']}px yatay taşma"
             assert data["kirpilan"] == [], f"{label} ({width}px) kırpılan metin: {data['kirpilan']}"
             assert data["engel"] is None, f"{label} ({width}px) düğme örtülü: {data['engel']}"
+
+            show_view(page, "genel")
+            ozet = page.evaluate(MEASURE)
+            assert ozet["tasma"] <= 1, f"Genel Bakış {label} ({width}px): {ozet['tasma']}px taşma"
+            assert ozet["kirpilan"] == [], f"Genel Bakış {label} kırpılan: {ozet['kirpilan']}"
+            show_view(page, "kupon")
     finally:
         page.close()
 
@@ -94,15 +104,21 @@ def test_no_overflow_with_the_simulation_arena_visible(
 
 
 def test_mobile_stacks_tiles_and_lets_the_table_scroll(
-    browser: Browser, live_server: str, register
+    browser: Browser, live_server: str, register, show_view
 ) -> None:
-    """Mobil: metrik kutuları 2 kolona iner; 7 kolonlu tablo sıkışmak yerine kaydırılır."""
+    """Mobil: metrik kutuları 2 kolona iner; 7 kolonlu tablo sıkışmak yerine kaydırılır.
+
+    İkisi ayrı görünümde: tablo "Kupon Simülatörü", kutular "Genel Bakış".
+    """
     page = _open_workspace(browser, live_server, register, "stack")
     try:
         page.set_viewport_size({"width": 375, "height": 800})
         page.wait_for_timeout(350)
-        data = page.evaluate(MEASURE)
-        assert data["tileKolon"] == 2, f"mobilde kutu kolonu {data['tileKolon']} (beklenen 2)"
-        assert data["tabloKaydirilabilir"] is True, "mobilde tablo kaydırılamıyor (sıkışmış)"
+        kupon = page.evaluate(MEASURE)
+        assert kupon["tabloKaydirilabilir"] is True, "mobilde tablo kaydırılamıyor (sıkışmış)"
+
+        show_view(page, "genel")
+        ozet = page.evaluate(MEASURE)
+        assert ozet["tileKolon"] == 2, f"mobilde kutu kolonu {ozet['tileKolon']} (beklenen 2)"
     finally:
         page.close()

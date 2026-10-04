@@ -63,6 +63,21 @@ def browser() -> Browser:
 
 
 @pytest.fixture
+def show_view():
+    """Sol menüden bir görünüm açar: `kupon` (varsayılan) ya da `genel`.
+
+    Menü artık **yönlendirir** (görünüm açar); bir görünümdeki öğeyi ölçen test önce oraya
+    gitmelidir. Dört menü öğesinin ikisi `kupon`, ikisi `genel` açar — bu yüzden `.first`.
+    """
+
+    def _show(page: Page, name: str) -> None:
+        page.locator(f".nav-item[data-view='{name}']").first.click()
+        page.wait_for_timeout(200)
+
+    return _show
+
+
+@pytest.fixture
 def register(live_server: str):
     """Her çağrıda **benzersiz** kullanıcı adı/e-postası ile kayıt olur.
 

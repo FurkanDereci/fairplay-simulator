@@ -109,6 +109,10 @@ Sadakat öncelikli olduğu için eski sözleşmenin bazı maddeleri **bilinçli 
   "Kapanış farkı", "Önerilen pay"); teknik ad **`title`da** ve **"İleri Düzey" panelinde**
   (katlanır `#view-terimler`) durur — ileri düzey kullanıcı için ayrı yol. Ölçüm (2026-10-12):
   3 naif kullanıcı çıplak terimleri (NAV/Sharpe/CLV) **anlamadı**; `tests/ui` bu ayrımı kilitler.
+- **Risk göstergesi güvenlik vaadi değildir.** "Riskli / riskli değil" etiketi basit bir **eşiktir**
+  (bahis tutarı / kasa, `%15`); **maç analizi değildir**. Metin, göstergenin **neyi ölçtüğünü**
+  söyler ve "güvendesin" diye okunmasını önler. Gerekçe: 2026 serbest fon krizi — risk değeri `1/7`
+  "risksiz" sanıldı, aynı basit-etiket hatası (`docs/93-vaka-risk-etiketi.md`).
 - Süre ve ölçek **okunur birime** çevrilir: `168 saat` yerine `7 gün (168 saat)` (`fmtHours`).
 - `.table-wrap` yatay kaydırılır; `contain: inline-size` tablonun sayfayı genişletmesini önler.
 - `.tile` ızgarası masaüstünde 3, **≤520px'de 2 kolon**; hero metrik yazısı ≤520px'de 22px.

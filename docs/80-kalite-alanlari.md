@@ -65,5 +65,6 @@ yazmak yasak).
 - `docs/30-architecture.md` — CURRENT/TARGET ve geçiş tetikleyicileri (alan 10).
 - `docs/85-kod-haritasi.md` — kod grafiğinin **ürün haritası** (topluluk → modül adı; ADR-0020).
 - `docs/95-urun-evrimi.md` — **yön özeti**: nerede / neye doğru / sırada ne / koşullu tetikleyiciler.
+- `docs/93-vaka-risk-etiketi.md` — **öğretim vakası**: risk etiketi ≠ güvenlik (2026 serbest fon krizi; kaynaklı).
 - `DESIGN.md` — arayüz sözleşmesi: tokenlar, "ne olmayacak"lar, doğrulama tanımı (alan 7).
 - `AGENTS.md` §9 — arayüz kalite eşiği (alan 7'nin kabul ölçütü).

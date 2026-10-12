@@ -13,8 +13,9 @@ from fastapi import APIRouter, Depends, Header, status
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ...repo import UserRecord
-from ..deps import get_current_user, get_service
+from ..deps import get_current_user, get_service, get_telemetry
 from ..services import PortfolioService
+from ..telemetry import Telemetry
 
 router = APIRouter(prefix="/api", tags=["fairplay"])
 
@@ -225,3 +226,16 @@ def monte_carlo(
         iterations=req.iterations,
         seed=req.seed,
     )
+
+
+@router.get("/telemetry")
+def telemetry(
+    _user: UserRecord = Depends(get_current_user),
+    telemetry: Telemetry = Depends(get_telemetry),
+) -> dict[str, object]:
+    """Rate limiting ertelemesinin **gözlenebilir** koşulu (ADR-0021).
+
+    Kimlik (istemci host'u) başına istek, 429 sayısı ve tekil kimlik sayısı. Süreç-içi sayaçlardır;
+    yeniden başlatmada sıfırlanır. Yetki ister: istismar telemetrisi herkese açık olmamalı.
+    """
+    return telemetry.snapshot()

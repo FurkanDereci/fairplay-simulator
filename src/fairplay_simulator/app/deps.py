@@ -12,6 +12,7 @@ from .clock import Clock
 from .config import Settings
 from .errors import Unauthorized
 from .services import PortfolioService
+from .telemetry import Telemetry
 
 
 def get_settings(request: Request) -> Settings:
@@ -22,6 +23,11 @@ def get_settings(request: Request) -> Settings:
 def get_clock(request: Request) -> Clock:
     clock: Clock = request.app.state.clock
     return clock
+
+
+def get_telemetry(request: Request) -> Telemetry:
+    telemetry: Telemetry = request.app.state.telemetry
+    return telemetry
 
 
 def get_repo(request: Request) -> Iterator[Repository]:

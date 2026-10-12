@@ -7,7 +7,7 @@
 >
 > TypeScript tipleri: `src/fairplay_simulator/web/api-types.d.ts` (OpenAPI'den üretilir, ADR-0019).
 
-Toplam **12 uç**.
+Toplam **13 uç**.
 
 | Metot | Yol | Özet |
 | --- | --- | --- |
@@ -21,5 +21,6 @@ Toplam **12 uç**.
 | POST | `/api/matches/simulate` | Simulate |
 | GET | `/api/portfolio` | Portfolio |
 | POST | `/api/refill` | Refill |
+| GET | `/api/telemetry` | Telemetry |
 | POST | `/api/wager` | Place Wager |
 | GET | `/healthz` | Healthz |

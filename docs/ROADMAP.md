@@ -37,4 +37,5 @@ DoD = testler yeşil + `ruff`/`mypy` temiz + dokümanlar güncel + `docs-sync` g
   (`portfolio.nav_at_matches`), böylece botlarla aynı uzunlukta ve aynı eksende çizilir.
 - Sosyal kopya fon / lig (Faz 2) — ayrı ADR gerektirir.
 - PostgreSQL / TimescaleDB / Redis — `30-architecture.md` tetikleyicileri.
-- Rate limiting — kötüye kullanım gözlemlenene kadar.
+- Rate limiting — kötüye kullanım gözlemlenene kadar. Gözlem kaynağı artık var:
+  `GET /api/telemetry` (kimlik başına istek hızı + 429; ADR-0021).

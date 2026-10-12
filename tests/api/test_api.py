@@ -14,6 +14,7 @@ from fairplay_simulator.app.clock import FixedClock
 from fairplay_simulator.app.config import Settings
 from fairplay_simulator.app.fixtures import CATALOG, closing_odds
 from fairplay_simulator.app.main import create_app
+from fairplay_simulator.app.telemetry import Telemetry
 from fairplay_simulator.core.money import q_nav
 from fairplay_simulator.core.odds import clv_pct
 from fairplay_simulator.engines.match import MARKET_1X2, simulate_match
@@ -842,3 +843,35 @@ def test_closing_odds_are_deterministic_and_match_specific() -> None:
     assert closing_odds("md-01", "HOME", opening) == closing_odds("md-01", "HOME", opening)
     assert closing_odds("md-01", "HOME", opening) != closing_odds("md-02", "HOME", opening)
     assert closing_odds("md-01", "HOME", opening) != closing_odds("md-01", "AWAY", opening)
+
+
+def test_telemetry_counts_requests_and_rate_limits() -> None:
+    """Ö-11 — sayaçlar: kimlik başına istek, tekil kimlik ve 429 işareti."""
+    telemetry = Telemetry()
+    telemetry.record_request("a")
+    telemetry.record_request("a")
+    telemetry.record_request("b")
+    telemetry.record_rate_limited()
+
+    snapshot = telemetry.snapshot()
+    assert snapshot["requests_total"] == 3
+    assert snapshot["distinct_identities"] == 2
+    assert snapshot["rate_limited_total"] == 1
+    by_identity = snapshot["by_identity"]
+    assert isinstance(by_identity, dict)
+    assert set(by_identity) == {"a", "b"}
+
+
+def test_telemetry_endpoint_is_authenticated_and_live(
+    world: tuple[TestClient, FixedClock],
+) -> None:
+    """Telemetri ucu yetki ister ve gerçek istekleri sayar (ADR-0021)."""
+    client, _clock = world
+    assert client.get("/api/telemetry").status_code == 401
+
+    headers = _auth(client)
+    payload = client.get("/api/telemetry", headers=headers).json()
+    assert payload["requests_total"] >= 1
+    assert payload["distinct_identities"] >= 1
+    assert isinstance(payload["by_identity"], dict)
+

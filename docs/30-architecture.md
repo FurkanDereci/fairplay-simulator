@@ -74,7 +74,7 @@ Aşağıdakilerden **biri ölçülüp gerçekleşene kadar** ilgili teknoloji ek
 | TimescaleDB | `ledger_entries` > ~50M satır veya zaman-serisi sorguları SLA'yı bozduğunda |
 | Redis / önbellek | Portföy ucu p95 > 200 ms ve DB profili önbelleği işaret ettiğinde |
 | Mikroservis ayrımı | Tek süreç derleme+test süresi > 10 dk, ya da bağımsız ölçekleme gerekene kadar |
-| Rate limiting | Gerçek kötüye kullanım gözlemlendiğinde |
+| Rate limiting | Gerçek kötüye kullanım gözlemlendiğinde (gözlem kaynağı: `GET /api/telemetry`, ADR-0021) |
 | Defter snapshot'ı | Kullanıcı başına **> 100.000 olay** veya `cli replay` **> 250 ms** (ölçüm 2026-09-30: 5.001 olay → 7,1 ms; ADR-0009) |
 
 İzleme **elle bakmaktan çıkarıldı:** `fairplay-simulator scale-report [--db PATH]` bu değerleri

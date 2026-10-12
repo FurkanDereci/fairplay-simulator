@@ -178,6 +178,29 @@ export type paths = {
         patch?: never;
         trace?: never;
     };
+    "/api/telemetry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Telemetry
+         * @description Rate limiting ertelemesinin **gözlenebilir** koşulu (ADR-0021).
+         *
+         *     Kimlik (istemci host'u) başına istek, 429 sayısı ve tekil kimlik sayısı. Süreç-içi sayaçlardır;
+         *     yeniden başlatmada sıfırlanır. Yetki ister: istismar telemetrisi herkese açık olmamalı.
+         */
+        get: operations["telemetry_api_telemetry_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -648,6 +671,39 @@ export interface operations {
                 "application/json": components["schemas"]["MonteCarloRequest"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    telemetry_api_telemetry_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

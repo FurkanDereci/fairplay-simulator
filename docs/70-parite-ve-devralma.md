@@ -33,6 +33,7 @@ adayıdır**; ayrı bir repo değildir. Bu dosyanın amacı o kararı kanaate b�
 | `GET /healthz` | yok | var | |
 | `POST /api/estimate` | yok | var | kullanıcı olasılığından EV/Kelly (ADR-0006) |
 | `GET /api/learning-report` | yok | var | öğrenme ölçütleri: davranış metrikleri, tavsiye değil (`docs/90`) |
+| `GET /api/telemetry` | yok | var | istismar sinyali: rate limiting ertelemesinin gözlenebilir koşulu (ADR-0021) |
 
 **Ölçüm:** orijinalin uçları `src/backend/app.py` içindeki `@app.*` dekoratörlerinden, bu deponunki
 `docs/40-api.md`'den (OpenAPI'den üretilir) okundu.

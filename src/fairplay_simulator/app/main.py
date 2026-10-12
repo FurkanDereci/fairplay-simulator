@@ -10,7 +10,7 @@ from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import replace
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -30,6 +30,7 @@ from .api import router
 from .clock import Clock, SystemClock
 from .config import Settings
 from .errors import AppError, RuinConfirmationRequired
+from .telemetry import Telemetry
 
 Handler = Callable[[Request, Exception], Awaitable[JSONResponse]]
 
@@ -85,6 +86,26 @@ def create_app(
     app = FastAPI(title="FairPlay Simulator API", version=__version__)
     app.state.settings = resolved
     app.state.clock = clock or SystemClock()
+    app.state.telemetry = Telemetry()
+
+    @app.middleware("http")
+    async def count_requests(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        """API isteklerini kimliğe göre sayar; 429'ları işaretler (ADR-0021).
+
+        Yalnız `/api/` yolları sayılır: sağlık kontrolü ve varlık istekleri telemetriyi
+        gürültüyle bozmasın.
+        """
+        telemetry: Telemetry = app.state.telemetry
+        is_api = request.url.path.startswith("/api/")
+        if is_api:
+            identity = request.client.host if request.client else "bilinmeyen"
+            telemetry.record_request(identity)
+        response = await call_next(request)
+        if is_api and response.status_code == 429:
+            telemetry.record_rate_limited()
+        return response
 
     app.add_middleware(
         CORSMiddleware,

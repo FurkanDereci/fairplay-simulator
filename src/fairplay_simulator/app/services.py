@@ -59,7 +59,6 @@ from ..engines.match import (
     simulate_match,
 )
 from ..repo import Repository, UserRecord, WagerRecord
-from . import fixtures as fixture_catalog
 from .clock import Clock
 from .config import Settings
 from .errors import (
@@ -72,7 +71,8 @@ from .errors import (
     UnknownFixture,
     UnknownMarket,
 )
-from .fixtures import Fixture
+from .fixtures import Fixture, all_fixtures, closing_odds, kickoff
+from .fixtures import get as fixture_get
 from .security import create_token, decode_token, hash_password, verify_password
 
 REFILL_AMOUNT: Money = Decimal("1000")
@@ -208,7 +208,7 @@ class PortfolioService:
         self, match_id: str, market_type: str, selection: str
     ) -> tuple[Fixture, NormalizedMarket, Money]:
         """Maç + market + seçim çözümü **tek yerde**; bilinmeyen hiçbir şey sessizce varsayılmaz."""
-        fixture = fixture_catalog.get(match_id)
+        fixture = fixture_get(match_id)
         if fixture is None:
             raise UnknownFixture(f"Bilinmeyen maç: {match_id}")
         market = fixture.markets.get(market_type)
@@ -452,7 +452,7 @@ class PortfolioService:
         self, *, user_id: str, match_id: str, seed: int | None = None
     ) -> dict[str, object]:
         self._require_user(user_id)
-        fixture = fixture_catalog.get(match_id)
+        fixture = fixture_get(match_id)
         if fixture is None:
             raise UnknownFixture(f"Bilinmeyen maç: {match_id}")
 
@@ -491,7 +491,7 @@ class PortfolioService:
             won = result.outcome_for(record.market_type) == record.selection
             payout = q_money(stake * record.odds) if won else ZERO
 
-            closing = fixture_catalog.closing_odds(
+            closing = closing_odds(
                 record.match_id, record.selection, record.odds
             )
             self.repo.set_closing_odds(record.wager_id, closing)
@@ -563,7 +563,7 @@ class PortfolioService:
         self._require_user(user_id)
 
         if match_id is not None:
-            fixture = fixture_catalog.get(match_id)
+            fixture = fixture_get(match_id)
             if fixture is None:
                 raise UnknownFixture(f"Bilinmeyen maç: {match_id}")
             odds: dict[str, Money] = dict(fixture.odds_1x2())
@@ -614,14 +614,14 @@ class PortfolioService:
     def fixtures(self) -> list[dict[str, object]]:
         now = self.clock.now()
         out: list[dict[str, object]] = []
-        for fixture in fixture_catalog.all_fixtures():
+        for fixture in all_fixtures():
             out.append(
                 {
                     "match_id": fixture.match_id,
                     "league": fixture.league,
                     "home_team": fixture.home_team,
                     "away_team": fixture.away_team,
-                    "kickoff_time": fixture_catalog.kickoff(fixture.match_id, now=now).isoformat(),
+                    "kickoff_time": kickoff(fixture.match_id, now=now).isoformat(),
                     "markets": {
                         market_type: {
                             "outcomes": {k: str(v) for k, v in market.outcomes.items()},

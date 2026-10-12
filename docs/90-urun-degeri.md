@@ -104,6 +104,28 @@ cevaplar toplumsal beklentiye kaydı. Bu yüzden "anlamadı" ile "öğrenmedi" a
 **Görüşmeci kuralı (enstrüman kadar önemli).** Sorular **birebir** okunur, **ipucu/açıklama
 verilmez**; kaçamakta zorlanmaz. 4 ve 5'te **gerekçe** istenir; **gerekçesiz "hayır" puan almaz**.
 
+**v2 saha sonucu (2026-10-12, birkaç naif) — madde madde.**
+
+| # | Bulgu | Sonuç |
+| --- | --- | --- |
+| 1 | Çok büyük çoğunluk doğru | Tavan onaylandı; **puan dışı kalması doğru** |
+| 2 | Bahis oynamayanlar hesabı bilmiyor; oynayanlar `1/1,95` mantığını biliyor; **bahisçi payı çoğu zaman akla gelmiyor** (bazıları düşünüp doğru buluyor) | Madde **bahis okuryazarlığını** ölçüyor, ürünün öğretisini değil → ayırt ediciliği **düşük** |
+| 3 | Fikri olmayan maçta yorum yapmak istemiyor; "cevaplanabilir mi?" → "verilemiyordur" (doğru, ama **sezgisel**) | Doğru cevap **anlamadan** verilebiliyor → **zayıf** madde |
+| 4 | **Ayırt edici.** Açıklama gerekti; **örnek verilince** (10'dan al, 12'ye çıktı, sonra şirket battı) yatırım geçmişi olanlar doğru mantığı kurdu; düzenli oynayanların bir kısmı "kapanışı geçtim = kâr" sandı, **örnekle ikna oldular**; yanlışta ısrar eden **yok** | **Mekanizma bulgusu: örnek ikna eder.** Ürün öğretiyi tanım değil **somut vaka** ile yapmalı |
+| 5 | Otorite "düşük risk" derse risk toleransına göre **bahsi büyütüyorlar**; "3 bahisle risk nasıl bulundu?" diye soran **azınlık** | Bu bir **bilgi** değil **davranış/tutum** maddesi; asıl bulgu davranışta |
+
+**Sonuç (dürüst).** v2'de **tek ayırt edici madde 4**; 2 bahis okuryazarlığını, 3 sezgiyi, 5 tutumu
+ölçüyor. Yani enstrüman bu kitleyle "öğretti mi" sorusunu **tek başına taşıyamaz**. Ve asıl darboğaz
+enstrüman değil, **kullanım**: ürünün şu hâliyle **7 gün kullanılmasını beklemek gerçekçi değil**
+(aşağıdaki ürün notu). Ö-1 bu yüzden **önce kullanım** sorununa bağlıdır.
+
+**Ürün notu — tutunma (engagement) boşluğu.** Kullanıcı gözlemi: *"kimse 7 gün boyunca bu ürünü
+şu anki hâliyle kullanmaz; kullanıcıyı içine çekecek hiçbir şey yok"*. **Kumarı teşvik etmemek,
+uygulamayı boş bırakmayı gerektirmez** — kullanıcı uzaklaşır, öğreti de hiç ulaşmaz. 5. maddenin
+saha bulgusu + gerçek piyasa vakaları (TEFAS serbest fon kayıpları) şunu gösteriyor: ürünün
+**asıl mesajı** "risk etiketi + geçmiş getiri ≠ gelecek; düşük etiketli riske kaldıraç = patlama".
+Bu, kumar değil **korunma** çekiciliğidir ve ürünün tutunma kancası burada olabilir.
+
 **Arayüz bağlantısı.** Aynı bulgu ürünü de vurdu: varsayılan metin sadeleştirildi, teknik terimler
 "İleri Düzey" yoluna taşındı (`DESIGN.md` "Bileşen kuralları").
 

@@ -1,16 +1,20 @@
 """Sınır kararları — "mutation denetimi" yerine elle tutulan çita.
 
-Neden: kapsam yüzdesi `%96` olsa bile `<=` → `<` gibi bir değişiklik **hiçbir testi kırmayabilir**
-(alan 1'in tam sorusu). Araç denemesi: `mutmut 3.8` bu ortamda çalışmadı (kopyalama adımı
-`/run/udev` symlink döngüsüne giriyor) ve zaten maliyeti ~28 sn × mutant. O yüzden çita **araca**
-değil, kritik kararların **sınırına** bağlandı: aşağıdaki her test, tek bir karşılaştırma/sabit
-değiştiğinde kırmızıya düşer. Eşleme: `docs/50-test-strategy.md` §9.
+Neden: kapsam yüzdesi `%96` olsa bile `<=` → `<` gibi bir değişiklik **hiçbir testi**
+kırmayabilir (alan 1'in tam sorusu). Çita **araca** değil, kritik kararların **sınırına**
+bağlıdır: aşağıdaki her test, tek bir karşılaştırma/sabit değiştiğinde kırmızıya düşer.
+Eşleme: `docs/50-test-strategy.md` §9.
+Mutasyon aracı (`mutmut`) 2026-10-12'de bu ortamda **çalıştı** (Ö-8): `core/money.py` tarandı,
+iki hayatta kalan mutant (hata-mesajı) kapatıldı. Yine de per-commit kapı pahalı (her mutant
+bir test paketi koşusu) — sınır tablosu çalışma-anı çitası olarak kalır.
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timedelta
 from decimal import Decimal as D
+
+import pytest
 
 from fairplay_simulator.core import cooldown as cooldown_mod
 from fairplay_simulator.core import energy as energy_mod
@@ -29,14 +33,17 @@ def test_money_rounds_half_up_never_half_even() -> None:
 
 
 def test_money_refuses_float() -> None:
-    """`float` sınırı korunmalı: ikili yuvarlama artığı içeri sızamaz."""
+    """`float` sınırı korunmalı: ikili yuvarlama artığı içeri sızamaz.
+
+    Hata **mesajı** da kilitlenir: `dec()`'in mesajını bozan mutantlar (mesajı `None`/`NoneType`
+    yapan) yalnızca mesaj doğrulanınca ölür — 2026-10-12 mutasyon denetiminde hayatta kalmışlardı
+    (Ö-8, ADR-0010).
+    """
     for value in (1, "1.5", D("1.5")):
         assert money_mod.dec(value) == D("1.5") or value == 1
-    try:
+    with pytest.raises(TypeError) as excinfo:
         money_mod.dec(1.5)  # type: ignore[arg-type]
-    except TypeError:
-        return
-    raise AssertionError("float kabul edildi; ikili artık paraya sızabilir.")
+    assert str(excinfo.value) == "Decimal'e çevrilemez tip: float"
 
 
 def test_normalize_market_drops_non_positive_odds() -> None:

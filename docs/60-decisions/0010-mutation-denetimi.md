@@ -46,3 +46,22 @@
 - (−) Tablo, testin mutantı gerçekten öldürdüğünü **kanıtlamaz**; kararın tek tek ele alındığını
   gösterir. Yeni kritik bir sınır doğduğunda tabloya satır eklenmelidir (aksi hâlde sessiz boşluk).
 - (−) Araç yolu ileride (başka bir ortamda) yeniden denenmeli; erteleme, vazgeçme değil.
+
+## Güncelleme (2026-10-12, Ö-8) — araç yeniden denendi, **çalıştı**
+
+PM raporu Ö-8 gereği `mutmut` bu ortamda yeniden denendi (temiz değil ama aynı makinede; docker
+yok) ve **çalıştı**:
+
+- **Yapılandırma:** `pyproject.toml` → `[tool.mutmut]`; `source_paths = ["src/fairplay_simulator"]`,
+  `only_mutate = ["src/fairplay_simulator/core/money.py"]`, test seçimi `tests/golden` ·
+  `tests/property` · `tests/test_boundaries.py`. Not: `source_paths`'ı **tek dosyaya** vermek
+  kopyada paket `__init__`'lerini düşürüp `ImportError` üretir; **paket kökü** verilmelidir.
+- **Ölçüm:** `core/money.py` → **27 mutant**. İlk koşu **25 öldü / 2 hayatta**; ikisi `dec()`'in
+  TypeError **mesaj** mutantıydı (mesajı `None` / `NoneType` yapıyordu, hiçbir test mesajı
+  doğrulamıyordu). `test_money_refuses_float` mesajı doğrulayacak biçimde güçlendirildi →
+  **27/27** (0 hayatta).
+- **Kapsam sınırı:** yalnız `core/money.py` + üç test dosyası. Tüm `core/` için koşu çok daha uzun
+  (her mutant = bir paket koşusu) → bu yüzden **per-commit kapı değil, dönemsel denetim**.
+- **Sonuç:** yukarıdaki "araç yolu ileride yeniden denenmeli" maddesi **kapandı**; `docs/50 §9`
+  sınır tablosu çalışma-anı çitası olarak kalır, araç onu **doğrular**. Kapsam genişletilmek
+  istenirse `only_mutate` modül modül büyütülür (sıradaki aday: `core/odds.py`).

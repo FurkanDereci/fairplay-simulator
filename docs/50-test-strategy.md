@@ -99,16 +99,19 @@ satır satır yazılı (R3–R6). Özet:
 
 ## 9. Sınır kararları (mutation denetimi yerine)
 
-Araç denemesi (2026-09-30): `mutmut 3.8` bu ortamda **çalışmadı** — kopyalama adımı
-`/run/udev/watch` symlink döngüsüne giriyor (`OSError: Too many levels of symbolic links`);
-ayrıca maliyeti ~28 sn × mutant olurdu. Çita araca değil **kararın sınırına** bağlandı:
+**2026-10-12 güncellemesi (Ö-8) — araç artık çalışıyor:** `mutmut` bu ortamda
+**çalıştırılabildi**. `core/money.py` üzerinde **27 mutant**: ilk koşuda **25 öldü / 2 hayatta**;
+hayatta kalan iki mutant `dec()`'in hata **mesajı**nı bozuyordu ve `test_money_refuses_float`'ın
+mesajı doğrulamasıyla kapatıldı → **27/27**. Yapılandırma `pyproject.toml` → `[tool.mutmut]`
+(kapsam bilinçli dar: tek modül, hızlı tohum). Her mutant bir test paketi koşusu demek olduğundan
+bu **per-commit kapı değil, dönemsel denetimdir**; çita **kararın sınırına** bağlı kalır (ADR-0010):
 aşağıdaki her satır, karşılaştırma veya sabit değiştiğinde **kırmızıya düşen** testi adıyla
-gösterir (ADR-0010). Testler: `tests/test_boundaries.py` (+ `[G-15]` golden).
+gösterir. Testler: `tests/test_boundaries.py` (+ `[G-15]` golden).
 
 | Sınır kararı | Onu öldüren test |
 | --- | --- |
 | `money.q` `ROUND_HALF_UP` (`0.125 → 0.13`) | `test_money_rounds_half_up_never_half_even` |
-| `money.dec` `float` reddi | `test_money_refuses_float` |
+| `money.dec` `float` reddi **ve hata mesajı** | `test_money_refuses_float` |
 | Oranı `≤ 0` olan sonuç atılır (`v > ZERO`) | `test_normalize_market_drops_non_positive_odds` |
 | Overround tabanı 0 (`max(ZERO, total − 1)`) | `test_overround_never_goes_negative` |
 | Tümü geçersiz pazar (`total > ZERO` guard) | `test_normalize_market_survives_an_all_invalid_market` |

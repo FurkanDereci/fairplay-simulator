@@ -25,3 +25,4 @@ desktop.ini
 # Ajan/araç artefaktları (AGENTS.md §8: ürün deposu temiz kalır)
 .commandcode/
 graphify-out/
+mutants/

@@ -157,6 +157,8 @@
             <i class="w-4 h-4" data-lucide="book-open"></i><span>İşlem Defteri</span></button></li>
           <li><button type="button" class="nav-item" data-view="genel" data-scroll="view-disiplin">
             <i class="w-4 h-4" data-lucide="shield-check"></i><span>Disiplin Skoru</span></button></li>
+          <li><button type="button" class="nav-item" data-view="genel" data-scroll="view-sinirlar">
+            <i class="w-4 h-4" data-lucide="info"></i><span>Bilinen Sınırlar</span></button></li>
         </ul>
         <div class="side-foot">
           <div class="flex items-center justify-between font-mono">
@@ -368,6 +370,34 @@
             <div class="tile"><small title="Kapanış oranı değeri eğilimi">CLV eğilimi</small><b id="t-lclv">–</b></div>
           </div>
           <p id="learning-note" class="muted" style="font-size:11px;margin:10px 0 0"></p>
+        </section>
+
+        <!-- 08 // BİLİNEN SINIRLAR — modelin söyleyemedikleri açıkça yazılır (J3, J11, ADR-0005). -->
+        <section class="outlier-card rounded-2xl p-4" id="view-sinirlar" aria-label="Bilinen sınırlar">
+          <div class="module-head is-tight">
+            <span class="module-no">08 //</span>
+            <h2 class="module-title">Bilinen sınırlar</h2>
+          </div>
+          <p class="muted" style="font-size:11.5px;margin:0 0 10px" title="Vig arındırma oranlardan çarpımsal olarak yapılır.">
+            <b class="text-slate-200">Vig arındırma çarpımsaldır.</b> Favori–longshot yanlılığı
+            modellenmez; gösterilen olasılıklar bu bilinen sınırla eksiktir.
+          </p>
+          <p class="muted" style="font-size:11.5px;margin:0 0 10px" title="t = Sharpe · √T; küçük örneklemde metrik gürültüdür.">
+            <b class="text-slate-200">Metrikler örneklem ister.</b> <span class="font-mono">t &lt; 2</span>
+            iken Sharpe/Sortino/MDD/Alpha “tanımsız” kalır — tek işlemden yorum çıkmaz.
+          </p>
+          <p class="muted" style="font-size:11.5px;margin:0 0 10px" title="Kapanışa göre değer; bahisçinin becerisini kanıtlamaz.">
+            <b class="text-slate-200">CLV kâr garantisi değildir.</b> Kapanışa göre fiyat yakalama
+            eğilimidir; “iyi bahisçisin” demez.
+          </p>
+          <p class="muted" style="font-size:11.5px;margin:0 0 10px" title="Piyasa olasılığıyla kenar tanım gereği 0'dır.">
+            <b class="text-slate-200">Kelly/EV kendi olasılığını ister.</b> Piyasa olasılığıyla
+            kenar tanım gereği sıfırdır; bu yüzden Kelly, sen olasılık vermeden gösterilmez.
+          </p>
+          <p class="muted" style="font-size:11.5px;margin:0" title="Gerçek kapanış akışı yoktur.">
+            <b class="text-slate-200">Kapanış çizgisi sentetiktir.</b> Kapanış, açılışın
+            <span class="font-mono">±%6</span> deterministik hareketidir (ADR-0005).
+          </p>
         </section>
       </aside>
     </div>
@@ -1462,8 +1492,9 @@ function init() {
   el("logout").addEventListener("click", logout);
 
   /* Sol menü = gerçek yönlendirme: her öğe bir **görünüm** açar; `data-scroll` varsa o
-     bölüme kaydırır (İşlem Defteri → rail günlüğü, Disiplin Skoru → rail disiplin kartı).
-     Ölü menü yok — dört öğenin dördü de bir yere götürür. */
+     bölüme kaydırır (İşlem Defteri → rail günlüğü, Disiplin Skoru → rail disiplin kartı,
+     Bilinen Sınırlar → rail sınırlar kartı). Ölü menü yok — beş öğenin beşi de bir yere
+     götürür. */
   const navItems = [...document.querySelectorAll(".nav-item")];
   const views = [...document.querySelectorAll(".view")];
   const setCurrent = (active) =>

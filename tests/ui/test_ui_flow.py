@@ -255,3 +255,20 @@ def test_high_stake_bet_requires_modal_confirmation(
     page.wait_for_selector("#wagers-body:has-text('BEKLİYOR')", timeout=8000)
     assert not dialog.is_visible()
     page.close()
+
+
+def test_limits_panel_is_reachable_from_the_menu(
+    browser: Browser, live_server: str, register
+) -> None:
+    """Ö-12 — "Bilinen sınırlar" (J3/J11) menüden erişilir ve içeriği görünür."""
+    page = browser.new_page()
+    register(page, "limits")
+
+    page.click(".nav-item[data-scroll='view-sinirlar']")
+    panel = page.locator("#view-sinirlar")
+    panel.wait_for(state="visible", timeout=5000)
+    text = panel.inner_text()
+    assert "arındırma" in text
+    assert "tanımsız" in text
+    page.close()
+

@@ -17,7 +17,7 @@ yazmak yasak).
 | --- | --- | --- | --- | --- |
 | 1 | **Doğrulama mimarisi** | Golden (spec örnekleri) + property (değişmezler) + **davranış** (gerçek tarayıcı) testleri; kapsam yüzdesi de test sayısı da **çıta değil**; kritik karşılaştırma/sabitler **adlandırılmış sınır testleriyle** kilitli | `pytest` · `tests/ui` · `tests/test_boundaries.py` · `docs/50-test-strategy.md` §9 tablosu (docs-sync doğrular) · ADR-0010 | ✅ |
 | 2 | **Domen değişmezleri, tek otorite** | Event-sourced defter **tek gerçek kaynak**; NAV/TWR yalnız `core/`'da hesaplanır | `I1`–`I4` property testleri · `tests/test_docs_sync.py` | ✅ |
-| 3 | **Ölçümün tanımı** | Her metriğin formülü + işlenmiş örneği + **"ne zaman anlamsız"** kuralı: `t = SR·√T`, `t < 2` ise "örneklem yetersiz"; `ProfitFactor` kayıp yokken **tanımsız** | `[G-3]`–`[G-7]`, `[G-14]` golden · `tests/api` anlamlılık testi · arayüz notu | ✅ |
+| 3 | **Ölçümün tanımı** | Her metriğin formülü + işlenmiş örneği + **"ne zaman anlamsız"** kuralı: `t = SR·√T`, `t < 2` ise "örneklem yetersiz"; `ProfitFactor` kayıp yokken **tanımsız** | `[G-3]`–`[G-7]`, `[G-14]` golden · `tests/api` anlamlılık testi · arayüz notu · `tests/ui` "Bilinen sınırlar" panosu (J3) | ✅ |
 
 ## B — Görünürlük alanları
 
@@ -35,7 +35,7 @@ yazmak yasak).
 | 8 | **Süreç kapıları, ADR, bağımsız inceleme** | Her mimari karar ADR; "bitti" tanımı testlerle; **yazar kendi işini onaylamaz** (farklı model, salt-okur inceleme) | `docs/60-decisions/` · docs-sync · bağımsız inceleme turu | ✅ |
 | 9 | **Kullanıcı, değişim, ürün değeri** | Ürün **eğitir**: kararı kullanıcı verir (`p`), tavsiye/tahmin yok. "Öğretir" iddiası **iki katmana** ayrıldı — davranış ölçümü (kapı var) ve öğrenme (🅿️ insan çalışması, protokol yazılı) | `docs/90-urun-degeri.md` · `GET /api/learning-report` · `[G-16]` golden · `tests/api` örneklem testi | ✅ / 🅿️ |
 | 10 | **Mimari sınırlar, geçiş tetikleyicileri** | Tek süreç + SQLite; hedef mimari (PG/Timescale/Redis) **sayısal tetikleyiciye** bağlı; tetikleyiciler **komutla ölçülür** | `docs/30-architecture.md` CURRENT/TARGET · `cli scale-report` (`tests/repo`) | ✅ |
-| 11 | **Domain paketi (projeye özel matematik)** | Vig arındırma **çarpımsal** (bilinçli sınır: favori–longshot yanlılığı modellenmiyor); R_ruin formülü (§3.4) ve yarım-Kelly; bozuk oran **sınırda reddedilir** | `[G-8]`–`[G-13]`, `[G-17]`–`[G-19]` golden · `tests/test_boundaries.py` | ✅ |
+| 11 | **Domain paketi (projeye özel matematik)** | Vig arındırma **çarpımsal** (bilinçli sınır: favori–longshot yanlılığı modellenmiyor); R_ruin formülü (§3.4) ve yarım-Kelly; bozuk oran **sınırda reddedilir** | `[G-8]`–`[G-13]`, `[G-17]`–`[G-19]` golden · `tests/test_boundaries.py` · `tests/ui` "Bilinen sınırlar" panosu (J11 görünür) | ✅ |
 
 ---
 

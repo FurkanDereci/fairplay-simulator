@@ -16,6 +16,7 @@ DoD = testler yeşil + `ruff`/`mypy` temiz + dokümanlar güncel + `docs-sync` g
 | **S6** | Benchmark botları | 3 strateji, maç kayıtlarından **türetilen** | Determinizm + restart'ta sıfırlanmama | ✅ |
 | **S7** | Oyunlaştırma + arayüz | enerji/cooldown; enerji **görünür**; kart tabanlı arayüz, lig filtresi, kullanıcı olasılığıyla EV/Kelly; **disiplin rozetleri** + risk onay modalı | Mock state yok; enerji görünür; bağımsız inceleme bulguları kapatıldı; rozetler ve `tests/ui` (gerçek tarayıcı) var; **tipli istemci** (OpenAPI→TS) üretildi (ADR-0019) | ✅ |
 | **S8** | Yayın | doküman geçişi, README kurulumu, uçtan uca duman | Temiz ortamda kurulum + `docs-sync` yeşil | ✅ |
+| **S9** | **Sanal sezon + kalibrasyon** | **Yapı taşları:** oran–sonuç ayrımı (latent güç + gömülü verimsizlik) · olasılık kaydı + Brier · sezon kimliği + lig üreteci. **Yüzey:** maç günü akışı, sezon özeti, kalibrasyon modu | ADR-0024 kapıları: **100+ maçta +EV** testi · karnesiz sezon başlamaz · sızıntı (Playwright) · determinizm · docs-sync | ⬜ |
 
 ## Dilim → sözleşme bağı
 
@@ -23,6 +24,7 @@ DoD = testler yeşil + `ruff`/`mypy` temiz + dokümanlar güncel + `docs-sync` g
 - S4 → `10-domain-model.md` §4 (hata sözleşmesi) + `20` §4 dışı uçlar
 - S6 → `20-accounting-spec.md` §3.1–3.3 (vig, Kelly, CLV) + ADR-0004 (kapanış oranı vekili)
 - S7 → `20-accounting-spec.md` §4 (enerji/cooldown politika katmanı)
+- S9 → `60-decisions/0024-sanal-sezon-ve-kalibrasyon.md` (sezon/kalibrasyon kararı ve üç yapı taşı)
 
 ## Deferred (bilinçli olarak sonra)
 

@@ -26,6 +26,7 @@
 
 | İş | Neden | Kaynak |
 | --- | --- | --- |
+| **Sanal sezon + kalibrasyon (S9)** | Ürünün **döngüsü yok**; bu, döngüyü **sağlayıcısız** (mock dünya) kurar ve Ö-1'e zemin olur. Üç yapı taşı bitmeden başlamaz: oran–sonuç ayrımı · olasılık kaydı+Brier · sezon kimliği | `docs/60-decisions/0024-sanal-sezon-ve-kalibrasyon.md` · `docs/ROADMAP.md` |
 | **Ö-1 — M2 öğrenme çalışması** | Ürün tezinin ("öğretir") **tek açık kanıtı**; insan katılımcı gerektirir, kod işi değil — katılımcı yoksa **n=1 pilot** varyantı: `docs/90-urun-degeri.md` §4.1 | PM raporu §5 (Ö-1) |
 | **Parite: F3 kupon fişi → F4 factsheet** | Arayüz paritesi; **kabul ölçütü değil**, iyileştirme | `docs/70-parite-ve-devralma.md` |
 | **Parola sıfırlama / hesap kurtarma** | Bugün akış yok; parola unutulursa hesap arayüzden erişilemez | Vault `Backlog` (FairPlay / parola sıfırlama) |

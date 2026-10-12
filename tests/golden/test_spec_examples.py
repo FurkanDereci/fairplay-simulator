@@ -187,7 +187,7 @@ def test_g16_learning_metrics() -> None:
     assert report.stake_verdict == "ölçülü"
     assert report.favourite_share_pct == D("0.00")
     assert report.favourite_verdict == "dengeli"
-    assert report.headline == "CLV eğilimi yukarı"
+    assert report.headline == "kapanış çizgisini daha sık geçiyorsun"
 
 
 def test_g16_thin_sample_reads_no_trend() -> None:

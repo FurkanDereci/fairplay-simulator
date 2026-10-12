@@ -187,9 +187,9 @@ def build_learning_report(
             # Ek uyumu ("%100,00'ü" / "%10,00'u") yüzünden ek gerektirmeyen kalıp kullanılır.
             parts.append(f"favori oranı %{_pct_text(favourite_pct)} — yanlılık riski")
         if trend == TREND_UP:
-            parts.append("CLV eğilimi yukarı")
+            parts.append("kapanış çizgisini daha sık geçiyorsun")
         elif trend == TREND_DOWN:
-            parts.append("CLV eğilimi aşağı")
+            parts.append("kapanış çizgisinin altında kalıyorsun")
 
     headline = (
         f"Örneklem yetersiz ({count}/{MIN_SAMPLE}) — eğilim okunmaz."

@@ -66,7 +66,7 @@ def test_probability_yields_an_assessment_without_betting(
     page.locator(".market input[aria-label*='tahminin']").first.fill("60")
     page.wait_for_selector(".assess:not([hidden])", timeout=10000)
     text = page.locator(".assess").first.inner_text()
-    assert "EV" in text and "Kelly" in text and "önerilen stake" in text
+    assert "Beklenen kazanç" in text and "Önerilen pay" in text and "önerilen bahis" in text
     assert page.locator("#wagers-body").inner_text().find("BEKLİYOR") == -1
     page.close()
 
@@ -270,5 +270,34 @@ def test_limits_panel_is_reachable_from_the_menu(
     text = panel.inner_text()
     assert "arındırma" in text
     assert "tanımsız" in text
+    page.close()
+
+
+def test_default_copy_is_plain_and_jargon_lives_in_the_advanced_panel(
+    browser: Browser, live_server: str, register
+) -> None:
+    """Varsayılan ekran sade Türkçe; teknik terimler ayrı yolda ("İleri Düzey").
+
+    Kullanıcı geri bildirimi (2026-10-12): 3 naif kişi terimleri (NAV/Sharpe/CLV…) anlamadı.
+    Kural: varsayılan 8. sınıf düzeyi; teknik ad ileri düzey kullanıcı için ayrı yolda.
+    """
+    page = browser.new_page()
+    register(page, "plain")
+
+    page.click(".nav-item[data-scroll='view-disiplin']")  # Genel Bakış görünümünü açar
+    page.wait_for_selector("#view-disiplin", state="visible", timeout=5000)
+
+    labels = page.locator("#fund-tiles .tile small, .tiles-metric .tile small").all_inner_texts()
+    # CSS etiketleri büyük harfe çevirir (text-transform: uppercase).
+    assert "BİRİM FİYAT" in labels
+    assert "RİSK BAŞINA KAZANÇ" in labels
+    assert "NAV" not in labels and "SHARPE" not in labels, labels
+
+    page.click(".nav-item[data-scroll='view-terimler']")
+    page.locator("#view-terimler").wait_for(state="visible", timeout=5000)
+    page.locator("#view-terimler summary").click()  # katlanır panel açılır
+    body = page.locator("#view-terimler").inner_text()
+    for term in ("NAV", "Sharpe", "CLV", "Kelly"):
+        assert term in body, f"{term} ileri düzey panelinde yok"
     page.close()
 

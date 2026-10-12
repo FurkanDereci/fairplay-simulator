@@ -104,6 +104,11 @@ Sadakat öncelikli olduğu için eski sözleşmenin bazı maddeleri **bilinçli 
 - Kullanıcıya görünen metinde **ham enum yaşamaz** (`HOME`, `BTTS_YES`, `OVER_UNDER_2.5`):
   `MARKET_LABELS`/`SELECTION_LABELS` çevirir, API'ye giden `value` ham enum kalır. Kupon durumu
   (`WON`/`LOST`/`BEKLİYOR`) testlerle sabitlendiği için ekranda kod olarak kalır — anlamı `title`'da.
+- **Varsayılan metin sade Türkçe (8. sınıf düzeyi); teknik terim ayrı yolda.** Finans kısaltmaları
+  ekranda **çıplak yaşamaz**: etiket sade karşılıktır ("Birim fiyat", "Risk başına kazanç",
+  "Kapanış farkı", "Önerilen pay"); teknik ad **`title`da** ve **"İleri Düzey" panelinde**
+  (katlanır `#view-terimler`) durur — ileri düzey kullanıcı için ayrı yol. Ölçüm (2026-10-12):
+  3 naif kullanıcı çıplak terimleri (NAV/Sharpe/CLV) **anlamadı**; `tests/ui` bu ayrımı kilitler.
 - Süre ve ölçek **okunur birime** çevrilir: `168 saat` yerine `7 gün (168 saat)` (`fmtHours`).
 - `.table-wrap` yatay kaydırılır; `contain: inline-size` tablonun sayfayı genişletmesini önler.
 - `.tile` ızgarası masaüstünde 3, **≤520px'de 2 kolon**; hero metrik yazısı ≤520px'de 22px.

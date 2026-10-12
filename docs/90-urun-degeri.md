@@ -93,6 +93,13 @@ naif** kişiye (sınıf arkadaşı, yurt) T0/T1 olarak uygula. Naif T0 düşük 
 sinyal odur**; kendi öz-testin yalnız enstrümanın çalıştığını (ne trivially kolay ne imkânsız)
 gösterir.
 
+**Saha notu (2026-10-12) — enstrüman bu kitleye ağır.** 3 naif kişiye 5 soru soruldu: **üçü de
+hiçbirini cevaplayamadı**, hatta terimleri (vig, Kelly, CLV, TWR, Sharpe) **tanımadı**. Sonuç:
+"anlamadı" ile "öğrenmedi" **ayrılamaz** → bu hâliyle enstrüman **geçersiz**; n=3 sonucu "öğretmiyor"
+demek değildir. Sorular **jargonsuz** yeniden yazılmalı (kâr/tahmin/kasa dili), o zaman yeniden
+koşulabilir. Aynı bulgu arayüzü de vurdu → varsayılan metin sadeleştirildi (`DESIGN.md`
+"Bileşen kuralları"; teknik terim "İleri Düzey" yoluna taşındı).
+
 **T0 kaydı (tarih + cevaplar).**
 
 _(koşulunca buraya yazılır; ön-kayıt olduğu için commit'lenir)_

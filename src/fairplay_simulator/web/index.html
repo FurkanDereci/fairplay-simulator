@@ -159,6 +159,8 @@
             <i class="w-4 h-4" data-lucide="shield-check"></i><span>Disiplin Skoru</span></button></li>
           <li><button type="button" class="nav-item" data-view="genel" data-scroll="view-sinirlar">
             <i class="w-4 h-4" data-lucide="info"></i><span>Bilinen Sınırlar</span></button></li>
+          <li><button type="button" class="nav-item" data-view="genel" data-scroll="view-terimler">
+            <i class="w-4 h-4" data-lucide="graduation-cap"></i><span>İleri Düzey</span></button></li>
         </ul>
         <div class="side-foot">
           <div class="flex items-center justify-between font-mono">
@@ -217,8 +219,8 @@
             </div>
             <div class="grid gap-4 md:grid-cols-2">
               <div class="tiles" id="fund-tiles">
-                <div class="tile hero"><small title="Birim pay değeri — kasanın bir paya düşen değeri">NAV</small><b id="t-nav">–</b></div>
-                <div class="tile hero"><small title="Zaman ağırlıklı getiri — para giriş/çıkışının etkisi arındırılmış">TWR</small><b id="t-twr">–</b></div>
+                <div class="tile hero"><small title="Birim fiyat (NAV) — kasanın bir paya düşen değeri">Birim fiyat</small><b id="t-nav">–</b></div>
+                <div class="tile hero"><small title="Getiri (TWR) — para eklemenin etkisi arındırılmış getiri">Getiri</small><b id="t-twr">–</b></div>
               </div>
               <div class="tiles">
                 <div class="tile"><small title="Bahse bağlanmayan, serbest duran bakiye">Serbest kasa</small><b id="t-cash">–</b></div>
@@ -238,12 +240,12 @@
               </div>
             </div>
             <div class="tiles tiles-metric">
-              <div class="tile"><small title="Getirinin oynaklığa bölümü — risk başına kazanç">Sharpe</small><b id="t-sharpe">–</b></div>
-              <div class="tile"><small title="Yalnız aşağı yönlü oynaklığa göre risk başına kazanç">Sortino</small><b id="t-sortino">–</b></div>
-              <div class="tile"><small title="En büyük düşüş — tepeden dibe en derin gerileme">MDD</small><b id="t-mdd">–</b></div>
-              <div class="tile"><small title="Piyasaya göre oynaklık — 1 = piyasa kadar oynak">Beta</small><b id="t-beta">–</b></div>
-              <div class="tile"><small title="Piyasanın üstünde kalan getiri — betanın beklediğinden fazlası">Alpha</small><b id="t-alpha">–</b></div>
-              <div class="tile"><small title="Riske göre düzeltilmiş puan">RAS</small><b id="t-ras">–</b></div>
+              <div class="tile"><small title="Risk başına kazanç (Sharpe) — getirinin oynaklığa bölümü">Risk başına kazanç</small><b id="t-sharpe">–</b></div>
+              <div class="tile"><small title="Düşüşe göre kazanç (Sortino) — yalnız aşağı yönlü oynaklığa göre">Düşüşe göre kazanç</small><b id="t-sortino">–</b></div>
+              <div class="tile"><small title="En büyük düşüş (MDD) — tepeden dibe en derin gerileme">En büyük düşüş</small><b id="t-mdd">–</b></div>
+              <div class="tile"><small title="Piyasaya göre oynaklık (Beta) — 1 = piyasa kadar oynak">Piyasaya göre oynaklık</small><b id="t-beta">–</b></div>
+              <div class="tile"><small title="Piyasanın üstündeki getiri (Alpha) — betanın beklediğinden fazlası">Piyasanın üstü</small><b id="t-alpha">–</b></div>
+              <div class="tile"><small title="Riske göre puan (RAS) — düzeltilmiş puan">Riske göre puan</small><b id="t-ras">–</b></div>
             </div>
             <!-- Kısıt bildirimi: anlamsız örneklemde renk susar (DESIGN.md) ve kısıt burada
                  yazılı kalır. #risk-note metni kısaltılmaz ("Örneklem yetersiz" birebir). -->
@@ -292,7 +294,7 @@
               <thead>
                 <tr><th>Maç</th><th>Seçim</th><th class="num">Oran</th><th class="num">Bahis tutarı</th>
                     <th>Durum</th><th class="num">Net</th>
-                    <th class="num" title="Kapanış oranı değeri — aldığın oranın maç kapanışındaki orana göre farkı">CLV</th></tr>
+                    <th class="num" title="Kapanış farkı (CLV) — aldığın oranın maç kapanışındaki orana göre farkı">Kapanış farkı</th></tr>
               </thead>
               <tbody id="wagers-body"></tbody>
             </table>
@@ -367,7 +369,7 @@
             <div class="tile"><small title="Değerlendirme yapılan bahis sayısı">Bahis</small><b id="t-lbets">–</b></div>
             <div class="tile"><small title="Bahis tutarının kasaya oranı — kendi ortalaman">Bahis oranı</small><b id="t-lstake">–</b></div>
             <div class="tile"><small title="Favori (düşük oranlı) seçimlerin payı">Favori payı</small><b id="t-lfav">–</b></div>
-            <div class="tile"><small title="Kapanış oranı değeri eğilimi">CLV eğilimi</small><b id="t-lclv">–</b></div>
+            <div class="tile"><small title="Kapanışa göre eğilim (CLV) — kapanış oranını ne sıklıkla geçtiğin">Kapanışa göre eğilim</small><b id="t-lclv">–</b></div>
           </div>
           <p id="learning-note" class="muted" style="font-size:11px;margin:10px 0 0"></p>
         </section>
@@ -384,20 +386,44 @@
           </p>
           <p class="muted" style="font-size:11.5px;margin:0 0 10px" title="t = Sharpe · √T; küçük örneklemde metrik gürültüdür.">
             <b class="text-slate-200">Metrikler örneklem ister.</b> <span class="font-mono">t &lt; 2</span>
-            iken Sharpe/Sortino/MDD/Alpha “tanımsız” kalır — tek işlemden yorum çıkmaz.
+            iken risk metrikleri “tanımsız” kalır — tek işlemden yorum çıkmaz.
           </p>
           <p class="muted" style="font-size:11.5px;margin:0 0 10px" title="Kapanışa göre değer; bahisçinin becerisini kanıtlamaz.">
-            <b class="text-slate-200">CLV kâr garantisi değildir.</b> Kapanışa göre fiyat yakalama
-            eğilimidir; “iyi bahisçisin” demez.
+            <b class="text-slate-200">Kapanışa göre değer kâr garantisi değildir.</b> Kapanış oranını
+            geçme eğilimidir; “iyi bahisçisin” demez.
           </p>
           <p class="muted" style="font-size:11.5px;margin:0 0 10px" title="Piyasa olasılığıyla kenar tanım gereği 0'dır.">
-            <b class="text-slate-200">Kelly/EV kendi olasılığını ister.</b> Piyasa olasılığıyla
-            kenar tanım gereği sıfırdır; bu yüzden Kelly, sen olasılık vermeden gösterilmez.
+            <b class="text-slate-200">Önerilen pay kendi tahminini ister.</b> Piyasa olasılığıyla
+            kenar tanım gereği sıfırdır; bu yüzden sen tahmin vermeden gösterilmez.
           </p>
           <p class="muted" style="font-size:11.5px;margin:0" title="Gerçek kapanış akışı yoktur.">
             <b class="text-slate-200">Kapanış çizgisi sentetiktir.</b> Kapanış, açılışın
             <span class="font-mono">±%6</span> deterministik hareketidir (ADR-0005).
           </p>
+        </section>
+
+        <!-- 09 // İLERİ DÜZEY — teknik terimler; varsayılan ekranda değil, ayrı yol. -->
+        <section class="outlier-card rounded-2xl p-4" id="view-terimler" aria-label="İleri düzey terimler">
+          <details>
+            <summary class="module-title" style="cursor:pointer;font-size:13px">İleri düzey: teknik terimler</summary>
+            <p class="muted" style="font-size:11.5px;margin:10px 0 0">
+              Arayüzde her şey sade Türkçe yazılır; teknik adlar burada durur.
+            </p>
+            <ul class="muted" style="font-size:11.5px;margin:10px 0 0;padding-left:16px;line-height:1.7">
+              <li><b class="text-slate-200">NAV</b> — birim fiyat: kasanın bir paya düşen değeri.</li>
+              <li><b class="text-slate-200">TWR</b> — getiri: para eklemenin etkisi arındırılmış.</li>
+              <li><b class="text-slate-200">Sharpe</b> — risk başına kazanç: getiri ÷ oynaklık.</li>
+              <li><b class="text-slate-200">Sortino</b> — düşüşe göre kazanç: yalnız aşağı yönlü oynaklık.</li>
+              <li><b class="text-slate-200">MDD</b> — en büyük düşüş: tepeden dibe en derin gerileme.</li>
+              <li><b class="text-slate-200">Beta</b> — piyasaya göre oynaklık (1 = piyasa kadar).</li>
+              <li><b class="text-slate-200">Alpha</b> — piyasanın üstündeki getiri.</li>
+              <li><b class="text-slate-200">RAS</b> — riske göre puan.</li>
+              <li><b class="text-slate-200">CLV</b> — kapanış farkı: aldığın oranın maç kapanışına göre farkı.</li>
+              <li><b class="text-slate-200">EV</b> — beklenen kazanç (pozitifse bahis uzun vadede kârlı).</li>
+              <li><b class="text-slate-200">Kelly</b> — önerilen pay: kasanı iflasa sürüklemeden oynanacak tutar.</li>
+              <li><b class="text-slate-200">vig</b> — marj: bahisçinin oranlara koyduğu pay.</li>
+            </ul>
+          </details>
         </section>
       </aside>
     </div>
@@ -750,7 +776,7 @@ function marketRow(fixture, marketType, market) {
   probability.type = "text";
   probability.setAttribute("aria-label", marketLabel(marketType) + " için tahminin (yüzde)");
   probability.placeholder = "p %";
-  probability.title = "Kendi olasılık tahminin (%); yazarken EV ve Kelly otomatik hesaplanır";
+  probability.title = "Kendi olasılık tahminin (%); yazarken beklenen kazanç ve önerilen pay otomatik hesaplanır";
   probability.style.width = "60px";
 
   const stake = document.createElement("input");
@@ -772,8 +798,8 @@ function marketRow(fixture, marketType, market) {
   const result = document.createElement("p");
   result.className = "assess";
   result.setAttribute("aria-live", "polite");
-  result.title = "EV: beklenen değer — pozitifse bahis uzun vadede kârlı. " +
-    "Kelly: kasanı iflasa sürüklemeden önerilen pay. Stake: kupon için kilitlenen tutar.";
+  result.title = "Beklenen kazanç — pozitifse bahis uzun vadede kârlı. " +
+    "Önerilen pay: kasanı iflasa sürüklemeden oynayabileceğin tutar. Bahis tutarı: kupon için kilitlenen para.";
   result.hidden = true;
 
   let requestSeq = 0;
@@ -836,13 +862,13 @@ function marketRow(fixture, marketType, market) {
       result.innerHTML = "";
       const strong = document.createElement("b");
       strong.className = positive ? "good" : "bad";
-      strong.textContent = "EV " + fmtSignedPct(data.ev_pct);
+      strong.textContent = "Beklenen kazanç " + fmtSignedPct(data.ev_pct);
       result.appendChild(strong);
       result.appendChild(document.createTextNode(
         (positive
-          ? " · Kelly %" + fmtNumber(Number(data.kelly_fraction) * 100, 2) +
-            " · önerilen stake " + fmtMoney(data.suggested_stake)
-          : " · pozitif EV yok (Kelly %0)") +
+          ? " · Önerilen pay %" + fmtNumber(Number(data.kelly_fraction) * 100, 2) +
+            " · önerilen bahis " + fmtMoney(data.suggested_stake)
+          : " · kazanç beklentisi yok (önerilen pay %0)") +
         " · adil oran %" + fmtNumber(Number(data.fair_prob) * 100, 1)
       ));
       result.hidden = false;
@@ -1453,7 +1479,7 @@ function renderLearning(learning) {
   const parts = [learning.headline];
   if (learning.clv.trend === "örneklem yetersiz") {
     parts.push(
-      "CLV eğilimi için kapanış oranı gerekiyor (en az " + learning.min_sample + " bahis)."
+      "Kapanışa göre eğilim için kapanış oranı gerekiyor (en az " + learning.min_sample + " bahis)."
     );
   }
   parts.push("Oynadığın farklı bahis türü: " + learning.market_breadth + ".");
@@ -1493,8 +1519,8 @@ function init() {
 
   /* Sol menü = gerçek yönlendirme: her öğe bir **görünüm** açar; `data-scroll` varsa o
      bölüme kaydırır (İşlem Defteri → rail günlüğü, Disiplin Skoru → rail disiplin kartı,
-     Bilinen Sınırlar → rail sınırlar kartı). Ölü menü yok — beş öğenin beşi de bir yere
-     götürür. */
+     Bilinen Sınırlar → rail sınırlar kartı, İleri Düzey → rail terimler kartı). Ölü menü yok —
+     altı öğenin altısı da bir yere götürür. */
   const navItems = [...document.querySelectorAll(".nav-item")];
   const views = [...document.querySelectorAll(".view")];
   const setCurrent = (active) =>

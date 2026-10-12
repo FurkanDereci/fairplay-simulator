@@ -63,9 +63,9 @@ NAV/benchmark grafiği güncel ve tutarlı.
 ## 6. Kapılar (CI)
 
 ```
-ruff check .            # lint
-mypy --strict core app  # tip
-pytest -q               # unit + property + golden + contract + docs-sync
+ruff check .  # lint
+mypy          # tip (ayarlar pyproject.toml'da: strict + files = src/fairplay_simulator)
+pytest -q     # unit + property + golden + contract + docs-sync
 ```
 
 Hepsi yeşil değilse dilim kapanmaz (DoD).

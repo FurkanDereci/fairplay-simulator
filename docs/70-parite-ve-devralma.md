@@ -215,7 +215,8 @@ Değer/emek sırasına göre: ~~**F1 + F2** (motor olayları + arena)~~ **✅** 
 
 Bunlar "eksik" değil, planlı hedef: PostgreSQL 16 + TimescaleDB + Redis + pub/sub broadcaster ve DDL
 şeması (`02`, belgenin başında HEDEF olarak etiketli) · gerçek sağlayıcı entegrasyonu (The Odds API /
-API-Football / Football-Data.org) + Redis TTL önbelleği (`research/01`) · `bet_legs` (çok bacaklı
+API-Football / Football-Data.org; **eşik: Ö-1/M2 olumlu → ADR-0022**) + Redis TTL önbelleği
+(`research/01`) · `bet_legs` (çok bacaklı
 kupon) · dokümanın hedef DDL'inde `odds_snapshots` geçmişi · OpenTelemetry + Docker limitleri
 (`agents/devops`) · Time Machine, kopya fon (Faz 2).
 

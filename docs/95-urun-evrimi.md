@@ -37,6 +37,7 @@ burada yalnız **nasıl ölçüleceği** ve neyin ateşleneceği özetlenir (say
 
 | Konu | Bugünkü durum | Ölçüm yolu | Ne ateşlenir |
 | --- | --- | --- | --- |
+| **Gerçek maç verisi (mock → sağlayıcı)** | yok (mock fikstür + sentetik kapanış) | — (sayısal değil) | **Ö-1 (M2) olumlu** → sağlayıcı fazı (ADR-0022; `docs/30-architecture.md`) |
 | Ölçek göçü (PostgreSQL / TimescaleDB / Redis) | yok (tek süreç + SQLite) | `fairplay-simulator scale-report` | `docs/30-architecture.md` TARGET geçişi |
 | Defter snapshot'ı | yok (her okuma baştan replay) | `fairplay-simulator scale-report` | snapshot katmanı (ADR-0009) |
 | Rate limiting | yok | `GET /api/telemetry` (yetkili) | hız sınırı dilimi (ADR-0021) |
@@ -44,8 +45,9 @@ burada yalnız **nasıl ölçüleceği** ve neyin ateşleneceği özetlenir (say
 
 ## 5. Karar noktaları (kapı değil, insan kararı)
 
-- **Ö-1 sonucu ürün tanımını belirler:** olumluysa öğretici yüzey öne çıkar; olumsuzsa ürün
-  dürüstçe yeniden konumlanır (PM raporu §4).
+- **Ö-1 sonucu ürün tanımını belirler:** olumluysa gerçek sağlayıcı verisi fazı açılır (ADR-0022) ve
+  öğretici yüzey öne çıkar; olumsuzsa ürün dürüstçe yeniden konumlanır ve gerçek veri yatırımı
+  yapılmaz (PM raporu §4).
 - **Parola sıfırlama biçimi:** e-posta token'ı mı, "tek kullanıcılı MVP → kabul" mi, `cli
   reset-password` mı → **ADR** bekler.
 - **Köklü görsel değişiklikler**: proposal + ADR süreci → `docs/60-decisions/0016-*`, `DESIGN.md`.

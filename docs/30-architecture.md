@@ -66,7 +66,8 @@ tests/                     golden · property · docs-sync
 
 ## TARGET'e geçiş tetikleyicileri
 
-Aşağıdakilerden **biri ölçülüp gerçekleşene kadar** ilgili teknoloji eklenmez:
+Aşağıdakilerden **biri ölçülüp ya da yazılı bir karar eşiği gerçekleşene kadar** ilgili teknoloji
+eklenmez:
 
 | Teknoloji | Tetikleyici |
 | --- | --- |
@@ -76,6 +77,7 @@ Aşağıdakilerden **biri ölçülüp gerçekleşene kadar** ilgili teknoloji ek
 | Mikroservis ayrımı | Tek süreç derleme+test süresi > 10 dk, ya da bağımsız ölçekleme gerekene kadar |
 | Rate limiting | Gerçek kötüye kullanım gözlemlendiğinde (gözlem kaynağı: `GET /api/telemetry`, ADR-0021) |
 | Defter snapshot'ı | Kullanıcı başına **> 100.000 olay** veya `cli replay` **> 250 ms** (ölçüm 2026-09-30: 5.001 olay → 7,1 ms; ADR-0009) |
+| Gerçek sağlayıcı verisi (mock → The Odds API / API-Football / Football-Data.org) | **Karar eşiği — sayısal DEĞİL:** Ö-1 (M2 öğrenme çalışması) olumlu sonuçlanınca (ADR-0022) |
 
 İzleme **elle bakmaktan çıkarıldı:** `fairplay-simulator scale-report [--db PATH]` bu değerleri
 basar (defter olayı, kullanıcı başına en yüksek, replay süresi, DB boyutu) ve bir tetikleyici

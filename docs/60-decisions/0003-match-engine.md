@@ -8,8 +8,9 @@
 ## Karar
 
 - Sonuç **Poisson** ile üretilir: `home ~ Poisson(λ_home)`, `away ~ Poisson(λ_away)`.
-- Örnekleme **Knuth** yöntemiyle, enjekte edilen `random.Random(seed)` üzerinden yapılır.
-  Rastgelelik çağrı sırası sabittir → **aynı seed aynı skoru verir**.
+- Örnekleme **Knuth** yöntemiyle, enjekte edilen tohumlu rng üzerinden yapılır. Tohum **maça
+  özgüdür** (`Random(f"{match_id}:{seed}")`; ADR-0023); rastgelelik çağrı sırası sabittir →
+  **aynı (maç, seed) aynı skoru verir**.
 - λ'lar **piyasadan** türetilir: fair olasılıklardan `home_share = p_home/(p_home+p_away)`,
   `λ_home = T·home_share`, `λ_away = T·(1−home_share)`, `T = 2.6` (lig ortalaması).
 

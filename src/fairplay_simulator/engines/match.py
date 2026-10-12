@@ -170,6 +170,19 @@ def _build_events(
     return tuple(events)
 
 
+def _rng(match_id: str, seed: int | None) -> random.Random:
+    """Maça özgü rastgelelik kaynağı (ADR-0023).
+
+    Tohum **maç kimliğiyle tuzlanır**: aynı tohum farklı maçlarda **farklı** akış üretir. Öncesinde
+    `Random(seed)` maç kimliğini yok sayıyordu; bu yüzden arayüzün varsayılan tohumuyla (5) her
+    fikstür aynı skoru (6-2) veriyordu — aynı akış, aynı çekiliş sırası. Determinizm korunur:
+    aynı **(maç, tohum)** çifti yine aynı skoru ve olayları üretir. `seed=None` sistem entropisi.
+    """
+    if seed is None:
+        return random.Random()
+    return random.Random(f"{match_id}:{seed}")
+
+
 def simulate_match(
     match_id: str,
     home_team: str,
@@ -178,9 +191,9 @@ def simulate_match(
     *,
     seed: int | None = None,
 ) -> MatchResult:
-    """Tek maç simüle eder. Aynı `seed` → aynı skor **ve aynı olay zaman çizelgesi**."""
+    """Tek maç simüle eder. Aynı **(maç, seed)** → aynı skor **ve aynı olay zaman çizelgesi**."""
     lambda_home, lambda_away = derive_lambdas(odds_1x2)
-    rng = random.Random(seed)
+    rng = _rng(match_id, seed)
     home_score = _poisson(rng, lambda_home)
     away_score = _poisson(rng, lambda_away)
     events = _build_events(rng, home_score, away_score, home_team, away_team)

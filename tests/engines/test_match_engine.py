@@ -38,6 +38,32 @@ def test_seed_actually_varies() -> None:
     assert len(results) > 1
 
 
+def test_seed_is_per_match_not_global() -> None:
+    """Regresyon (ADR-0023): aynı seed farklı maçlarda **aynı akışı** tüketmemeli.
+
+    Öncesinde `Random(seed)` maç kimliğini yok sayıyordu; aynı tohum + aynı oranla her maç aynı
+    skora kilitleniyordu (arayüzün varsayılanıyla beş fikstürün beşi de 6-2 çıkıyordu).
+    """
+    scores = {
+        (simulate_match(mid, "Ev", "Dep", ODDS_1X2, seed=5).home_score,
+         simulate_match(mid, "Ev", "Dep", ODDS_1X2, seed=5).away_score)
+        for mid in ("m1", "m2", "m3")
+    }
+    assert len(scores) > 1, f"aynı seed tüm maçları tek skora kilitledi: {scores}"
+
+
+def test_default_seed_gives_varied_fixture_scores() -> None:
+    """Kullanıcının gördüğü belirti: varsayılan tohumla fikstürler çeşitlenmeli."""
+    from fairplay_simulator.app.fixtures import CATALOG
+
+    scores = {
+        (simulate_match(mid, fx.home_team, fx.away_team, fx.odds_1x2(), seed=5).home_score,
+         simulate_match(mid, fx.home_team, fx.away_team, fx.odds_1x2(), seed=5).away_score)
+        for mid, fx in CATALOG.items()
+    }
+    assert len(scores) > 1, f"varsayılan tohum tüm fikstürleri tek skora kilitledi: {scores}"
+
+
 def test_lambda_favourite_gets_more() -> None:
     """Favori (daha düşük oran) daha yüksek λ alır, toplam lig ortalamasına yakın."""
     lambda_home, lambda_away = derive_lambdas(ODDS_1X2)

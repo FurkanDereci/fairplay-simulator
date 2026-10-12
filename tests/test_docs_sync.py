@@ -133,17 +133,19 @@ def test_parity_document_matches_the_api_surface() -> None:
 
 
 def test_quality_index_paths_exist() -> None:
-    """`docs/80-kalite-alanlari.md` bir **indekstir**: işaret ettiği her yol gerçekten var olmalı.
+    """`docs/80` + `docs/95` bir **indekstir**: işaret ettiği her yol gerçekten var olmalı.
 
     İndeks kendi başına sürüklenirse "şu alan şurada yaşıyor" iddiası yalan olur.
     """
-    text = _read(DOCS / "80-kalite-alanlari.md")
-    listed = set(
-        re.findall(r"`((?:docs|tests)/[A-Za-z0-9_./-]+|DESIGN\.md|AGENTS\.md)`", text)
-    )
-    assert listed, "docs/80-kalite-alanlari.md içinde yol listesi bulunamadı."
+    listed: set[str] = set()
+    for name in ("80-kalite-alanlari.md", "95-urun-evrimi.md"):
+        text = _read(DOCS / name)
+        listed |= set(
+            re.findall(r"`((?:docs|tests)/[A-Za-z0-9_./-]+|DESIGN\.md|AGENTS\.md)`", text)
+        )
+    assert listed, "İndeks belgelerinde yol listesi bulunamadı."
     missing = {path for path in listed if not (ROOT / path).exists()}
-    assert not missing, f"docs/80 var olmayan yola işaret ediyor: {sorted(missing)}"
+    assert not missing, f"İndeks var olmayan yola işaret ediyor: {sorted(missing)}"
 
 
 def test_docs_do_not_claim_a_test_count() -> None:

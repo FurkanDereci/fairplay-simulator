@@ -1,5 +1,7 @@
 # Yol Haritası
 
+> Yön özeti (nerede / neye doğru / sırada ne / koşullu tetikleyiciler): `docs/95-urun-evrimi.md`.
+
 Kural: **her dilim ayrı onaylanır** ve DoD'u tamamlanmadan kapanmaz.
 DoD = testler yeşil + `ruff`/`mypy` temiz + dokümanlar güncel + `docs-sync` geçer.
 

@@ -64,5 +64,6 @@ yazmak yasak).
 - `docs/90-urun-degeri.md` — "öğrettiği" nasıl ölçülür: davranış ölçütleri + eşikler (alan 9).
 - `docs/30-architecture.md` — CURRENT/TARGET ve geçiş tetikleyicileri (alan 10).
 - `docs/85-kod-haritasi.md` — kod grafiğinin **ürün haritası** (topluluk → modül adı; ADR-0020).
+- `docs/95-urun-evrimi.md` — **yön özeti**: nerede / neye doğru / sırada ne / koşullu tetikleyiciler.
 - `DESIGN.md` — arayüz sözleşmesi: tokenlar, "ne olmayacak"lar, doğrulama tanımı (alan 7).
 - `AGENTS.md` §9 — arayüz kalite eşiği (alan 7'nin kabul ölçütü).

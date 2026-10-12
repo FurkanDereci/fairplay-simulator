@@ -65,17 +65,47 @@ başlanabilir bir varyant; sınırları **baştan yazılı** ki sonradan "zaten 
    `learning-report`). İsteğe bağlı günlük: "bugün hangi sayıyı okudum, ne anladım".
 3. **T1 — 7 gün sonra.** Aynı 5 soru, aynı özgüven. Ayrıca **kendi `learning-report`'unu oku ve
    yorumla** (CLV eğilimi ne diyor, bahis oranın hangi bantta).
-4. **Ölçüm:** `Δ = T1 − T0` (0–5) *ve* kendi metriklerini doğru okuyabildin mi (evet/hayır).
+4. **Ölçüm:** `Δ = T1 − T0` (0–4) *ve* kendi metriklerini doğru okuyabildin mi (evet/hayır).
 
-**Enstrüman — 5 soru (cevap anahtarı; ön-kayıtlı).** Her biri 1 puan, toplam 5.
+**Enstrüman v1 (jargon; 2026-10-12) — saha turunda elendi.**
 
-| # | Soru | Doğru cevap |
+| # | v1 sorusu | Doğru cevap |
 | --- | --- | --- |
-| 1 | Kasaya para eklemek (refill) **TWR**'yi artırır mı? | **Hayır** (I1): refill yalnız birim `U` ve sermayeyi büyütür; `NAV`/`TWR` değişmez |
-| 2 | Oranlar `1.95 / 3.50 / 4.10` verildiğinde "fair" olasılık ham `1/oran` mıdır? | **Hayır**: vig çıkarılır (çarpımsal arındırma); fair olasılık `1/oran`dan **küçüktür** |
-| 3 | Piyasa olasılığını `p` olarak alırsan Kelly oranı kaçtır; neden? | **0**: kenar tanım gereği sıfırdır; Kelly için **kendi** `p`'n gerekir (ADR-0006) |
-| 4 | CLV pozitifse "iyi bahisçi" misin? | **Hayır**: kapanışa göre fiyat yakalama eğilimi; kâr garantisi ya da beceri kanıtı değil |
-| 5 | 3 bahis sonrası Sharpe gördün; güvenilir mi? | **Hayır**: `t = SR·√T`; `t < 2` → örneklem yetersiz, metrik **tanımsız** sayılır |
+| 1 | Kasaya para eklemek (refill) **TWR**'yi artırır mı? | Hayır (I1) |
+| 2 | Oranlarda "fair" olasılık ham `1/oran` mıdır? | Hayır (vig) |
+| 3 | `p` = piyasa olasılığı ise Kelly kaçtır? | 0 (ADR-0006) |
+| 4 | CLV pozitifse "iyi bahisçi" misin? | Hayır |
+| 5 | 3 bahis sonrası Sharpe güvenilir mi? | Hayır (`t < 2`) |
+
+**Saha turu (naif kişiler, 2026-10-12) — madde bazında bulgu ve karar.**
+
+| # | Gözlem | Karar |
+| --- | --- | --- |
+| 1 | Kavram kolay: **genelde doğru** — tavan etkisi | Isınma; **puana sayılmaz** |
+| 2 | Terim söylenmeden karışık; söylenince "tabii, yoksa bahisçi nasıl kazanır" → **yönlendirici** | Yeniden yaz: oran ver, **"gerçek şans % kaç?"** — sayı isteyen, ipucu vermeyen |
+| 3 | "Kazanma beklentisi" anlaşılmadı; "piyasa olasılığıyla hep sıfır" mantığı **çok soyut** | Yeniden yaz: tahminin yoksa **karar verilemez** |
+| 4 | **Ayırt edici madde:** çoğunluk yanlış; "iyi fiyat" ile "kârlı" farkı bilinmiyor (düzenli oynayanların bir kısmı doğru) | **Koru** — tam da öğretilmesi gereken şey |
+| 5 | Çoğu "yetersiz" dedi ama **neden** bilinmiyor ("kısmen bilgi verir" kaçamağı) → tahmin edilebilir | Yeniden yaz: "güvenip büyütür müydün, **neden**" — gerekçe zorunlu |
+
+**Metodolojik uyarı.** Bu tur **ölçüm değil, enstrüman geliştirmedir:** 2'de ipucu verildi, 5'te
+cevaplar toplumsal beklentiye kaydı. Bu yüzden "anlamadı" ile "öğrenmedi" ayrılamaz; bulgular
+**madde tasarımı** için kullanılır, puan için değil.
+
+**Enstrüman v2 (sade; ÖN-KAYITLI — bu commit'le donduruldu).** Toplam **4 puan** (madde 1 puansız).
+
+| # | Soru (birebir okunur; açıklama YOK) | Puan |
+| --- | --- | --- |
+| 1 | Kasaya 1.000 TL daha eklenirse **başarı yüzden** değişir mi? | 0 (ısınma) |
+| 2 | Oranlar `1,95 / 3,50 / 4,10`. Arsenal'ın **gerçek** kazanma şansı yaklaşık **% kaç**? | 1 — `1/1,95`'ten (%51) **küçük** (≈%48) |
+| 3 | Kendi tahminin yokken "bu bahis kârlı mı?" sorusu **cevaplanabilir mi**? | 1 — Hayır (piyasa olasılığıyla beklenti 0) |
+| 4 | Kapanış oranını geçtin (daha iyi fiyat aldın). Bu, **kârlı olduğun** anlamına gelir mi? | 1 — Hayır; iyi fiyat ≠ kâr |
+| 5 | 3 bahis sonrası araç bir "risk puanı" gösteriyor. Bu sayıya güvenip **bahsi büyütür müydün — neden**? | 1 — Hayır **+ gerekçe** (örneklem küçük) |
+
+**Görüşmeci kuralı (enstrüman kadar önemli).** Sorular **birebir** okunur, **ipucu/açıklama
+verilmez**; kaçamakta zorlanmaz. 4 ve 5'te **gerekçe** istenir; **gerekçesiz "hayır" puan almaz**.
+
+**Arayüz bağlantısı.** Aynı bulgu ürünü de vurdu: varsayılan metin sadeleştirildi, teknik terimler
+"İleri Düzey" yoluna taşındı (`DESIGN.md` "Bileşen kuralları").
 
 **Yanlışlanma (bu kişide).** `Δ ≤ 0` ise **ya da** kendi metriklerini yanlış okuyorsan "öğretir"
 iddiası bu vakada **düşer**.
@@ -88,17 +118,9 @@ iddiası bu vakada **düşer**.
   öz-testi bu yüzden en zayıf tasarımdır.
 - **Bu yüzden Ö-1'in yerine geçmez.** Sonuç ne olursa olsun §4 koşulmamış sayılır.
 
-**Ucuz mitigasyon (aynı enstrüman, daha anlamlı).** Aynı 5 soruyu, ürünü **hiç görmemiş bir
-naif** kişiye (sınıf arkadaşı, yurt) T0/T1 olarak uygula. Naif T0 düşük + T1 yüksekse **asıl
-sinyal odur**; kendi öz-testin yalnız enstrümanın çalıştığını (ne trivially kolay ne imkânsız)
-gösterir.
-
-**Saha notu (2026-10-12) — enstrüman bu kitleye ağır.** 3 naif kişiye 5 soru soruldu: **üçü de
-hiçbirini cevaplayamadı**, hatta terimleri (vig, Kelly, CLV, TWR, Sharpe) **tanımadı**. Sonuç:
-"anlamadı" ile "öğrenmedi" **ayrılamaz** → bu hâliyle enstrüman **geçersiz**; n=3 sonucu "öğretmiyor"
-demek değildir. Sorular **jargonsuz** yeniden yazılmalı (kâr/tahmin/kasa dili), o zaman yeniden
-koşulabilir. Aynı bulgu arayüzü de vurdu → varsayılan metin sadeleştirildi (`DESIGN.md`
-"Bileşen kuralları"; teknik terim "İleri Düzey" yoluna taşındı).
+**Ucuz mitigasyon (aynı enstrüman, daha anlamlı).** v2'yi, ürünü **hiç görmemiş bir naif** kişiye
+(sınıf arkadaşı, yurt) T0/T1 olarak uygula. Naif T0 düşük + T1 yüksekse **asıl sinyal odur**; kendi
+öz-testin yalnız enstrümanın çalıştığını (ne trivially kolay ne imkânsız) gösterir.
 
 **T0 kaydı (tarih + cevaplar).**
 

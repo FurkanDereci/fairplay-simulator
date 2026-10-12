@@ -26,7 +26,7 @@
 
 | İş | Neden | Kaynak |
 | --- | --- | --- |
-| **Ö-1 — M2 öğrenme çalışması** | Ürün tezinin ("öğretir") **tek açık kanıtı**; insan katılımcı gerektirir, kod işi değil | PM raporu §5 (Ö-1) |
+| **Ö-1 — M2 öğrenme çalışması** | Ürün tezinin ("öğretir") **tek açık kanıtı**; insan katılımcı gerektirir, kod işi değil — katılımcı yoksa **n=1 pilot** varyantı: `docs/90-urun-degeri.md` §4.1 | PM raporu §5 (Ö-1) |
 | **Parite: F3 kupon fişi → F4 factsheet** | Arayüz paritesi; **kabul ölçütü değil**, iyileştirme | `docs/70-parite-ve-devralma.md` |
 | **Parola sıfırlama / hesap kurtarma** | Bugün akış yok; parola unutulursa hesap arayüzden erişilemez | Vault `Backlog` (FairPlay / parola sıfırlama) |
 

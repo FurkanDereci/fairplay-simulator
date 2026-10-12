@@ -47,7 +47,7 @@ Orijinalin 2026-09-10 incelemesinde çıkan ve belgelenen kod riskleri:
 
 | Orijinalin riski | bu depodaki durum | Kanıt |
 | --- | --- | --- |
-| `auth.py`: `JWT_SECRET_KEY` yoksa **bilinen sabit** varsayılana düşüyor | env yoksa rastgele anahtar + `RuntimeWarning` | `app/config.py` · `tests/api` (token akışı) |
+| `auth.py`: `JWT_SECRET_KEY` yoksa **bilinen sabit** varsayılana düşüyor | env yoksa rastgele anahtar + `RuntimeWarning` (politika: ADR-0017) | `app/config.py` · `tests/api` (token akışı) · ADR-0017 |
 | `calculate_twr` seriler arası bileşik değil | `Fund.twr` seriler arası **bileşik** | `core/nav.py` · `[G-2]` · `I4` |
 | `simulation_energy` hiç yenilenmiyor | saatte 10 yenilenir, <10'da bahis reddi (429) | `core/energy.py` · `[G-12]` · `I5` |
 | `benchmark_engine`: `except Exception: pass` + botlar bellekte, restart'ta sıfırlanıyor | botlar **durum tutmaz**; eğriler maç kayıtlarından türetilir | `engines/bots.py` · `tests/engines/test_bots.py` |

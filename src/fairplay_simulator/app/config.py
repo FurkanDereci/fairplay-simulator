@@ -1,7 +1,8 @@
 """Uygulama ayarları.
 
 Kural: güvensiz varsayılan sır **yok**. `JWT_SECRET_KEY` verilmezse rastgele anahtar üretilir ve
-uyarı basılır (bilinen sabit varsayılan, token sahteleme açığıdır).
+uyarı basılır (bilinen sabit varsayılan, token sahteleme açığıdır). Sırrın neden opsiyonel
+kaldığı ve çok süreçli dağıtımdaki sınırı: ADR-0017.
 """
 
 from __future__ import annotations

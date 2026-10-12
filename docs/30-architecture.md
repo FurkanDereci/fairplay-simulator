@@ -77,6 +77,10 @@ Aşağıdakilerden **biri ölçülüp gerçekleşene kadar** ilgili teknoloji ek
 | Rate limiting | Gerçek kötüye kullanım gözlemlendiğinde |
 | Defter snapshot'ı | Kullanıcı başına **> 100.000 olay** veya `cli replay` **> 250 ms** (ölçüm 2026-09-30: 5.001 olay → 7,1 ms; ADR-0009) |
 
+İzleme **elle bakmaktan çıkarıldı:** `fairplay-simulator scale-report [--db PATH]` bu değerleri
+basar (defter olayı, kullanıcı başına en yüksek, replay süresi, DB boyutu) ve bir tetikleyici
+eşiğin **%70'ine** geldiğinde `warnings` listesinde uyarır (Ö-7, 2026-10-12).
+
 ## Kayıt
 
 Her mimari karar `docs/60-decisions/` altında tarihli bir ADR'dir. Bir TARGET iddiası ancak bir ADR'ye

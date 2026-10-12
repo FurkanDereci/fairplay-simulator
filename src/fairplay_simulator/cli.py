@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from collections.abc import Sequence
 from pathlib import Path
 from types import ModuleType
@@ -17,6 +18,22 @@ from typing import Any
 from . import __version__
 from .core.nav import Fund
 from .repo import Repository
+
+# `docs/30-architecture.md` → TARGET geçiş tetikleyicileri (ölçülen değerler burada basılır).
+LEDGER_EVENTS_TRIGGER = 100_000
+REPLAY_MS_TRIGGER = 250.0
+TRIGGER_WARN_RATIO = 0.7
+
+
+def _trigger(value: float, threshold: float) -> dict[str, object]:
+    """Bir tetikleyicinin ölçülen değerini eşiğine oranlar; %70'te uyarı işaretler."""
+    ratio = value / threshold if threshold > 0 else 0.0
+    return {
+        "value": round(value, 2),
+        "threshold": threshold,
+        "ratio": round(ratio, 4),
+        "warn": ratio >= TRIGGER_WARN_RATIO,
+    }
 
 
 def _resolve_user_id(repo: Repository, key: str) -> str | None:
@@ -53,6 +70,39 @@ def _cmd_replay(args: argparse.Namespace) -> int:
 
 def _cmd_version(_args: argparse.Namespace) -> int:
     print(f"fairplay-simulator {__version__}")
+    return 0
+
+
+def _cmd_scale_report(args: argparse.Namespace) -> int:
+    """`docs/30` geçiş tetikleyicilerini ölçer ve eşiğe yaklaşmayı bildirir.
+
+    İzleme **elle bakmaktan** çıkar: ölçülen değerler basılır, eşiğin %70'ine gelen tetikleyici
+    `warnings` listesinde görünür. Eşikler `docs/30`'dan alınır; bayraklarla daraltılabilir (test).
+    """
+    with Repository(args.db) as repo:
+        total, max_events, heaviest = repo.ledger_stats()
+        replay_ms = 0.0
+        if heaviest is not None:
+            entries = repo.entries(heaviest)
+            start = time.perf_counter()
+            Fund.replay(entries)
+            replay_ms = (time.perf_counter() - start) * 1000.0
+
+    db_path = Path(args.db)
+    events = _trigger(float(max_events), float(args.events_threshold))
+    replay = _trigger(replay_ms, float(args.replay_threshold))
+    triggers = {"ledger_events_per_user": events, "replay_ms": replay}
+    payload = {
+        "db_path": args.db,
+        "db_size_bytes": db_path.stat().st_size if db_path.exists() else 0,
+        "ledger_entries_total": total,
+        "ledger_entries_max_per_user": max_events,
+        "heaviest_user": heaviest,
+        "replay_ms": round(replay_ms, 3),
+        "triggers": triggers,
+        "warnings": [name for name, t in triggers.items() if t["warn"]],
+    }
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
     return 0
 
 
@@ -148,6 +198,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     version = sub.add_parser("version", help="Sürümü bas")
     version.set_defaults(func=_cmd_version)
+
+    scale = sub.add_parser(
+        "scale-report", help="docs/30 geçiş tetikleyicilerini ölç ve eşiğe yakınlığı bas"
+    )
+    scale.add_argument("--db", default="fairplay.db", help="SQLite dosyası")
+    scale.add_argument("--events-threshold", type=int, default=LEDGER_EVENTS_TRIGGER)
+    scale.add_argument("--replay-threshold", type=float, default=REPLAY_MS_TRIGGER)
+    scale.set_defaults(func=_cmd_scale_report)
 
     openapi = sub.add_parser("export-openapi", help="OpenAPI şemasını JSON olarak bas")
     openapi.add_argument("--db", default="fairplay.db")

@@ -128,6 +128,30 @@ def test_cli_replay_prints_projection(tmp_path: Path, capsys: pytest.CaptureFixt
     assert main(["replay", "yok-boyle", "--db", str(db)]) == 1
 
 
+def test_cli_scale_report_measures_triggers(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Ö-7 — docs/30 tetikleyicileri elle bakmadan ölçülür; eşiğe yaklaşma uyarı basar."""
+    db = tmp_path / "scale.db"
+    ledger = _seeded_ledger()
+    with Repository(db) as repo:
+        user = repo.create_user("aytek", "a@example.com", "hash")
+        repo.append_entries(user.id, ledger.entries)
+
+    assert main(["scale-report", "--db", str(db)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["ledger_entries_total"] == len(ledger.entries)
+    assert payload["ledger_entries_max_per_user"] == len(ledger.entries)
+    assert payload["triggers"]["ledger_events_per_user"]["warn"] is False
+    assert payload["warnings"] == []
+
+    # Eşiği daraltınca uyarı gerçekten ateşliyor (kapı geri alınınca test kırmızı olur).
+    assert main(["scale-report", "--db", str(db), "--events-threshold", "1"]) == 0
+    tight = json.loads(capsys.readouterr().out)
+    assert tight["triggers"]["ledger_events_per_user"]["warn"] is True
+    assert "ledger_events_per_user" in tight["warnings"]
+
+
 def test_existing_db_gets_the_solvent_day_column(tmp_path: Path) -> None:
     """Göç (ADR-0015): eski şemalı dosya açılınca kolon **eklenir** ve çalışır.
 

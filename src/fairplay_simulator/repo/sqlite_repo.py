@@ -296,6 +296,22 @@ class Repository:
             for row in rows
         ]
 
+    def ledger_stats(self) -> tuple[int, int, str | None]:
+        """Ölçek tetikleyicileri için defter özeti (sorgu, projeksiyon değil).
+
+        Dönen: `(toplam olay, kullanıcı başına en yüksek olay, o kullanıcının id'si)`.
+        Kullanıcı yoksa `(0, 0, None)`. Bu sayılar `docs/30` snapshot tetikleyicisinin
+        ("kullanıcı başına > 100.000 olay") izlenmesini elle bakmaktan çıkarır.
+        """
+        total = int(self._conn.execute("SELECT COUNT(*) FROM ledger_entries").fetchone()[0])
+        row = self._conn.execute(
+            "SELECT user_id, COUNT(*) AS n FROM ledger_entries"
+            " GROUP BY user_id ORDER BY n DESC LIMIT 1"
+        ).fetchone()
+        if row is None:
+            return total, 0, None
+        return total, int(row["n"]), str(row["user_id"])
+
     # --- kupon meta verisi ---------------------------------------------------
     def save_wager(
         self,

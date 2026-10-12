@@ -12,7 +12,7 @@ DoD = testler yeşil + `ruff`/`mypy` temiz + dokümanlar güncel + `docs-sync` g
 | **S4** | API kabuğu | auth, wager, portfolio, **sunucu-otoriteli** settlement, refill + OpenAPI + idempotency | Endpoint'te iş mantığı yok; `40-api.md` üretildi; güven sınırı testli | ✅ |
 | **S5** | Maç motoru | tohumlu Poisson + Monte Carlo | Aynı seed → aynı sonuç (testli) | ✅ |
 | **S6** | Benchmark botları | 3 strateji, maç kayıtlarından **türetilen** | Determinizm + restart'ta sıfırlanmama | ✅ |
-| **S7** | Oyunlaştırma + arayüz | enerji/cooldown; enerji **görünür**; kart tabanlı arayüz, lig filtresi, kullanıcı olasılığıyla EV/Kelly; **disiplin rozetleri** + risk onay modalı | Mock state yok; enerji görünür; bağımsız inceleme bulguları kapatıldı; rozetler ve `tests/ui` (gerçek tarayıcı) var — **tek kalan:** istemci OpenAPI'den üretilmiyor (tipli istemci) | ✅ (tipli istemci hariç) |
+| **S7** | Oyunlaştırma + arayüz | enerji/cooldown; enerji **görünür**; kart tabanlı arayüz, lig filtresi, kullanıcı olasılığıyla EV/Kelly; **disiplin rozetleri** + risk onay modalı | Mock state yok; enerji görünür; bağımsız inceleme bulguları kapatıldı; rozetler ve `tests/ui` (gerçek tarayıcı) var; **tipli istemci** (OpenAPI→TS) üretildi (ADR-0019) | ✅ |
 | **S8** | Yayın | doküman geçişi, README kurulumu, uçtan uca duman | Temiz ortamda kurulum + `docs-sync` yeşil | ✅ |
 
 ## Dilim → sözleşme bağı
@@ -27,7 +27,8 @@ DoD = testler yeşil + `ruff`/`mypy` temiz + dokümanlar güncel + `docs-sync` g
 - **DOM / tarayıcı test koşumu** — ✅ çözüldü: `tests/ui/test_ui_flow.py` (Playwright + Chromium)
   arayüzü **gerçek tarayıcıda** sürüyor; DOM iddiaları, tıklama akışı, konsol/sayfa hatası kontrolü.
   Kurulum root gerektirmez (`playwright install chromium`); tarayıcı yoksa testler atlanır.
-- **Tipli istemci üretimi** (OpenAPI → TS) — elle yazılmış ince istemci var.
+- **Tipli istemci üretimi** (OpenAPI → TS) — ✅ çözüldü: `openapi-typescript` ile üretilen
+  `web/api-types.d.ts` (ADR-0019); üretim `npm run gen:api-types`, kapsamı `docs-sync` doğrular.
 - **Rozetler ve solvent-gün tier indirimi** — ✅ **rozetler** (disiplin, ADR-0012) `learning-report`
   ölçütlerinden türetiliyor ve cooldown tavanını indiriyor; ✅ **solvent-gün** sayacı artık
   **duvar saatiyle işliyor** (`portfolio`/`wager` tick'i; `[G-20]`, ADR-0015) ve arayüzde görünüyor

@@ -1,0 +1,12 @@
+{
+  "name": "fairplay-simulator-api-types",
+  "version": "0.0.0",
+  "private": true,
+  "description": "OpenAPI → TypeScript tipleri (üretilen artefakt; elle düzenlenmez)",
+  "scripts": {
+    "gen:api-types": "node scripts/gen-api-types.mjs"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0"
+  }
+}

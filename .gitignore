@@ -26,3 +26,4 @@ desktop.ini
 .commandcode/
 graphify-out/
 mutants/
+node_modules/

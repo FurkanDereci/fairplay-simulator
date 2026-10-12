@@ -93,6 +93,24 @@ def test_client_side_settlement_endpoint_is_gone() -> None:
     assert "/api/wager/settle" not in _read(DOCS / "40-api.md")
 
 
+def test_typescript_types_cover_the_api_surface() -> None:
+    """`web/api-types.d.ts` her OpenAPI yolunu ve işlemini taşımalı (ADR-0019).
+
+    Dosya `openapi-typescript` ile üretilir; npm gerektirmeden yalnız **kapsam** doğrulanır
+    (bayat bir üretim yeni bir ucu düşürmüşse burada kırılır).
+    Yeniden üretim: `npm run gen:api-types`.
+    """
+    app = create_app(db_path=":memory:", settings=Settings(jwt_secret="docs-sync-only-secret"))
+    paths = app.openapi()["paths"]
+    assert isinstance(paths, dict)
+    types = _read(SRC / "web" / "api-types.d.ts")
+    for path, operations in paths.items():
+        assert f'"{path}"' in types, f"Tip dosyasında yol yok: {path} — `npm run gen:api-types`."
+        for operation in operations.values():
+            op_id = operation.get("operationId")
+            assert op_id and op_id in types, f"Tip dosyasında işlem yok: {op_id}"
+
+
 def test_parity_document_matches_the_api_surface() -> None:
     """`docs/70-parite-ve-devralma.md`'nin **bu depo kolonu** `docs/40-api.md` ile tutarlı olmalı.
 

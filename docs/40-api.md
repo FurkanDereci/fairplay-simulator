@@ -4,6 +4,8 @@
 > için belge ile kod arasında sapma oluşamaz (P11).
 >
 > Üretim: `python -m fairplay_simulator.cli render-api-docs --output docs/40-api.md`
+>
+> TypeScript tipleri: `src/fairplay_simulator/web/api-types.d.ts` (OpenAPI'den üretilir, ADR-0019).
 
 Toplam **12 uç**.
 

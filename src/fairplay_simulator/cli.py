@@ -159,6 +159,9 @@ def render_api_docs(spec: dict[str, object]) -> str:
         "> için belge ile kod arasında sapma oluşamaz (P11).",
         ">",
         "> Üretim: `python -m fairplay_simulator.cli render-api-docs --output docs/40-api.md`",
+        ">",
+        "> TypeScript tipleri: `src/fairplay_simulator/web/api-types.d.ts`"
+        " (OpenAPI'den üretilir, ADR-0019).",
         "",
         f"Toplam **{len(rows)} uç**.",
         "",

@@ -1,0 +1,3 @@
+# graphify: jenerik/vendored kütüphaneler graf'a girmesin (gerçek mimariyi gürültüyle örtüyorlar).
+src/fairplay_simulator/web/assets/lucide.js
+src/fairplay_simulator/web/assets/tailwind.js

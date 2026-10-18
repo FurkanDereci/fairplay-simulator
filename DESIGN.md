@@ -45,7 +45,7 @@ bulunur; **yeni bir renk gerekiyorsa önce `:root`a token eklenir**, markup'ta h
 | Yazı tipi — sayı | `--font-mono` | `JetBrains Mono`, sistem yığınına düşer |
 | Yarıçap | `--radius` / `--radius-sm` | `16px` / `10px` |
 | Boşluk | `--gap` | `16px` |
-| Süre | `--dur` | `200ms` |
+| Süre | `--dur` / `--dur-fast` / `--dur-slow` | `200ms` / `120ms` / `500ms` |
 | Grafik serileri | `--series-nav` / `--series-random` / `--series-favorite` / `--series-home` | `#00d2b4` / `#f59e0b` / `#3b82f6` / `#94a3b8` |
 
 - **Aralık ritmi:** 4'ün katları (4 / 8 / 10 / 12 / 14 / 16 / 20). Ritim dışı boşluk yazılmaz.

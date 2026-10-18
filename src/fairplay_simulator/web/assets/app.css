@@ -44,6 +44,8 @@
   --radius-sm: 10px;
   --gap: 16px;
   --dur: 200ms;
+  --dur-fast: 120ms;
+  --dur-slow: 500ms;
   /* Grafik: renkler token'dan okunur (token()), ayrımı **çizgi deseni** taşır —
      renk körü kullanıcı serileri yine ayırır. */
   --series-nav: #00d2b4;
@@ -59,13 +61,14 @@
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #0b0f17; }
 ::-webkit-scrollbar-thumb { background: #222f3e; border-radius: 9999px; }
+::-webkit-scrollbar-thumb { transition: background-color var(--dur-fast) ease; }
 ::-webkit-scrollbar-thumb:hover { background: #334358; }
 
 .outlier-card {
   background-color: #121924;
   border: 1px solid #1f2b3b;
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, .5);
-  transition: border-color .2s ease, box-shadow .2s ease;
+  transition: border-color var(--dur) ease, box-shadow var(--dur) ease;
 }
 .outlier-card:hover { border-color: #2e3e54; }
 
@@ -82,7 +85,7 @@
 .pill-badge.is-warn { background: rgba(245, 158, 11, .12); border: 1px solid rgba(245, 158, 11, .35); color: var(--warn); }
 .pill-badge b { font-family: var(--font-mono); }
 
-.chart-line { transition: opacity .3s ease, stroke-dashoffset .5s ease; }
+.chart-line { transition: opacity var(--dur) ease, stroke-dashoffset var(--dur-slow) ease; }
 
 /* --- taban --------------------------------------------------------------- */
 html { color-scheme: dark; }
@@ -138,9 +141,10 @@ h1, h2, h3, h4 { margin: 0; letter-spacing: -.01em; }
   background: #1b2533; border: 1px solid #2e3e54; overflow: hidden; flex: 0 0 auto;
 }
 .energy-bar > i {
-  display: block; height: 100%; border-radius: 999px;
+  display: block; height: 100%; width: 100%; border-radius: 999px;
   background: var(--accent); box-shadow: 0 0 8px rgba(0, 210, 180, .8);
-  transition: width var(--dur) ease;
+  transform-origin: left center; transform: scaleX(0);
+  transition: transform var(--dur) ease;
 }
 .energy.is-blocked .energy-bar > i { background: var(--bad); box-shadow: 0 0 8px rgba(248, 113, 113, .7); }
 /* `#energy-display`in className'i de yazılır ("" ya da "bad") → renk id seçicisinde. */
@@ -252,7 +256,7 @@ label { color: var(--muted); font-size: 12px; }
   width: 96px; height: 6px; border-radius: 999px; flex: 0 0 auto;
   background: var(--sunken); border: 1px solid var(--line); overflow: hidden;
 }
-.streak-bar > i { display: block; height: 100%; background: var(--accent); transition: width var(--dur) ease; }
+.streak-bar > i { display: block; height: 100%; width: 100%; background: var(--accent); transform-origin: left center; transform: scaleX(0); transition: transform var(--dur) ease; }
 
 /* --- modül başlıkları ---------------------------------------------------- */
 .module-head {
@@ -471,6 +475,7 @@ canvas#chart {
   border: 1px solid var(--line-strong); border-radius: 8px; padding: 1px 8px;
   font-family: var(--font-mono); font-size: 11px;
 }
+#toast .toast-close { transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease; }
 #toast .toast-close:hover { background: var(--card-2); color: var(--fg); }
 #toast div.err { border-left-color: var(--bad); }
 #toast div.err::before { content: "Hata: "; font-weight: 600; color: var(--bad); }
